@@ -1,0 +1,46 @@
+{
+  "name": "crezu_rag",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc -w & nodemon dist/index.js",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.9",
+    "@types/express": "^5.0.3",
+    "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.3.3",
+    "@types/node-cron": "^3.0.11",
+    "@types/pg": "^8.15.5",
+    "@types/supertest": "^6.0.3",
+    "@typescript-eslint/eslint-plugin": "^8.44.0",
+    "@typescript-eslint/parser": "^8.44.0",
+    "element-plus": "^2.10.4",
+    "eslint": "^9.36.0",
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@chroma-core/default-embed": "^0.1.8",
+    "axios": "^1.7.9",
+    "body-parser": "^2.2.0",
+    "chromadb": "^3.0.15",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.2.2",
+    "langdetect": "^0.2.1",
+    "openai": "^4.71.1",
+    "uuid": "^13.0.0",
+    "zod": "^3.25.76"
+  }
+}

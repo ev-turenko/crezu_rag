@@ -1,0 +1,15 @@
+.env
+node_modules
+certs
+BACKUP_DONT_TOUCH
+test.js
+offers.txt
+merger.js
+process_offers.js
+process_offers_to_txt.js
+offers.csv
+offers.json
+offers_with_categories.json
+chat.php
+.DS_Store
+dist
