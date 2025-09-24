@@ -3,7 +3,7 @@ services:
     build: .
     volumes:
       - .:/app
-    command: sh -c "npm ci && npm run build && node dist/index.js"
+    command: sh -c "npm ci && npm install typescript && npm run build && node dist/index.js"
     ports:
       - "${PORT}:3000"
     environment:
