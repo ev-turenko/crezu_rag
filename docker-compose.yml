@@ -4,6 +4,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+      - /app/dist
     ports:
       - "${PORT}:3000"
     environment:
