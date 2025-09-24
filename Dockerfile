@@ -1,21 +1,20 @@
-FROM node:22-slim
-
+FROM node:22-slim AS build
 WORKDIR /app
 
 COPY package*.json ./
-
-RUN npm install
+RUN npm ci
 
 COPY . .
-
-RUN ls
-
 RUN npm run build
 
-RUN ls
-
-EXPOSE 3000
-
+FROM node:22-slim AS runtime
+WORKDIR /app
 ENV NODE_ENV=production
 
-CMD [ "node", "./dist/index.js" ]
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY --from=build /app/dist ./dist
+
+EXPOSE 3000
+CMD ["node", "dist/index.js"]
