@@ -245,24 +245,36 @@ export async function processRequest(req: Request, res: Response) {
         } else {
             return res.status(200).json({
                 success: true,
-                chat_id: chatWithId.chat_id,
-                messages: [
-                    ...chatWithId.messages,
+                answer: [
                     {
-                        index: lastMessageIndex + 1,
-                        role: ChatRole.System,
-                        data: [
-                            {
-                                type: ContentDataType.Markdown,
-                                content: loanResponse.motivation
-                            },
-                            {
-                                type: ContentDataType.Offers,
-                                content: loanResponse.offer_id_list
-                            }
-                        ]
+                        type: ContentDataType.Markdown,
+                        content: loanResponse.motivation
+                    },
+                    {
+                        type: ContentDataType.Offers,
+                        content: loanResponse.offer_id_list
                     }
-                ],
+                ]
+
+                // success: true,
+                // chat_id: chatWithId.chat_id,
+                // messages: [
+                //     ...chatWithId.messages,
+                //     {
+                //         index: lastMessageIndex + 1,
+                //         role: ChatRole.System,
+                //         data: [
+                //             {
+                //                 type: ContentDataType.Markdown,
+                //                 content: loanResponse.motivation
+                //             },
+                //             {
+                //                 type: ContentDataType.Offers,
+                //                 content: loanResponse.offer_id_list
+                //             }
+                //         ]
+                //     }
+                // ],
             });
         }
 
