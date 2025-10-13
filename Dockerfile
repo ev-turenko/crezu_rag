@@ -9,11 +9,10 @@ COPY package*.json ./
 RUN npm cache clean --force && \
     npm install --no-cache --prefer-online
 
-# COPY . .
+COPY . .
 
-# RUN npm run build
+RUN npm run build
 
 EXPOSE 3000
 
-
-CMD ["npx", "ts-node", "src/index.ts"]
+CMD ["npm", "start"]
