@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { processRequest } from '../controllers/inferenceController.js';
+import { processRequest, getHistory } from '../controllers/inferenceController.js';
 
 const router = Router();
 
 router.post('/', processRequest);
+router.post('/history', getHistory);
 
 export default router;

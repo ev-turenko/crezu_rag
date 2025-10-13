@@ -3,8 +3,7 @@
 // TODO: дотестировать примешивание топовых офферов для нас
 
 import { Request, Response } from 'express';
-import { AIModel } from '../models/AiModel.js';
-import { ChatRequest } from '../types.js';
+import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
 import { ChatIntent, ChatRole, ContentDataType } from '../enums/enums.js';
 
 const irrelevantChatMessageTranslations = {
@@ -31,11 +30,47 @@ const unsafeChatMessageTranslations = {
     'en': "Your message does not meet the conversation security policy."
 }
 
+export async function getHistory(req: Request, res: Response) {
+    try {
+        const chatId = req.body.chat_id;
+        if (!chatId) {
+            return res.status(400).json({
+                success: false,
+                error: 'chat_id is required'
+            });
+        }
+
+        const chat = await AIModel.getChatById(chatId);
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                error: 'Chat not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            // chat_id: chat.chat_id,
+            messages: chat.messages.map(msg => ({
+                from: msg.role as ChatRole,
+                data: msg.data
+            }))
+        });
+    } catch (error) {
+        console.error('Error fetching chat history:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+}
+
 export async function processRequest(req: Request, res: Response) {
     try {
-        const body: ChatRequest = req.body;
+        const body: ChatProperties = req.body;
+        const ip = req.headers['x-forwarded-for'] || req.ip || null;
 
-        if (!body || !body.messages || !Array.isArray(body.messages)) {
+        if (!body || !body.message || !body.params.client_id || !body.params.country || !body.params.provider) {
             return res.status(400).json({
                 success: false,
                 chat_id: 0,
@@ -55,8 +90,32 @@ export async function processRequest(req: Request, res: Response) {
         }
 
         const langParam = req.query.lang;
-        const chatWithId = AIModel.assignIdToChatSession(body);
-        const lastMessageIndex = body.messages[body.messages.length - 1].index;
+        let chatWithId: ChatDbRecord | null = null;
+
+
+        if (!body.chat_id) chatWithId = await AIModel.initChat(body, `${ip}`);
+        else chatWithId = await AIModel.getChatById(body.chat_id);
+
+        if (chatWithId === null) {
+            return res.status(404).json({
+                success: false,
+                chat_id: body.chat_id,
+                messages: [
+                    {
+                        index: 0,
+                        role: ChatRole.System,
+                        data: [
+                            {
+                                type: ContentDataType.Notification,
+                                content: "Chat session not found"
+                            }
+                        ]
+                    }
+                ],
+            });
+        }
+
+        const lastMessageIndex = chatWithId.messages[chatWithId.messages.length - 1].index;
 
         // LANG QUERY PARAM SHOULD BE PROVIDED AT ALL TIMES
         if (!langParam || !['es-mx', 'es-es', 'pl', 'en'].includes(langParam as string)) {
@@ -64,7 +123,7 @@ export async function processRequest(req: Request, res: Response) {
                 success: false,
                 chat_id: chatWithId.chat_id,
                 messages: [
-                    ...body.messages,
+                    ...chatWithId.messages,
                     {
                         index: lastMessageIndex + 1,
                         role: ChatRole.System,
@@ -89,7 +148,7 @@ export async function processRequest(req: Request, res: Response) {
                 success: false,
                 chat_id: chatWithId.chat_id,
                 messages: [
-                    ...body.messages,
+                    ...chatWithId.messages,
                     {
                         index: lastMessageIndex + 1,
                         role: ChatRole.System,
@@ -131,7 +190,7 @@ export async function processRequest(req: Request, res: Response) {
                 success: false,
                 chat_id: chatWithId.chat_id,
                 messages: [
-                    ...body.messages,
+                    ...chatWithId.messages,
                     {
                         index: lastMessageIndex + 1,
                         role: ChatRole.System,
@@ -150,7 +209,7 @@ export async function processRequest(req: Request, res: Response) {
                 success: false,
                 chat_id: chatWithId.chat_id,
                 messages: [
-                    ...body.messages,
+                    ...chatWithId.messages,
                     {
                         index: lastMessageIndex + 1,
                         role: ChatRole.System,
@@ -166,12 +225,12 @@ export async function processRequest(req: Request, res: Response) {
 
         const loanResponse = await AIModel.getRelevantOffers(chatWithId, `${chatIntent.intent}`.split('_').join(' '));
 
-        if(loanResponse.motivation === null) {
+        if (loanResponse.motivation === null) {
             return res.status(400).json({
                 success: false,
                 chat_id: chatWithId.chat_id,
                 messages: [
-                    ...body.messages,
+                    ...chatWithId.messages,
                     {
                         index: lastMessageIndex + 1,
                         role: ChatRole.Assistant,
@@ -188,7 +247,7 @@ export async function processRequest(req: Request, res: Response) {
                 success: true,
                 chat_id: chatWithId.chat_id,
                 messages: [
-                    ...body.messages,
+                    ...chatWithId.messages,
                     {
                         index: lastMessageIndex + 1,
                         role: ChatRole.System,

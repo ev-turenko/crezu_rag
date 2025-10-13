@@ -1,11 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import { formatOffer, sendToLLM } from "../utils/common.js";
-import { ChatIntent, ChatRole } from '../enums/enums.js';
+import { ChatIntent, ChatRole, PbCollections } from '../enums/enums.js';
+import PocketBase from 'pocketbase';
 
 
 export interface ChatMessage {
   index: number;
   role: "system" | "user" | "assistant";
+  created_at: string;
   data: [
     {
       content: string | any
@@ -18,6 +20,30 @@ export interface ChatPayload {
   messages: ChatMessage[]
 }
 
+export interface ChatProperties {
+  chat_id?: string;
+  message: string;
+  params: {
+    country: number,
+    provider: number,
+    client_id: string,
+  }
+}
+
+export interface ChatDbRecord {
+  collectionId: string;
+  collectionName: string;
+  id: string;
+  ip: string | null;
+  client_id: string;
+  country_id: string;
+  provider_id: string;
+  chat_id: string;
+  messages: ChatMessage[];
+  created: string;
+  updated: string;
+}
+
 
 export class AIModel {
   public static assignIdToChatSession(payload: ChatPayload): ChatPayload {
@@ -26,6 +52,42 @@ export class AIModel {
       deepCopy.chat_id = uuidv4();
     }
     return deepCopy;
+  }
+
+  public static async initChat(payload: ChatProperties, ip: string | null): Promise<ChatDbRecord> {
+    const pb = new PocketBase('https://pb.cashium.pro/');
+    pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
+    const record = await pb.collection(PbCollections.CHATS).create({
+      chat_id: uuidv4(),
+      ip: ip,
+      messages: [
+        {
+          index: 0,
+          created_at: new Date().toISOString(),
+          role: 'user',
+          data: [{
+            content: payload.message
+          }]
+        }
+      ],
+      country_id: payload.params.country,
+      provider_id: payload.params.provider,
+      client_id: payload.params.client_id,
+    });
+    
+    return record as ChatDbRecord;
+  }
+
+public static async getChatById(chatId: string): Promise<ChatDbRecord | null> {
+    const pb = new PocketBase('https://pb.cashium.pro/');
+    pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
+    try {
+      const record = await pb.collection(PbCollections.CHATS).getFirstListItem<ChatDbRecord>(`chat_id="${chatId}"`);
+      return record;
+    } catch (error) {
+      console.log('Chat not found:', error);
+      return null;
+    }
   }
 
   public static async isMessageSafe(payload: ChatPayload): Promise<boolean | null> {
@@ -120,6 +182,16 @@ export class AIModel {
           <base instruction>
         You're a financial expert in finding the best relevant financial offers. Do your best to answer the user's question using the provided offers. Use only those offers that are provided in the list. Reply with a structured JSON without adding any other information, order_id_list must contain ordered offers by relevance for the user.
         If the user's information is not enough to make a decision, reply with an empty for offer_id_list and kindly request information that may help you request for additional information. Always reply in user's language. Your sole purpose is to assist with finding the best relevant financial offers.
+        You must be provided with the following information:
+        Absolutely required:
+        - Loan period
+        – Loan reason
+        – Loan amount
+        Optional but very useful:
+        - User's monthly income
+        - User's employment status
+        - Any existing debts or financial obligations
+        Never invent any information about the user.
         </base instruction>
 
         <offers>

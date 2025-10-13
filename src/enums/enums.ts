@@ -20,3 +20,7 @@ export enum ChatIntent {
     OTHER = 'other',
     UNKNOWN = 'unknown',
 }
+
+export enum PbCollections {
+    CHATS = 'chats'
+}
