@@ -1,10 +1,11 @@
 services:
   app:
-    build: .
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/dist
+    context: .
+    no_cache: true
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
+    #   - /app/dist
     ports:
       - "${PORT}:3000"
     environment:
@@ -12,3 +13,4 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DEEPSEEK_OPENAI_BASE_URL=${DEEPSEEK_OPENAI_BASE_URL}
       - DEEPSEEK_OPENAI_KEY=${DEEPSEEK_OPENAI_KEY}
+      - PB_SUPERADMIN_TOKEN=${PB_SUPERADMIN_TOKEN}
