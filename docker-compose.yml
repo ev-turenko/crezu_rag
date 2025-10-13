@@ -1,7 +1,6 @@
 services:
   app:
-    context: .
-    no_cache: true
+    build: .
     # volumes:
     #   - .:/app
     #   - /app/node_modules
