@@ -9,14 +9,14 @@ COPY package*.json ./
 RUN npm cache clean --force && \
     npm install --no-cache --prefer-online
 
+RUN npm install tsc -g
+RUN tsc
+
 # COPY . .
 
 # RUN npm run build
 
-# EXPOSE 3000
-
-RUN npm install tsc -g
-RUN tsc
+EXPOSE 3000
 
 
-CMD ["node", "src/index.ts"]
+CMD ["npx", "ts-node", "src/index.ts"]
