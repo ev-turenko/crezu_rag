@@ -1,10 +1,13 @@
 FROM node:22-alpine
 
+ARG CACHEBUST=1
+
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm cache clean --force && \
+    npm install --no-cache --prefer-online
 
 COPY . .
 
