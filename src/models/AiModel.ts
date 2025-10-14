@@ -356,7 +356,7 @@ export class AIModel {
   }
 
 
-  public static async getRelevantOffers(payload: ChatDbRecord, intent: ChatIntent | string): Promise<{ motivation: string | null, offer_id_list: Array<string> }> {
+  public static async getRelevantOffers(payload: ChatDbRecord, intent: ChatIntent | string, lang: string): Promise<{ motivation: string | null, offer_id_list: Array<string> }> {
     try {
       const reqOffers = await fetch('https://cdn.crezu.net/offers_data/configs/mx_feed.json')
       const resOffers = await reqOffers.json()

@@ -93,6 +93,20 @@ export async function getHistory(req: Request, res: Response) {
 
 export async function processRequest(req: Request, res: Response) {
     try {
+        const countries = [
+            {
+                code: 'mx',
+                id: 2,
+            },
+            {
+                code: 'es',
+                id: 1,
+            },
+            {
+                code: 'es',
+                id: 14,
+            }
+        ]
         const body: ChatProperties = req.body;
         const ip = req.headers['x-forwarded-for'] || req.ip || null;
 
@@ -118,6 +132,20 @@ export async function processRequest(req: Request, res: Response) {
         const langParam = req.query.lang;
         let chatWithId: ChatDbRecord | null = null;
         const lang: 'es-mx' | 'es-es' | 'pl' | 'en' = langParam as ('es-mx' | 'es-es' | 'pl' | 'en');
+
+        if (countries.filter(country => country.id === body.params.country).length === 0) {
+            return res.status(400).json({
+                success: false,
+                answer: [
+                    {
+                        type: ContentDataType.Notification,
+                        content: "Invalid country code"
+                    }
+                ]
+            });
+        };
+
+        const country = countries.filter(country => country.id === body.params.country)[0];
 
         if (!body.chat_id) chatWithId = await AIModel.initChat(body, `${ip}`);
         else chatWithId = await AIModel.getChatById(body.chat_id);
@@ -146,9 +174,6 @@ export async function processRequest(req: Request, res: Response) {
 
         chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord
 
-        const lastMessageIndex = chatWithId.messages[chatWithId.messages.length - 1].index;
-
-        // LANG QUERY PARAM SHOULD BE PROVIDED AT ALL TIMES
         if (!langParam || !['es-mx', 'es-es', 'pl', 'en'].includes(langParam as string)) {
             return res.status(400).json({
                 success: false,
@@ -202,11 +227,11 @@ export async function processRequest(req: Request, res: Response) {
 
         chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord;
 
-        const offersAndIntents = await getSortedffersAndCategories('mx');
+        const offersAndIntents = await getSortedffersAndCategories(country.code);
         const chatIntent = await AIModel.getIntent(chatWithId, [...offersAndIntents.types.map(el => `intent_${el}`), ChatIntent.OTHER]);
 
         if (chatIntent.intent === ChatIntent.OTHER) {
-            await AIModel.saveMessageToChat(chatWithId.chat_id, true, {
+            await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
                 role: ChatRole.Assistant,
                 data: [
                     {
@@ -225,11 +250,11 @@ export async function processRequest(req: Request, res: Response) {
             });
         }
 
-        const chatSummary = await AIModel.summarizeChat(chatWithId);
+        const chatSummary = await AIModel.summarizeChat(chatWithId, lang);
 
         if (chatSummary === null) {
             return res.status(200).json({
-                success: true,
+                success: false,
                 chat_id: chatWithId.chat_id,
                 answer: [
                     {
