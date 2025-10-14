@@ -39,6 +39,23 @@ const chatViolationMessageTranslations = {
     'en': "The chat has been terminated by the system due to previous violations of the safety policy. Please start a new chat."
 }
 
+export async function getAllChats(req: Request, res: Response) {
+    try {
+        const client_id = req.body.client_id;
+        const chats = await AIModel.getAllChatsByClientId(client_id);
+        return res.status(200).json({
+            success: true,
+            chats
+        });
+    } catch (error) {
+        console.error('Error fetching all chats:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+}
+
 export async function getHistory(req: Request, res: Response) {
     try {
         const chatId = req.body.chat_id;
@@ -118,6 +135,16 @@ export async function processRequest(req: Request, res: Response) {
             });
         }
 
+        await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
+            role: ChatRole.User,
+            data: [
+                {
+                    content: body.message
+                }
+            ]
+        });
+
+        chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord
 
         const lastMessageIndex = chatWithId.messages[chatWithId.messages.length - 1].index;
 
@@ -151,19 +178,6 @@ export async function processRequest(req: Request, res: Response) {
 
         const isChatSafe = await AIModel.isMessageSafe(chatWithId);
 
-        if (!chatWithId.chat_id) {
-            return res.status(500).json({
-                success: false,
-                chat_id: chatWithId.chat_id,
-                answer: [
-                    {
-                        type: ContentDataType.Notification,
-                        content: "Internal system error, please try again"
-                    }
-                ]
-            });
-        }
-
         if (isChatSafe === false) {
             await AIModel.saveMessageToChat(chatWithId.chat_id, true, {
                 role: ChatRole.System,
@@ -185,16 +199,6 @@ export async function processRequest(req: Request, res: Response) {
                 ]
             })
         }
-
-        await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
-            role: ChatRole.System,
-            data: [
-                {
-                    type: ContentDataType.Notification,
-                    content: unsafeChatMessageTranslations[lang]
-                }
-            ]
-        });
 
         chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord;
 
@@ -261,7 +265,7 @@ export async function processRequest(req: Request, res: Response) {
         // const loanResponse = await AIModel.getRelevantOffers(chatWithId, `${chatIntent.intent}`.split('_').join(' '));
         const loanResponse = await AIModel.getRelevantOffersV2(offersAndIntents.offers, chatSummary.user_intent_summary, chatIntent.intent.replace('intent_', ''));
 
-        await AIModel.saveMessageToChat(chatWithId.chat_id, true, {
+        await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
             role: ChatRole.Assistant,
             data: [
                 {
@@ -270,7 +274,7 @@ export async function processRequest(req: Request, res: Response) {
             ]
         });
         return res.status(200).json({
-            success: false,
+            success: true,
             chat_id: chatWithId.chat_id,
             answer: [
                 {
@@ -280,73 +284,6 @@ export async function processRequest(req: Request, res: Response) {
             ]
         });
 
-
-        // if (loanResponse.motivation === null) {
-        //     return res.status(400).json({
-        //         success: false,
-        //         chat_id: chatWithId.chat_id,
-        //         messages: [
-        //             ...chatWithId.messages,
-        //             {
-        //                 index: lastMessageIndex + 1,
-        //                 role: ChatRole.Assistant,
-        //                 data: [
-        //                     {
-        //                         content: loanResponse.motivation
-        //                     }
-        //                 ]
-        //             }
-        //         ],
-        //     });
-        // } else {
-        //     return res.status(200).json({
-        //         success: true,
-        //         answer: [
-        //             {
-        //                 type: ContentDataType.Markdown,
-        //                 content: loanResponse.motivation
-        //             },
-        //             {
-        //                 type: ContentDataType.Offers,
-        //                 content: loanResponse.offer_id_list
-        //             }
-        //         ]
-
-        //         // success: true,
-        //         // chat_id: chatWithId.chat_id,
-        //         // messages: [
-        //         //     ...chatWithId.messages,
-        //         //     {
-        //         //         index: lastMessageIndex + 1,
-        //         //         role: ChatRole.System,
-        //         //         data: [
-        //         //             {
-        //         //                 type: ContentDataType.Markdown,
-        //         //                 content: loanResponse.motivation
-        //         //             },
-        //         //             {
-        //         //                 type: ContentDataType.Offers,
-        //         //                 content: loanResponse.offer_id_list
-        //         //             }
-        //         //         ]
-        //         //     }
-        //         // ],
-        //     });
-        // }
-
-
-
-        // Here the logic is to choose the most relevant variants of offers and provide json array and then provide the brief reasoning for its choice. 
-
-        // return res.status(200).json({
-        //     success: true,
-        //     chat_id: chatWithId.chat_id,
-        //     messages: body.messages,
-        //     intent: {
-        //         intent: chatIntent.intent,
-        //         confidence: chatIntent.confidence
-        //     },
-        // });
     } catch (error) {
         console.error('Error processing request:', error);
         return res.status(500).json({

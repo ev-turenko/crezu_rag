@@ -46,7 +46,7 @@ export async function sendToLLM(
       },
       deepseek: {
         baseURL: process.env.DEEPSEEK_OPENAI_BASE_URL || 'https://api.deepseek.com',
-        apiKey: process.env.DEEPSEEK_API_KEY || '',
+        apiKey: process.env.DEEPSEEK_OPENAI_KEY || '',
       },
     }[provider] || { baseURL: '', apiKey: '' };
 
@@ -209,7 +209,7 @@ interface OfferBank {
 }
 
 export interface OriginalOfferData {
-  id: string;
+  id: number;
   name: string;
   offer_type: OfferType;
   country: OfferCountry;
@@ -223,7 +223,7 @@ export interface OriginalOfferData {
 }
 
 interface NormalizedOffer {
-  id: string;
+  id: number;
   name: string;
   offer_type: string;
   country: string;

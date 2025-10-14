@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { formatOffer, normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/common.js";
-import { ChatIntent, ChatRole, PbCollections } from '../enums/enums.js';
+import { ChatIntent, ChatRole, LLMProvider, PbCollections } from '../enums/enums.js';
 import PocketBase from 'pocketbase';
 
 
@@ -63,16 +63,17 @@ export class AIModel {
     const record = await pb.collection(PbCollections.CHATS).create({
       chat_id: uuidv4(),
       ip: ip,
-      messages: [
-        {
-          index: 0,
-          created_at: new Date().toISOString(),
-          role: 'user',
-          data: [{
-            content: payload.message
-          }]
-        }
-      ],
+      messages: [],
+      // messages: [
+      //   {
+      //     index: 0,
+      //     created_at: new Date().toISOString(),
+      //     role: 'user',
+      //     data: [{
+      //       content: payload.message
+      //     }]
+      //   }
+      // ],
       country_id: payload.params.country,
       provider_id: payload.params.provider,
       client_id: payload.params.client_id,
@@ -102,6 +103,15 @@ export class AIModel {
       console.log('Error saving message to chat:', error);
       return null;
     }
+  }
+
+  public static async getAllChatsByClientId(client_id: string): Promise<ChatDbRecord[]> {
+    const pb = new PocketBase('https://pb.cashium.pro/');
+    pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
+    const allChats = await pb.collection(PbCollections.CHATS).getFullList<ChatDbRecord>({
+      filter: `client_id="${client_id}"`
+    });
+    return allChats;
   }
 
   public static async getChatById(chatId: string): Promise<ChatDbRecord | null> {
@@ -179,6 +189,7 @@ export class AIModel {
         `
         }
       ], {
+        model: 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
         temperature: 0.0,
         maxTokens: 1000,
         response_format: {
@@ -204,7 +215,7 @@ export class AIModel {
             }
           }
         }
-      });
+      }, LLMProvider.DEEPINFRA);
       console.log('Chat summary internal:', chatSummary)
 
       return JSON.parse(chatSummary)
@@ -264,7 +275,7 @@ export class AIModel {
       }
     })
 
-    const offerAnalysisPromises = normalizedOffers.map(async (offer: { text: string; id: string | number; }) => {
+    const offerAnalysisPromises = normalizedOffers.map(async (offer: { text: string; id: number; }) => {
       const messages = [
         {
           role: ChatRole.System,
@@ -322,14 +333,26 @@ export class AIModel {
 
     const results = await Promise.allSettled(offerAnalysisPromises);
     const relevantOffers = results
-      .filter((result): result is PromiseFulfilledResult<{ id: string | number; score: number; reason: string; success: boolean; }> =>
+      .filter((result): result is PromiseFulfilledResult<{ id: number; score: number; reason: string; success: boolean; }> =>
         result.status === 'fulfilled' && result.value.success
       )
       .map(result => result.value)
       .filter(offer => offer.score > 5)
       .sort((a, b) => b.score - a.score);
 
-    return relevantOffers.map(offer => offer.id) as any[];
+    const resultOfferList = relevantOffers.map(offer => offer.id)
+    const idToRpc = new Map<number, number>();
+    offers.forEach(offer => {
+      idToRpc.set(offer.id, offer.rpc);
+    });
+    return [...resultOfferList].sort((a, b) => {
+      const rpcA = idToRpc.get(a) ?? 0;
+      const rpcB = idToRpc.get(b) ?? 0;
+      return rpcB - rpcA;
+    });
+
+    // return relevantOffers.map(offer => offer.id) as any[];
+
   }
 
 
