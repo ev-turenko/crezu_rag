@@ -356,15 +356,10 @@ export class AIModel {
   }
 
 
-  public static async getRelevantOffers(payload: ChatDbRecord, intent: ChatIntent | string, lang: string): Promise<{ motivation: string | null, offer_id_list: Array<string> }> {
+  public static async getRelevantOffers(offers: OriginalOfferData[], payload: ChatDbRecord, intent: ChatIntent | string, lang: string): Promise<{ motivation: string | null, offer_id_list: Array<string> }> {
     try {
-      const reqOffers = await fetch('https://cdn.crezu.net/offers_data/configs/mx_feed.json')
-      const resOffers = await reqOffers.json()
 
-      let txtOffers = ""
-      for (const offer of resOffers) {
-        txtOffers + - formatOffer(offer)
-      }
+      const normalizedOffers = offers.map((el: OriginalOfferData) => normalizeOfferForLLM(el))
 
       // const userMessages = payload.messages.filter(el => el.role === "user").map(el => `---user message start---\n${el.data[0].content}\n---user message end---`).join('\n\n')
 
@@ -388,7 +383,7 @@ export class AIModel {
         </base instruction>
 
         <offers>
-        ${txtOffers}
+        ${normalizedOffers.join('\n\n')}
         </offers>
 
         <main user intent>
