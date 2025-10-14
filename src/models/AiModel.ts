@@ -22,9 +22,9 @@ export interface ChatPayload {
 }
 
 export interface ChatProperties {
-  chat_id?: string;
   message: string;
   params: {
+    chat_id?: string;
     country: number,
     provider: number,
     client_id: string,

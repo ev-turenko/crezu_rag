@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         ];
         
         if ($chat_id) {
-            $data['chat_id'] = $chat_id;
+            $data['params']['chat_id'] = $chat_id;
         }
         
         $url = 'http://localhost:3000/api/ai/message?lang=es-mx';

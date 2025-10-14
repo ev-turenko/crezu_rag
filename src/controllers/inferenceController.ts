@@ -110,7 +110,7 @@ export async function processRequest(req: Request, res: Response) {
         const body: ChatProperties = req.body;
         const ip = req.headers['x-forwarded-for'] || req.ip || null;
 
-        if (!body || !body.message || !body.params.client_id || !body.params.country || !body.params.provider) {
+        if (!body || !body.message || !body.params.client_id || !body.params.country || !body.params.provider || !body.params.chat_id) {
             return res.status(400).json({
                 success: false,
                 chat_id: 0,
@@ -147,13 +147,13 @@ export async function processRequest(req: Request, res: Response) {
 
         const country = countries.filter(country => country.id === body.params.country)[0];
 
-        if (!body.chat_id) chatWithId = await AIModel.initChat(body, `${ip}`);
-        else chatWithId = await AIModel.getChatById(body.chat_id);
+        if (!body.params.chat_id) chatWithId = await AIModel.initChat(body, `${ip}`);
+        else chatWithId = await AIModel.getChatById(body.params.chat_id);
 
         if (chatWithId === null) {
             return res.status(500).json({
                 success: false,
-                chat_id: body.chat_id,
+                chat_id: body.params.chat_id,
                 answer: [
                     {
                         type: ContentDataType.Notification,
