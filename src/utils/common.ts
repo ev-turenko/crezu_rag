@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { LLMProvider } from '../enums/enums.js';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -13,7 +14,7 @@ export interface LLMConfig {
   frequencyPenalty?: number;
   presencePenalty?: number;
   response_format?: {
-    type: 'json_schema',
+    type: 'json_schema';
     json_schema: {
       name: string,
       strict: true,
@@ -26,18 +27,32 @@ export interface LLMConfig {
         additionalProperties: boolean
       }
     }
+  } | {
+    type: 'json_object'
   };
 }
 
 export async function sendToLLM(
   messages: ChatMessage[],
   config: LLMConfig = {},
+  provider: LLMProvider = LLMProvider.DEEPINFRA
 ): Promise<string> {
   try {
-    // @ts-ignore
-    const baseURL = process.env.OPENAI_API_BASE_URL || 'https://api.deepinfra.com/v1/openai';
-    // @ts-ignore
-    const apiKey = process.env.OPENAI_API_KEY;
+
+    const llmConfig = {
+      deepinfra: {
+        baseURL: process.env.OPENAI_API_BASE_URL || 'https://api.deepinfra.com/v1/openai',
+        apiKey: process.env.OPENAI_API_KEY || '',
+      },
+      deepseek: {
+        baseURL: process.env.DEEPSEEK_OPENAI_BASE_URL || 'https://api.deepseek.com',
+        apiKey: process.env.DEEPSEEK_API_KEY || '',
+      },
+    }[provider] || { baseURL: '', apiKey: '' };
+
+    const { baseURL, apiKey } = llmConfig;
+
+
     const openai = new OpenAI({ apiKey, baseURL });
 
 
@@ -162,4 +177,110 @@ export function formatOffer(offer: Offer): string {
   output += `---offer_id ${processedOffer.offer_id} end---\n\n`;
 
   return output;
+}
+
+
+interface OfferParameter {
+  tech_id?: string;
+  name: string;
+  verbose_value: string;
+}
+
+interface OfferParameterCategory {
+  offer_parameters: OfferParameter[];
+}
+
+interface OfferHeader {
+  title: string;
+  value?: string;
+}
+
+interface OfferType {
+  type: string;
+}
+
+interface OfferCountry {
+  country_code: string;
+}
+
+interface OfferBank {
+  name: string;
+  website: string;
+}
+
+export interface OriginalOfferData {
+  id: string;
+  name: string;
+  offer_type: OfferType;
+  country: OfferCountry;
+  url: string;
+  bank: OfferBank;
+  avatar?: string;
+  tags?: string[];
+  offer_parameter_categories: OfferParameterCategory[];
+  headers: OfferHeader[];
+  [key: string]: any;
+}
+
+interface NormalizedOffer {
+  id: string;
+  name: string;
+  offer_type: string;
+  country: string;
+  url: string;
+  bank_name: string;
+  website: string;
+  avatar?: string;
+  tags?: string[];
+  parameters: { [key: string]: string };
+  headers: { [key: string]: string };
+}
+
+export function normalizeOfferForLLM(originalData: OriginalOfferData): string {
+  const normalized: NormalizedOffer = {
+    id: originalData.id,
+    name: originalData.name,
+    offer_type: originalData.offer_type.type,
+    country: originalData.country.country_code,
+    url: originalData.url,
+    bank_name: originalData.bank.name,
+    website: originalData.bank.website,
+    tags: originalData.tags,
+    parameters: {},
+    headers: {},
+  };
+
+  for (const category of originalData.offer_parameter_categories) {
+    for (const param of category.offer_parameters) {
+      if (param.tech_id && param.verbose_value.trim()) {
+        normalized.parameters[param.tech_id] =
+          `${param.name}: ${param.verbose_value.trim()}`;
+      }
+    }
+  }
+
+  for (const header of originalData.headers) {
+    if (header.value) {
+      normalized.headers[header.title] =
+        `${header.title}: ${header.value}`;
+    }
+  }
+
+  return JSON.stringify(normalized, null, 2);
+}
+
+export async function getSortedffersAndCategories(countryCode: string = 'mx'): Promise<{ offers: OriginalOfferData[]; types: string[] }> {
+  const url = 'https://finmatcher.com/api/offer?size=100000';
+  const request = await fetch(url);
+  const response = await request.json();
+  const offers = response.items.filter((el: { country: { country_code: string; }; }) => el.country.country_code === countryCode);
+  offers.sort((a: { rcp: number; }, b: { rcp: number; }) => b.rcp - a.rcp);
+  return {
+    offers: offers,
+    types: [...new Set(offers.map((o: { offer_type: { type: string; }; }) => o.offer_type.type))] as string[]
+  };
+}
+
+export function getOffersByType(offers: OriginalOfferData[], type: string): OriginalOfferData[] {
+  return offers.filter(offer => offer.offer_type.type === type);
 }

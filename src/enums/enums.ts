@@ -17,10 +17,15 @@ export enum ChatIntent {
     CREDIT_CARD_SEARCH = 'credit_card_search',
     URGENT_LOAN_SEARCH = 'urgent_loan_search',
     BANK_CARD_OR_LOAN_SEARCH = 'bank_card_or_loan_search',
-    OTHER = 'other',
-    UNKNOWN = 'unknown',
+    OTHER = 'intent_other',
+    UNKNOWN = 'intent_unknown',
 }
 
 export enum PbCollections {
     CHATS = 'chats'
+}
+
+export enum LLMProvider {
+    DEEPSEEK = 'deepseek',
+    DEEPINFRA = 'deepinfra',
 }

@@ -5,6 +5,7 @@
 import { Request, Response } from 'express';
 import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
 import { ChatIntent, ChatRole, ContentDataType } from '../enums/enums.js';
+import { getSortedffersAndCategories } from '../utils/common.js';
 
 const irrelevantChatMessageTranslations = {
     'es': "Solo puedo ayudarle con la busqueda de préstamos, tarjetas de débito y tarjetas de crédito.",
@@ -30,6 +31,14 @@ const unsafeChatMessageTranslations = {
     'en': "Your message does not meet the conversation security policy."
 }
 
+const chatViolationMessageTranslations = {
+    'es': "El chat ha sido terminado por el sistema debido a violaciones previas de la política de seguridad. Por favor, inicie un nuevo chat.",
+    'es-mx': "El chat ha sido terminado por el sistema debido a violaciones previas de la política de seguridad. Por favor, inicie un nuevo chat.",
+    'es-es': "El chat ha sido terminado por el sistema debido a violaciones previas de la política de seguridad. Por favor, inicie un nuevo chat.",
+    'pl': "Czat zostało zakończone przez system z powodu poprzednich naruszeń polityki bezpieczeństwa. Proszę rozpocząć nowy czat.",
+    'en': "The chat has been terminated by the system due to previous violations of the safety policy. Please start a new chat."
+}
+
 export async function getHistory(req: Request, res: Response) {
     try {
         const chatId = req.body.chat_id;
@@ -50,7 +59,7 @@ export async function getHistory(req: Request, res: Response) {
 
         return res.status(200).json({
             success: true,
-            // chat_id: chat.chat_id,
+            chat_id: chat.chat_id,
             messages: chat.messages.map(msg => ({
                 from: msg.role as ChatRole,
                 data: msg.data
@@ -91,29 +100,24 @@ export async function processRequest(req: Request, res: Response) {
 
         const langParam = req.query.lang;
         let chatWithId: ChatDbRecord | null = null;
-
+        const lang: 'es-mx' | 'es-es' | 'pl' | 'en' = langParam as ('es-mx' | 'es-es' | 'pl' | 'en');
 
         if (!body.chat_id) chatWithId = await AIModel.initChat(body, `${ip}`);
         else chatWithId = await AIModel.getChatById(body.chat_id);
 
         if (chatWithId === null) {
-            return res.status(404).json({
+            return res.status(500).json({
                 success: false,
                 chat_id: body.chat_id,
-                messages: [
+                answer: [
                     {
-                        index: 0,
-                        role: ChatRole.System,
-                        data: [
-                            {
-                                type: ContentDataType.Notification,
-                                content: "Chat session not found"
-                            }
-                        ]
+                        type: ContentDataType.Notification,
+                        content: "Chat session not found and failed to be initialized"
                     }
-                ],
+                ]
             });
         }
+
 
         const lastMessageIndex = chatWithId.messages[chatWithId.messages.length - 1].index;
 
@@ -122,161 +126,213 @@ export async function processRequest(req: Request, res: Response) {
             return res.status(400).json({
                 success: false,
                 chat_id: chatWithId.chat_id,
-                messages: [
-                    ...chatWithId.messages,
+                error: "Missing 'lang' query parameter or unsupported language",
+                answer: [
                     {
-                        index: lastMessageIndex + 1,
-                        role: ChatRole.System,
-                        data: [
-                            {
-                                type: ContentDataType.Notification,
-                                content: "Your message should be either in Spanish or English or Polish"
-                            }
-                        ]
+                        type: ContentDataType.Notification,
+                        content: "Your message should be either in Spanish or English or Polish"
                     }
-                ],
+                ]
             });
         }
-        const lang: 'es-mx' | 'es-es' | 'pl' | 'en' = langParam as ('es-mx' | 'es-es' | 'pl' | 'en');
 
+        if (chatWithId.is_terminated_by_system) {
+            return res.status(200).json({
+                success: false,
+                chat_id: chatWithId.chat_id,
+                answer: [
+                    {
+                        type: ContentDataType.Notification,
+                        content: chatViolationMessageTranslations[lang]
+                    }
+                ]
+            });
+        }
 
         const isChatSafe = await AIModel.isMessageSafe(chatWithId);
 
-        // CHAT ID SHOULD BE GENERATED/PROVIDED AT ALL TIMES
         if (!chatWithId.chat_id) {
             return res.status(500).json({
                 success: false,
                 chat_id: chatWithId.chat_id,
-                messages: [
-                    ...chatWithId.messages,
+                answer: [
                     {
-                        index: lastMessageIndex + 1,
-                        role: ChatRole.System,
-                        data: [
-                            {
-                                type: ContentDataType.Notification,
-                                content: "Internal system error, please try again"
-                            }
-                        ]
+                        type: ContentDataType.Notification,
+                        content: "Internal system error, please try again"
                     }
-                ],
+                ]
             });
         }
 
         if (isChatSafe === false) {
-            return res.status(400).json({
+            await AIModel.saveMessageToChat(chatWithId.chat_id, true, {
+                role: ChatRole.System,
+                data: [
+                    {
+                        type: ContentDataType.Notification,
+                        content: unsafeChatMessageTranslations[lang]
+                    }
+                ]
+            });
+            return res.status(200).json({
                 success: false,
                 chat_id: chatWithId.chat_id,
-                messages: [
-                    // ...body.messages,
+                answer: [
                     {
-                        index: lastMessageIndex + 1,
-                        role: ChatRole.System,
-                        data: [
-                            {
-                                type: ContentDataType.Notification,
-                                content: unsafeChatMessageTranslations[lang]
-                            }
-                        ]
+                        type: ContentDataType.Notification,
+                        content: unsafeChatMessageTranslations[lang]
                     }
-                ],
+                ]
             })
         }
 
-        const chatIntent = await AIModel.getIntent(chatWithId);
+        await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
+            role: ChatRole.System,
+            data: [
+                {
+                    type: ContentDataType.Notification,
+                    content: unsafeChatMessageTranslations[lang]
+                }
+            ]
+        });
+
+        chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord;
+
+        const offersAndIntents = await getSortedffersAndCategories('mx');
+        const chatIntent = await AIModel.getIntent(chatWithId, [...offersAndIntents.types.map(el => `intent_${el}`), ChatIntent.OTHER]);
 
         if (chatIntent.intent === ChatIntent.OTHER) {
-            return res.status(400).json({
-                success: false,
-                chat_id: chatWithId.chat_id,
-                messages: [
-                    ...chatWithId.messages,
+            await AIModel.saveMessageToChat(chatWithId.chat_id, true, {
+                role: ChatRole.Assistant,
+                data: [
                     {
-                        index: lastMessageIndex + 1,
-                        role: ChatRole.System,
-                        data: [
-                            {
-                                content: irrelevantChatMessageTranslations[lang]
-                            }
-                        ]
-                    }
-                ],
-            });
-        }
-
-        if (chatIntent.intent === ChatIntent.UNKNOWN) {
-            return res.status(400).json({
-                success: false,
-                chat_id: chatWithId.chat_id,
-                messages: [
-                    ...chatWithId.messages,
-                    {
-                        index: lastMessageIndex + 1,
-                        role: ChatRole.System,
-                        data: [
-                            {
-                                content: unknownTopicChatMessageTranslations[lang]
-                            }
-                        ]
-                    }
-                ],
-            });
-        }
-
-        const loanResponse = await AIModel.getRelevantOffers(chatWithId, `${chatIntent.intent}`.split('_').join(' '));
-
-        if (loanResponse.motivation === null) {
-            return res.status(400).json({
-                success: false,
-                chat_id: chatWithId.chat_id,
-                messages: [
-                    ...chatWithId.messages,
-                    {
-                        index: lastMessageIndex + 1,
-                        role: ChatRole.Assistant,
-                        data: [
-                            {
-                                content: loanResponse.motivation
-                            }
-                        ]
-                    }
-                ],
-            });
-        } else {
-            return res.status(200).json({
-                success: true,
-                answer: [
-                    {
-                        type: ContentDataType.Markdown,
-                        content: loanResponse.motivation
-                    },
-                    {
-                        type: ContentDataType.Offers,
-                        content: loanResponse.offer_id_list
+                        content: irrelevantChatMessageTranslations[lang]
                     }
                 ]
-
-                // success: true,
-                // chat_id: chatWithId.chat_id,
-                // messages: [
-                //     ...chatWithId.messages,
-                //     {
-                //         index: lastMessageIndex + 1,
-                //         role: ChatRole.System,
-                //         data: [
-                //             {
-                //                 type: ContentDataType.Markdown,
-                //                 content: loanResponse.motivation
-                //             },
-                //             {
-                //                 type: ContentDataType.Offers,
-                //                 content: loanResponse.offer_id_list
-                //             }
-                //         ]
-                //     }
-                // ],
+            });
+            return res.status(200).json({
+                success: true,
+                chat_id: chatWithId.chat_id,
+                answer: [
+                    {
+                        content: irrelevantChatMessageTranslations[lang]
+                    }
+                ]
             });
         }
+
+        const chatSummary = await AIModel.summarizeChat(chatWithId);
+
+        if (chatSummary === null) {
+            return res.status(200).json({
+                success: true,
+                chat_id: chatWithId.chat_id,
+                answer: [
+                    {
+                        type: ContentDataType.Notification,
+                        content: "Failed to summarize the chat, please try again"
+                    }
+                ]
+            });
+        }
+
+        if (chatSummary.can_decide === false) {
+            await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
+                role: ChatRole.Assistant,
+                data: [
+                    {
+                        content: chatSummary.assistant_motivation
+                    }
+                ]
+            });
+            return res.status(200).json({
+                success: true,
+                chat_id: chatWithId.chat_id,
+                answer: [
+                    {
+                        content: chatSummary.assistant_motivation
+                    }
+                ]
+            });
+        }
+
+
+
+        // const loanResponse = await AIModel.getRelevantOffers(chatWithId, `${chatIntent.intent}`.split('_').join(' '));
+        const loanResponse = await AIModel.getRelevantOffersV2(offersAndIntents.offers, chatSummary.user_intent_summary, chatIntent.intent.replace('intent_', ''));
+
+        await AIModel.saveMessageToChat(chatWithId.chat_id, true, {
+            role: ChatRole.Assistant,
+            data: [
+                {
+                    content: loanResponse
+                }
+            ]
+        });
+        return res.status(200).json({
+            success: false,
+            chat_id: chatWithId.chat_id,
+            answer: [
+                {
+                    type: ContentDataType.Offers,
+                    content: loanResponse
+                }
+            ]
+        });
+
+
+        // if (loanResponse.motivation === null) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         chat_id: chatWithId.chat_id,
+        //         messages: [
+        //             ...chatWithId.messages,
+        //             {
+        //                 index: lastMessageIndex + 1,
+        //                 role: ChatRole.Assistant,
+        //                 data: [
+        //                     {
+        //                         content: loanResponse.motivation
+        //                     }
+        //                 ]
+        //             }
+        //         ],
+        //     });
+        // } else {
+        //     return res.status(200).json({
+        //         success: true,
+        //         answer: [
+        //             {
+        //                 type: ContentDataType.Markdown,
+        //                 content: loanResponse.motivation
+        //             },
+        //             {
+        //                 type: ContentDataType.Offers,
+        //                 content: loanResponse.offer_id_list
+        //             }
+        //         ]
+
+        //         // success: true,
+        //         // chat_id: chatWithId.chat_id,
+        //         // messages: [
+        //         //     ...chatWithId.messages,
+        //         //     {
+        //         //         index: lastMessageIndex + 1,
+        //         //         role: ChatRole.System,
+        //         //         data: [
+        //         //             {
+        //         //                 type: ContentDataType.Markdown,
+        //         //                 content: loanResponse.motivation
+        //         //             },
+        //         //             {
+        //         //                 type: ContentDataType.Offers,
+        //         //                 content: loanResponse.offer_id_list
+        //         //             }
+        //         //         ]
+        //         //     }
+        //         // ],
+        //     });
+        // }
 
 
 

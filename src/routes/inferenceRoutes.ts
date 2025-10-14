@@ -3,7 +3,7 @@ import { processRequest, getHistory } from '../controllers/inferenceController.j
 
 const router = Router();
 
-router.post('/', processRequest);
+router.post('/message', processRequest);
 router.post('/history', getHistory);
 
 export default router;
