@@ -64,16 +64,6 @@ export class AIModel {
       chat_id: uuidv4(),
       ip: ip,
       messages: [],
-      // messages: [
-      //   {
-      //     index: 0,
-      //     created_at: new Date().toISOString(),
-      //     role: 'user',
-      //     data: [{
-      //       content: payload.message
-      //     }]
-      //   }
-      // ],
       country_id: payload.params.country,
       provider_id: payload.params.provider,
       client_id: payload.params.client_id,

@@ -110,7 +110,7 @@ export async function processRequest(req: Request, res: Response) {
         const body: ChatProperties = req.body;
         const ip = req.headers['x-forwarded-for'] || req.ip || null;
 
-        if (!body || !body.message || !body.params.client_id || !body.params.country || !body.params.provider || !body.params.chat_id) {
+        if (!body || !body.message || !body.params.client_id || !body.params.country || !body.params.provider) {
             return res.status(400).json({
                 success: false,
                 chat_id: 0,

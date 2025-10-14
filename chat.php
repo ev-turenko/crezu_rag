@@ -36,9 +36,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($httpCode === 200) {
             echo $response;
         } else {
+            $errorInfo = curl_error($ch);
             echo json_encode([
                 'success' => false,
-                'error' => 'Failed to connect to AI service'
+                'error' => 'Failed to connect to AI service: HTTP ' . $httpCode . ($errorInfo ? ' - ' . $errorInfo : '')
             ]);
         }
     } elseif ($_POST['action'] === 'get_history') {
@@ -65,9 +66,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($httpCode === 200) {
             echo $response;
         } else {
+            $errorInfo = curl_error($ch);
             echo json_encode([
                 'success' => false,
-                'error' => 'Failed to fetch chat history'
+                'error' => 'Failed to fetch chat history: HTTP ' . $httpCode . ($errorInfo ? ' - ' . $errorInfo : '')
             ]);
         }
     } elseif ($_POST['action'] === 'get_chats') {
@@ -94,9 +96,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($httpCode === 200) {
             echo $response;
         } else {
+            $errorInfo = curl_error($ch);
             echo json_encode([
                 'success' => false,
-                'error' => 'Failed to fetch chats'
+                'error' => 'Failed to fetch chats: HTTP ' . $httpCode . ($errorInfo ? ' - ' . $errorInfo : '')
             ]);
         }
     }
