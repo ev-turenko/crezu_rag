@@ -48,13 +48,6 @@ export interface ChatDbRecord {
 
 
 export class AIModel {
-  public static assignIdToChatSession(payload: ChatPayload): ChatPayload {
-    const deepCopy = JSON.parse(JSON.stringify(payload));
-    if (!deepCopy.chat_id) {
-      deepCopy.chat_id = uuidv4();
-    }
-    return deepCopy;
-  }
 
   public static async initChat(payload: ChatProperties, ip: string | null): Promise<ChatDbRecord> {
     const pb = new PocketBase('https://pb.cashium.pro/');
@@ -350,9 +343,6 @@ export class AIModel {
     try {
 
       const normalizedOffers = offers.map((el: OriginalOfferData) => normalizeOfferForLLM(el))
-
-      // const userMessages = payload.messages.filter(el => el.role === "user").map(el => `---user message start---\n${el.data[0].content}\n---user message end---`).join('\n\n')
-
       const chatResult = await sendToLLM([
         {
           role: ChatRole.System,
