@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { formatOffer, normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/common.js";
+import { normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/common.js";
 import { ChatIntent, ChatRole, LLMProvider, PbCollections } from '../enums/enums.js';
 import PocketBase from 'pocketbase';
 
