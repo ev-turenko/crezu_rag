@@ -15,14 +15,6 @@ const irrelevantChatMessageTranslations = {
     'en': "I can help you with loan search, debit card and credit card."
 }
 
-const unknownTopicChatMessageTranslations = {
-    'es': "Lo siento, no puedo ayudarte con eso.",
-    'es-mx': "Lo siento, no puedo ayudarte con eso.",
-    'es-es': "Lo siento, no puedo ayudarte con eso.",
-    'pl': "Przepraszam, nie mogę Ci pomóc z tym.",
-    'en': "Sorry, I can't help you with that."
-}
-
 const unsafeChatMessageTranslations = {
     'es': "Su mensaje no cumple con la política de seguridad de la conversación.",
     'es-mx': "Su mensaje no cumple con la política de seguridad de la conversación.",
@@ -56,9 +48,54 @@ export async function getAllChats(req: Request, res: Response) {
     }
 }
 
+export async function reportMessage(req: Request, res: Response) {
+    const chatId = req.body.params.chat_id;
+    const { answer_index, message } = req.body;
+    if (!chatId) {
+        return res.status(400).json({
+            success: false,
+            error: 'chat_id is required'
+        });
+    }
+    if (answer_index === undefined || answer_index === null) {
+        return res.status(400).json({
+            success: false,
+            error: 'answerIndex is required'
+        });
+    }
+    if (!message) {
+        return res.status(400).json({
+            success: false,
+            error: 'message is required'
+        });
+    }
+    try {
+        const chat = await AIModel.getChatById(chatId);
+        const messageIndex = chat?.messages.findIndex(msg => msg.index === answer_index);
+        if (messageIndex === -1) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid answer index'
+            });
+        }
+        const result = await AIModel.updateReportedMessages(chatId, { answer_index, message });
+        return res.status(200).json({
+            success: true,
+            result: result?.reported_messages
+        });
+    } catch (error) {
+        console.error('Error updating reported messages:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+
+}
+
 export async function getHistory(req: Request, res: Response) {
     try {
-        const chatId = req.body.chat_id;
+        const chatId = req.body.params.chat_id;
         if (!chatId) {
             return res.status(400).json({
                 success: false,
@@ -114,16 +151,10 @@ export async function processRequest(req: Request, res: Response) {
             return res.status(400).json({
                 success: false,
                 chat_id: 0,
-                messages: [
+                data: [
                     {
-                        index: 0,
-                        role: ChatRole.System,
-                        data: [
-                            {
-                                type: ContentDataType.Notification,
-                                content: "Invalid request format"
-                            }
-                        ]
+                        type: ContentDataType.Notification,
+                        content: "Invalid request format"
                     }
                 ],
             });

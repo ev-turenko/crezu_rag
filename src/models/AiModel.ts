@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/common.js";
 import { ChatIntent, ChatRole, LLMProvider, PbCollections } from '../enums/enums.js';
 import PocketBase from 'pocketbase';
+import { report } from 'process';
 
 
 export interface ChatMessage {
@@ -42,6 +43,7 @@ export interface ChatDbRecord {
   chat_id: string;
   messages: ChatMessage[];
   is_terminated_by_system: boolean;
+  reported_messages: number[] | null;
   created: string;
   updated: string;
 }
@@ -60,9 +62,29 @@ export class AIModel {
       country_id: payload.params.country,
       provider_id: payload.params.provider,
       client_id: payload.params.client_id,
+      reported_messages: []
     });
 
     return record as ChatDbRecord;
+  }
+
+  public static async updateReportedMessages(chatId: string, userReport: { answer_index: number, message: string}): Promise<ChatDbRecord | null> {
+    console.log('updateReportedMessages', chatId, userReport);
+    const pb = new PocketBase('https://pb.cashium.pro/');
+    pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
+    try {
+      const chat = await pb.collection(PbCollections.CHATS).getFirstListItem<ChatDbRecord>(`chat_id="${chatId}"`);
+      let updatedChat: ChatDbRecord;
+      if(chat.reported_messages === null) {
+        updatedChat = await pb.collection(PbCollections.CHATS).update(chat.id, { reported_messages: [userReport] });
+      } else {
+        updatedChat = await pb.collection(PbCollections.CHATS).update(chat.id, { reported_messages: [...chat.reported_messages, userReport] });
+      }
+      return updatedChat;
+    } catch (error) {
+      console.log('Error updating reported messages:', error);
+      return null
+    }
   }
 
   public static async saveMessageToChat(chatId: string, terminate_chat: boolean = false, message: { role: "system" | "user" | "assistant"; data: { content: string | any, type?: string }[] }): Promise<ChatDbRecord | null> {
