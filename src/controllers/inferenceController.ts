@@ -317,7 +317,7 @@ export async function processRequest(req: Request, res: Response) {
         const textualResponse = await sendToLLM([
             {
                 role: ChatRole.System,
-                content: `Tell the user that there was found this amount of relevant financial offers for them: ${loanResponse.length || 0}, if there are no offers found tell the user that there are no offers found and suggest to adjust the query. Be brief and clear. Initial user intent: ${chatSummary.user_intent_summary}`
+                content: `You must reply in: ${lang}. Tell the user that there was found this amount of relevant financial offers for them: ${loanResponse.length || 0}, if there are no offers found tell the user that there are no offers found and suggest to adjust the query. Be brief and clear. Initial user intent: ${chatSummary.user_intent_summary}`
             },
         ], {
             model: 'meta-llama/Llama-4-Maverick-17B-128E',
