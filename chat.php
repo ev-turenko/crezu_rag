@@ -126,6 +126,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             --user-msg-bg: #1e3a5f;
             --ai-msg-bg: #2d2d2d;
             --button-bg: #333;
+            --card-bg: #252525;
+            --card-border: #444;
         }
         
         * {
@@ -385,6 +387,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             background-color: var(--accent-variant);
         }
         
+        .offer-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .offer-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .offer-card-logo {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+        }
+        
+        .offer-card-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+        
+        .offer-card-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .offer-card-details span {
+            display: block;
+        }
+        
+        .offer-card-button {
+            padding: 0.5rem 1rem;
+            background-color: var(--accent);
+            color: var(--bg-primary);
+            text-align: center;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        
+        .offer-card-button:hover {
+            background-color: var(--accent-variant);
+        }
+        
+        .show-more-button {
+            margin: 0.5rem 0;
+            padding: 0.5rem 1rem;
+            background-color: var(--button-bg);
+            color: var(--text-primary);
+            border: 1px solid #444;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+        
+        .show-more-button:hover {
+            background-color: var(--accent-variant);
+        }
+        
         @media (max-width: 600px) {
             .message {
                 max-width: 90%;
@@ -402,6 +476,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             .header-controls {
                 width: 100%;
                 justify-content: center;
+            }
+            
+            .offer-card-details {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -444,6 +522,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             <div v-if="content.type === 'text'">{{ content.content }}</div>
                             <div v-else-if="content.type === 'code'">
                                 <pre><code>{{ content.content }}</code></pre>
+                            </div>
+                            <div v-else-if="content.type === 'offers'">
+                                <div v-for="(offer, offerIndex) in getVisibleOffers(content.content, message.id)" :key="offer.id" class="offer-card">
+                                    <div class="offer-card-header">
+                                        <img v-if="offer.avatar" :src="offer.avatar" class="offer-card-logo" alt="Offer logo">
+                                        <span class="offer-card-title">{{ offer.name }}</span>
+                                    </div>
+                                    <div class="offer-card-details">
+                                        <!-- {{ JSON.stringify(offer, null, 2) }} -->
+                                        <span><strong>{{offer.headers[0].title || 'N/A'}}</strong> {{ offer.headers[0].value || 'N/A' }}</span>
+                                        <span><strong>{{offer.headers[1].title || 'N/A'}}</strong> {{ offer.headers[1].value || 'N/A' }}</span>
+                                        <span><strong>{{offer.headers[2].title || 'N/A'}}</strong> {{ offer.headers[2].value || 'N/A' }}</span>
+                                        <span><strong>{{offer.headers[3].title || 'N/A'}}</strong> {{ offer.headers[3].value || 'N/A' }}</span>
+                                    </div>
+                                    <a :href="offer.url" target="_blank" class="offer-card-button">Solicitar Ahora</a>
+                                </div>
+                                <button 
+                                    v-if="content.content.length > 3 && content.content.length > visibleOffers[message.id]"
+                                    @click="showMoreOffers(message.id, content.content.length)"
+                                    class="show-more-button">
+                                    Mostrar {{ visibleOffers[message.id] < content.content.length ? 'Más' : 'Menos' }}
+                                </button>
                             </div>
                             <div v-else>{{ content.content }}</div>
                         </div>
@@ -500,7 +600,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 error: '',
                 chatId: null,
                 chats: [],
-                showChatsList: false
+                showChatsList: false,
+                offersCache: {},
+                visibleOffers: {}
             },
             mounted() {
                 this.$refs.messageInput.focus();
@@ -520,6 +622,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     if (this.messages.length === 0) return true;
                     const lastMessage = this.messages[this.messages.length - 1];
                     return lastMessage.from !== 'ai';
+                },
+                async fetchOfferDetails(offerIds) {
+                    const unfetchedIds = offerIds.filter(id => !this.offersCache[id]);
+                    if (unfetchedIds.length === 0) return;
+
+                    try {
+                        const response = await fetch('https://finmatcher.com/api/offer?size=100000');
+                        const data = await response.json();
+                        if (data.items) {
+                            data.items.forEach(offer => {
+                                if (unfetchedIds.includes(offer.id)) {
+                                    this.$set(this.offersCache, offer.id, offer);
+                                }
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Error fetching offers:', err);
+                        this.error = 'Error al cargar detalles de las ofertas';
+                    }
+                },
+                getVisibleOffers(offerIds, messageId) {
+                    if (!this.visibleOffers[messageId]) {
+                        this.$set(this.visibleOffers, messageId, 3);
+                    }
+                    const visibleCount = this.visibleOffers[messageId];
+                    return offerIds.slice(0, visibleCount).map(id => this.offersCache[id]).filter(offer => offer);
+                },
+                showMoreOffers(messageId, totalOffers) {
+                    if (this.visibleOffers[messageId] < totalOffers) {
+                        this.$set(this.visibleOffers, messageId, totalOffers);
+                    } else {
+                        this.$set(this.visibleOffers, messageId, 3);
+                    }
+                    this.$nextTick(() => {
+                        this.scrollToBottom();
+                    });
                 },
                 async sendMessage() {
                     if (!this.inputMessage.trim() || this.loading) return;
@@ -556,11 +694,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 this.chatId = data.chat_id;
                             }
                             
-                            this.messages.push({
+                            const aiMessage = {
                                 id: Date.now() + 1,
                                 from: 'ai',
                                 data: data.answer
-                            });
+                            };
+                            
+                            for (const content of aiMessage.data) {
+                                if (content.type === 'offers' && Array.isArray(content.content)) {
+                                    await this.fetchOfferDetails(content.content);
+                                }
+                            }
+                            
+                            this.messages.push(aiMessage);
                             
                             this.getChats();
                             
@@ -585,6 +731,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     this.chatId = null;
                     this.error = '';
                     this.inputMessage = '';
+                    this.visibleOffers = {};
                     
                     this.$refs.messageInput.style.height = 'auto';
                     
@@ -623,11 +770,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     this.showChatsList = true;
                 },
                 
-                selectChat(chatId) {
+                async selectChat(chatId) {
                     this.chatId = chatId;
                     this.showChatsList = false;
                     this.messages = [];
-                    this.loadChatHistory();
+                    this.visibleOffers = {};
+                    await this.loadChatHistory();
                 },
                 
                 scrollToBottom() {
@@ -659,6 +807,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 from: msg.from,
                                 data: msg.data
                             }));
+                            
+                            for (const message of this.messages) {
+                                for (const content of message.data) {
+                                    if (content.type === 'offers' && Array.isArray(content.content)) {
+                                        await this.fetchOfferDetails(content.content);
+                                    }
+                                }
+                            }
                             
                             this.$nextTick(() => {
                                 this.scrollToBottom();
