@@ -76,9 +76,9 @@ export class AIModel {
       const chat = await pb.collection(PbCollections.CHATS).getFirstListItem<ChatDbRecord>(`chat_id="${chatId}"`);
       let updatedChat: ChatDbRecord;
       if(chat.reported_messages === null) {
-        updatedChat = await pb.collection(PbCollections.CHATS).update(chat.id, { reported_messages: [userReport] });
+        updatedChat = await pb.collection(PbCollections.CHATS).update(chat.id, { reported_messages: [{...userReport, created_at: new Date().toISOString()}] });
       } else {
-        updatedChat = await pb.collection(PbCollections.CHATS).update(chat.id, { reported_messages: [...chat.reported_messages, userReport] });
+        updatedChat = await pb.collection(PbCollections.CHATS).update(chat.id, { reported_messages: [...chat.reported_messages, {...userReport, created_at: new Date().toISOString()}] });
       }
       return updatedChat;
     } catch (error) {
