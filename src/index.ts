@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
+import cors from 'cors';
 import inferenceRoutes from './routes/inferenceRoutes.js';
 import healthcheckRoutes from './routes/healthcheckRoutes.js';
 
@@ -9,6 +10,7 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 
