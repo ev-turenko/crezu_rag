@@ -1,11 +1,7 @@
-// TODO: добавить в прод подключение к базе данных по чатам
-// TODO: добавить сравнение с другими профилями и их выбором
-// TODO: дотестировать примешивание топовых офферов для нас
-
 import { Request, Response } from 'express';
 import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
 import { ChatIntent, ChatRole, ContentDataType } from '../enums/enums.js';
-import { getSortedffersAndCategories } from '../utils/common.js';
+import { getSortedffersAndCategories, sendToLLM } from '../utils/common.js';
 
 const irrelevantChatMessageTranslations = {
     'es': "Solo puedo ayudarle con la busqueda de préstamos, tarjetas de débito y tarjetas de crédito.",
@@ -316,14 +312,26 @@ export async function processRequest(req: Request, res: Response) {
             });
         }
 
-
-
-        // const loanResponse = await AIModel.getRelevantOffers(chatWithId, `${chatIntent.intent}`.split('_').join(' '));
         const loanResponse = await AIModel.getRelevantOffersV2(offersAndIntents.offers, chatSummary.user_intent_summary, chatIntent.intent.replace('intent_', ''));
+
+        const textualResponse = await sendToLLM([
+            {
+                role: ChatRole.System,
+                content: `Tell the user that there was found this amount of relevant financial offers for them: ${loanResponse.length || 0}, if there are no offers found tell the user that there are no offers found and suggest to adjust the query. Be brief and clear. Initial user intent: ${chatSummary.user_intent_summary}`
+            },
+        ], {
+            model: 'meta-llama/Llama-4-Maverick-17B-128E',
+            temperature: 0.3,
+            maxTokens: 300,
+        });
 
         await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
             role: ChatRole.Assistant,
             data: [
+                {
+                    type: ContentDataType.Markdown,
+                    content: textualResponse
+                },
                 {
                     type: ContentDataType.Offers,
                     content: loanResponse
@@ -334,6 +342,10 @@ export async function processRequest(req: Request, res: Response) {
             success: true,
             chat_id: chatWithId.chat_id,
             answer: [
+                {
+                    type: ContentDataType.Markdown,
+                    content: textualResponse
+                },
                 {
                     type: ContentDataType.Offers,
                     content: loanResponse
