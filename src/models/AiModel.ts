@@ -68,17 +68,17 @@ export class AIModel {
     return record as ChatDbRecord;
   }
 
-  public static async updateReportedMessages(chatId: string, userReport: { answer_index: number, message: string}): Promise<ChatDbRecord | null> {
+  public static async updateReportedMessages(chatId: string, userReport: { answer_index: number, message: string }): Promise<ChatDbRecord | null> {
     console.log('updateReportedMessages', chatId, userReport);
     const pb = new PocketBase('https://pb.cashium.pro/');
     pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
     try {
       const chat = await pb.collection(PbCollections.CHATS).getFirstListItem<ChatDbRecord>(`chat_id="${chatId}"`);
       let updatedChat: ChatDbRecord;
-      if(chat.reported_messages === null) {
-        updatedChat = await pb.collection(PbCollections.CHATS).update(chat.id, { reported_messages: [{...userReport, created_at: new Date().toISOString()}] });
+      if (chat.reported_messages === null) {
+        updatedChat = await pb.collection(PbCollections.CHATS).update(chat.id, { reported_messages: [{ ...userReport, created_at: new Date().toISOString() }] });
       } else {
-        updatedChat = await pb.collection(PbCollections.CHATS).update(chat.id, { reported_messages: [...chat.reported_messages, {...userReport, created_at: new Date().toISOString()}] });
+        updatedChat = await pb.collection(PbCollections.CHATS).update(chat.id, { reported_messages: [...chat.reported_messages, { ...userReport, created_at: new Date().toISOString() }] });
       }
       return updatedChat;
     } catch (error) {
@@ -167,30 +167,37 @@ export class AIModel {
         {
           role: ChatRole.Assistant,
           content: `
-          <user infromation rules>
-            Absolutely obligatory user information:
-            - loan period,
+          <user information rules>
+            Bare minimum required user information to proceed:
+            - loan period
             - loan amount
-            optional helpful user information:
+                  
+            Additional helpful user information (optional, but can improve offer relevance):
             - loan reason
             - user's monthly income
             - user's employment status
             - any existing debts or financial obligations
-            Never invent any information about the user.
-          </user infromation rules>
+                  
+            Never invent any information about the user. Only use what is explicitly provided in the messages.
+          </user information rules>
+                  
           <base instruction>
-        You're a multilingual text summarizer that strictly follows the provided rules and carefully reads <user information rules>. 
-        Summarize the user's messages into a concise structured response in a JSON format with two fields: can_decide (boolean) and user_intent_summary (string) and assistant_motivation (string).
-        can_decide must be true if the user's information is enough to make a decision about relevant for user financial offers, otherwise false.
-        user_intent_summary must be a concise but informative summary of the user's intent and needs and provided details.
-        assistant_motivation must be a concise but informative summary of why the assistant can or cannot make a decision about relevant for user financial offers, ask for missing information if something is missing.
-        assistant_motivation must be in user's language: ${lang}.
-
-        Reply with a structured JSON without adding any other information.
-        </base instruction>
-        <user messages>
-        ${userMessages}
-        </user messages>
+            You're a multilingual text summarizer that strictly follows the provided rules and carefully reads <user information rules>. 
+                  
+            Summarize the user's messages into a concise structured response in a JSON format with three fields: can_decide (boolean), user_intent_summary (string), and assistant_motivation (string).
+                  
+            - can_decide must be true only if the bare minimum required user information (loan period and loan amount) is provided, making it sufficient to decide on relevant financial offers. Otherwise, set it to false.
+            - user_intent_summary must be a concise but informative summary of the user's intent, needs, and any provided details (including both required and optional information).
+            - assistant_motivation must be a concise but informative explanation of why the assistant can or cannot proceed to make a decision about relevant financial offers. If information is missing, politely suggest asking for the specific missing required details. For optional information, only mention it briefly if it could help, without insisting or requiring it. Format assistant_motivation as Markdown for better readability (e.g., use bullet points for suggestions).
+                  
+            assistant_motivation must be in the user's language: ${lang}.
+                  
+            Reply strictly with the structured JSON object and nothing else.
+          </base instruction>
+                  
+          <user messages>
+            ${userMessages}
+          </user messages>
         `
         }
       ], {
