@@ -2,7 +2,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/common.js";
 import { ChatIntent, ChatRole, LLMProvider, PbCollections } from '../enums/enums.js';
 import PocketBase from 'pocketbase';
-import { report } from 'process';
 
 
 export interface ChatMessage {
@@ -53,7 +52,6 @@ export class AIModel {
 
   public static async initChat(payload: ChatProperties, ip: string | null): Promise<ChatDbRecord> {
     const pb = new PocketBase('https://pb.cashium.pro/');
-    console.log('TOKEN:', process.env.PB_SUPERADMIN_TOKEN);
     pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
     const record = await pb.collection(PbCollections.CHATS).create({
       chat_id: uuidv4(),
@@ -171,30 +169,30 @@ export class AIModel {
             Bare minimum required user information to proceed:
             - loan period
             - loan amount
-                  
+
             Additional helpful user information (optional, but can improve offer relevance):
             - loan reason
             - user's monthly income
             - user's employment status
             - any existing debts or financial obligations
-                  
+
             Never invent any information about the user. Only use what is explicitly provided in the messages.
           </user information rules>
-                  
+
           <base instruction>
             You're a multilingual text summarizer that strictly follows the provided rules and carefully reads <user information rules>. 
-                  
+
             Summarize the user's messages into a concise structured response in a JSON format with three fields: can_decide (boolean), user_intent_summary (string), and assistant_motivation (string).
-                  
+
             - can_decide must be true only if the bare minimum required user information (loan period and loan amount) is provided, making it sufficient to decide on relevant financial offers. Otherwise, set it to false.
             - user_intent_summary must be a concise but informative summary of the user's intent, needs, and any provided details (including both required and optional information).
             - assistant_motivation must be a concise but informative explanation of why the assistant can or cannot proceed to make a decision about relevant financial offers. If information is missing, politely suggest asking for the specific missing required details. For optional information, only mention it briefly if it could help, without insisting or requiring it. Format assistant_motivation as Markdown for better readability (e.g., use bullet points for suggestions).
-                  
+
             assistant_motivation must be in the user's language: ${lang}.
-                  
+
             Reply strictly with the structured JSON object and nothing else.
           </base instruction>
-                  
+
           <user messages>
             ${userMessages}
           </user messages>

@@ -1,5 +1,10 @@
-// TODO: improve the part of the code that checks the user data completeness
-// to find a relevant offer. It should not be as strict as it is now.
+/* 
+TODO:
+1) improve the part of the code that checks the user data completeness to find a relevant offer. It should not be as strict as it is now.
+2) improve routing and scroing based on JSON, not on LLM sentiment.
+*/
+
+
 
 import { Request, Response } from 'express';
 import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
