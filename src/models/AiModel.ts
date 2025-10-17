@@ -275,7 +275,7 @@ export class AIModel {
   }
 
   public static async getRelevantOffersV2(offers: OriginalOfferData[], user_intent_summary: string, type: string): Promise<string[] | number[]> {
-    const normalizedOffers = offers.filter((el: { offer_type: { type: string; }; }) => el.offer_type.type === type).map((el: OriginalOfferData) => {
+    const normalizedOffers = offers.filter(el => el.is_partner === true).filter((el: { offer_type: { type: string; } }) => el.offer_type.type === type).map((el: OriginalOfferData) => {
       return {
         id: el.id,
         text: normalizeOfferForLLM(el)
