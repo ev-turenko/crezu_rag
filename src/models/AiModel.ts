@@ -344,7 +344,7 @@ export class AIModel {
         result.status === 'fulfilled' && result.value.success
       )
       .map(result => result.value)
-      .filter(offer => offer.score > 5)
+      .filter(offer => offer.score > 6)
       .sort((a, b) => b.score - a.score);
 
     const resultOfferList = relevantOffers.map(offer => offer.id)
