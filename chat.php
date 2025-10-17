@@ -1,4 +1,6 @@
 <?php
+$base_url = 'http://localhost:3000';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     
@@ -9,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $data = [
             'message' => $message,
             'params' => [
-                'client_id' => '123',
+                'client_id' => '40dc244e-2fe3-4252-be0a-520bae23cbc1',
                 'country' => 1,
                 'provider' => 2
             ]
@@ -19,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $data['params']['chat_id'] = $chat_id;
         }
         
-        $url = 'http://localhost:3000/api/ai/message?lang=es-mx';
+        $url = $base_url . '/api/ai/message?lang=es-mx';
         
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -45,11 +47,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     } elseif ($_POST['action'] === 'get_history') {
         $chat_id = $_POST['chat_id'];
         
-        $data = [
-            'chat_id' => $chat_id
-        ];
+        // $data = [
+        //     'chat_id' => $chat_id
+        // ];
+
+        $data['params']['chat_id'] = $chat_id;
         
-        $url = 'http://localhost:3000/api/ai/history';
+        $url = $base_url . '/api/ai/history';
         
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -73,13 +77,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ]);
         }
     } elseif ($_POST['action'] === 'get_chats') {
-        $client_id = $_POST['client_id'] ?? '123';
+        $client_id = $_POST['client_id'] ?? '40dc244e-2fe3-4252-be0a-520bae23cbc1';
         
         $data = [
             'client_id' => $client_id
         ];
         
-        $url = 'http://localhost:3000/api/ai/chats';
+        $url = $base_url . '/api/ai/chats';
         
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -742,7 +746,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     try {
                         const formData = new FormData();
                         formData.append('action', 'get_chats');
-                        formData.append('client_id', '123');
+                        formData.append('client_id', '40dc244e-2fe3-4252-be0a-520bae23cbc1');
                         
                         const response = await fetch('', {
                             method: 'POST',
