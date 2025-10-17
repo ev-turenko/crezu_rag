@@ -1,3 +1,6 @@
+// TODO: improve the part of the code that checks the user data completeness
+// to find a relevant offer. It should not be as strict as it is now.
+
 import { Request, Response } from 'express';
 import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
 import { ChatIntent, ChatRole, ContentDataType } from '../enums/enums.js';
