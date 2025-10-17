@@ -130,14 +130,17 @@ export async function processRequest(req: Request, res: Response) {
             {
                 code: 'mx',
                 id: 2,
+                lang: 'es-mx'
             },
             {
                 code: 'es',
                 id: 1,
+                lang: 'es-es'
             },
             {
-                code: 'es',
+                code: 'pl',
                 id: 14,
+                lang: 'pl'
             }
         ]
         const body: ChatProperties = req.body;
@@ -156,7 +159,7 @@ export async function processRequest(req: Request, res: Response) {
             });
         }
 
-        const langParam = req.query.lang;
+        const langParam = req.query.lang || countries.filter(country => country.id === body.params.country)[0].lang;
         let chatWithId: ChatDbRecord | null = null;
         const lang: 'es-mx' | 'es-es' | 'pl' | 'en' = langParam as ('es-mx' | 'es-es' | 'pl' | 'en');
 
@@ -262,6 +265,7 @@ export async function processRequest(req: Request, res: Response) {
                 role: ChatRole.Assistant,
                 data: [
                     {
+                        type: ContentDataType.Markdown,
                         content: irrelevantChatMessageTranslations[lang]
                     }
                 ]
@@ -271,6 +275,7 @@ export async function processRequest(req: Request, res: Response) {
                 chat_id: chatWithId.chat_id,
                 answer: [
                     {
+                        type: ContentDataType.Markdown,
                         content: irrelevantChatMessageTranslations[lang]
                     }
                 ]
@@ -297,6 +302,7 @@ export async function processRequest(req: Request, res: Response) {
                 role: ChatRole.Assistant,
                 data: [
                     {
+                        type: ContentDataType.Markdown,
                         content: chatSummary.assistant_motivation
                     }
                 ]
@@ -306,6 +312,7 @@ export async function processRequest(req: Request, res: Response) {
                 chat_id: chatWithId.chat_id,
                 answer: [
                     {
+                        type: ContentDataType.Markdown,
                         content: chatSummary.assistant_motivation
                     }
                 ]
