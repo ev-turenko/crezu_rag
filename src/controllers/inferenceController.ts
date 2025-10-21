@@ -10,6 +10,7 @@ import { Request, Response } from 'express';
 import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
 import { ChatIntent, ChatRole, ContentDataType } from '../enums/enums.js';
 import { getSortedffersAndCategories, sendToLLM } from '../utils/common.js';
+import { marked } from 'marked';
 
 const irrelevantChatMessageTranslations = {
     'es': "Solo puedo ayudarle con la busqueda de préstamos, tarjetas de débito y tarjetas de crédito.",
@@ -364,8 +365,8 @@ export async function processRequest(req: Request, res: Response) {
                 chat_id: chatWithId.chat_id,
                 answer: [
                     {
-                        type: ContentDataType.Markdown,
-                        content: chatSummary.motivation
+                        type: ContentDataType.Html,
+                        content: marked.parse(chatSummary.motivation)
                     }
                 ]
             });

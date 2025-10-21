@@ -161,433 +161,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <title>Chat con IA</title>
     <link rel="manifest" href="/manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
-    <style>
-        :root {
-            --bg-primary: #121212;
-            --bg-secondary: #1e1e1e;
-            --bg-tertiary: #2d2d2d;
-            --text-primary: #e0e0e0;
-            --text-secondary: #a0a0a0;
-            --accent: #bb86fc;
-            --accent-variant: #3700b3;
-            --error: #cf6679;
-            --user-msg-bg: #1e3a5f;
-            --ai-msg-bg: #2d2d2d;
-            --button-bg: #333;
-            --card-bg: #252525;
-            --card-border: #444;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .chat-container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: var(--bg-secondary);
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-        }
-        
-        .chat-header {
-            padding: 1rem;
-            background-color: var(--bg-tertiary);
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .chat-header h1 {
-            color: var(--accent);
-            font-size: 1.5rem;
-        }
-        
-        .header-controls {
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        .new-chat-button {
-            padding: 0.5rem 1rem;
-            background-color: var(--button-bg);
-            color: var(--text-primary);
-            border: 1px solid #444;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-        
-        .new-chat-button:hover {
-            background-color: var(--accent-variant);
-            border-color: var(--accent);
-        }
-        
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-        }
-        
-        .message {
-            max-width: 80%;
-            padding: 0.75rem 1rem;
-            border-radius: 1rem;
-            line-height: 1.4;
-            word-wrap: break-word;
-        }
-        
-        .message.start-group {
-            margin-top: 1rem;
-        }
-        
-        .message:not(.start-group) {
-            margin-top: 0.25rem;
-        }
-        
-        .user-message {
-            justify-self: flex-end;
-            background-color: var(--user-msg-bg);
-            border-bottom-right-radius: 0.25rem;
-        }
-        
-        .ai-message {
-            justify-self: flex-start;
-            background-color: var(--ai-msg-bg);
-            border-bottom-left-radius: 0.25rem;
-        }
-        
-        .message-sender {
-            font-size: 0.75rem;
-            margin-bottom: 0.25rem;
-            color: var(--text-secondary);
-        }
-        
-        .welcome-message {
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-secondary);
-        }
-        
-        .welcome-message h3 {
-            color: var(--accent);
-            margin-bottom: 1rem;
-        }
-        
-        .chat-input-container {
-            display: flex;
-            padding: 1rem;
-            background-color: var(--bg-tertiary);
-            border-top: 1px solid #333;
-        }
-        
-        .chat-input {
-            flex: 1;
-            padding: 0.75rem;
-            border: none;
-            border-radius: 0.5rem;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            font-size: 1rem;
-            resize: none;
-            max-height: 120px;
-        }
-        
-        .chat-input:focus {
-            outline: 2px solid var(--accent);
-        }
-        
-        .send-button {
-            margin-left: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            background-color: var(--accent);
-            color: var(--bg-primary);
-            border: none;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-        
-        .send-button:hover:not(:disabled) {
-            background-color: var(--accent-variant);
-        }
-        
-        .send-button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: var(--accent);
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .error-message {
-            color: var(--error);
-            text-align: center;
-            padding: 0.5rem;
-        }
-        
-        .chat-id-display {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            text-align: center;
-            padding: 0.5rem;
-            background-color: var(--bg-tertiary);
-            border-bottom: 1px solid #333;
-        }
-        
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        
-        .modal-content {
-            background-color: var(--bg-secondary);
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            max-width: 400px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            text-align: center;
-        }
-        
-        .modal-content h2 {
-            color: var(--accent);
-            margin-bottom: 1rem;
-        }
-        
-        .chat-list {
-            list-style: none;
-        }
-        
-        .chat-item {
-            padding: 1rem;
-            background-color: var(--bg-tertiary);
-            margin-bottom: 0.5rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .chat-item:hover {
-            background-color: var(--accent-variant);
-        }
-        
-        .chat-item-title {
-            font-weight: bold;
-        }
-        
-        .chat-item-preview {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            margin-top: 0.25rem;
-        }
-        
-        .close-modal {
-            margin-top: 1rem;
-            width: 100%;
-            padding: 0.75rem;
-            background-color: var(--button-bg);
-            color: var(--text-primary);
-            border: 1px solid #444;
-            border-radius: 0.5rem;
-            cursor: pointer;
-        }
-        
-        .close-modal:hover {
-            background-color: var(--accent-variant);
-        }
-        
-        .offer-card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin: 0.5rem 0;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        
-        .offer-card-header {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .offer-card-logo {
-            width: 40px;
-            height: 40px;
-            object-fit: contain;
-        }
-        
-        .offer-card-title {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: var(--text-primary);
-        }
-        
-        .offer-card-details {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-        
-        .offer-card-details span {
-            display: block;
-        }
-        
-        .offer-card-button {
-            padding: 0.5rem 1rem;
-            background-color: var(--accent);
-            color: var(--bg-primary);
-            text-align: center;
-            border-radius: 0.5rem;
-            text-decoration: none;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-        
-        .offer-card-button:hover {
-            background-color: var(--accent-variant);
-        }
-        
-        .show-more-button {
-            margin: 0.5rem 0;
-            padding: 0.5rem 1rem;
-            background-color: var(--button-bg);
-            color: var(--text-primary);
-            border: 1px solid #444;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            text-align: center;
-            transition: background-color 0.2s;
-        }
-        
-        .show-more-button:hover {
-            background-color: var(--accent-variant);
-        }
-        
-        .open-app-button {
-            padding: 0.75rem 1.5rem;
-            background-color: var(--accent);
-            color: var(--bg-primary);
-            border: none;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.2s;
-            margin-top: 1rem;
-        }
-        
-        .open-app-button:hover {
-            background-color: var(--accent-variant);
-        }
-        
-        @media (max-width: 600px) {
-            .message {
-                max-width: 90%;
-            }
-            
-            .chat-container {
-                height: 100vh;
-            }
-            
-            .chat-header {
-                flex-direction: column;
-                gap: 0.5rem;
-            }
-            
-            .header-controls {
-                width: 100%;
-                justify-content: center;
-            }
-            
-            .offer-card-details {
-                grid-template-columns: 1fr;
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#121212',
+                        secondary: '#1e1e1e',
+                        tertiary: '#2d2d2d',
+                        textprimary: '#e0e0e0',
+                        textsecondary: '#a0a0a0',
+                        accent: '#bb86fc',
+                        accentvariant: '#3700b3',
+                        error: '#cf6679',
+                        usermsgbg: '#1e3a5f',
+                        aimsgbg: '#2d2d2d',
+                        buttonbg: '#333',
+                        cardbg: '#252525',
+                        cardborder: '#444',
+                    },
+                    fontFamily: {
+                        body: ["'Segoe UI'", 'Tahoma', 'Geneva', 'Verdana', 'sans-serif']
+                    }
+                }
             }
         }
-    </style>
+    </script>
 </head>
-<body>
+<body class="font-body bg-primary text-textprimary h-screen flex flex-col">
     <div id="app">
-        <div class="chat-container">
-            <div class="chat-header">
-                <h1>Chat con IA</h1>
-                <div class="header-controls">
+        <div class="flex flex-col h-screen max-w-[800px] mx-auto bg-secondary shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+            <div class="p-4 bg-tertiary border-b border-[#333] flex flex-col gap-2 justify-between items-center sm:flex-row sm:gap-0">
+                <h1 class="text-accent text-xl">Chat con IA</h1>
+                <div class="flex gap-2 w-full justify-center sm:w-auto sm:justify-normal">
                     <button 
                         @click="startNewChat" 
-                        class="new-chat-button"
+                        class="py-2 px-4 bg-buttonbg text-textprimary border border-[#444] rounded-lg cursor-pointer text-sm transition-all duration-200 hover:bg-accentvariant hover:border-accent"
                         :disabled="loading">
                         Nuevo Chat
                     </button>
                     <button 
                         @click="openChatsList" 
-                        class="new-chat-button"
+                        class="py-2 px-4 bg-buttonbg text-textprimary border border-[#444] rounded-lg cursor-pointer text-sm transition-all duration-200 hover:bg-accentvariant hover:border-accent"
                         :disabled="loading">
                         Chats Existentes
                     </button>
                     <button 
                         v-if="canInstall"
                         @click="installApp" 
-                        class="new-chat-button"
+                        class="py-2 px-4 bg-buttonbg text-textprimary border border-[#444] rounded-lg cursor-pointer text-sm transition-all duration-200 hover:bg-accentvariant hover:border-accent"
                         :disabled="loading">
                         Install
                     </button>
                 </div>
             </div>
-            <div class="chat-id-display" v-if="chatId">
+            <div class="text-xs text-textsecondary text-center p-2 bg-tertiary border-b border-[#333]" v-if="chatId">
                 ID del Chat: {{ chatId }}
             </div>
-            <div class="chat-messages" ref="messagesContainer">
-                <div v-if="messages.length === 0" class="welcome-message">
-                    <h3>Bienvenido al Chat con IA</h3>
+            <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-0" ref="messagesContainer">
+                <div v-if="messages.length === 0" class="text-center p-8 text-textsecondary">
+                    <h3 class="text-accent mb-4">Bienvenido al Chat con IA</h3>
                     <p>Comienza una nueva conversación escribiendo un mensaje abajo o selecciona un chat existente.</p>
                 </div>
                 <div v-else>
                     <div v-for="(message, index) in messages" :key="message.id" 
-                         :class="['message', message.from === 'user' ? 'user-message' : 'ai-message', {'start-group': isStartOfGroup(index)} ]">
-                        <div class="message-sender" v-if="isStartOfGroup(index)">
+                         :class="[
+                             'max-w-[90%] sm:max-w-[80%] py-3 px-4 rounded-2xl leading-relaxed break-words',
+                             message.from === 'user' ? 'self-end bg-usermsgbg rounded-br-sm' : 'self-start bg-aimsgbg rounded-bl-sm',
+                             {'mt-4': isStartOfGroup(index), 'mt-1': !isStartOfGroup(index) }
+                         ]">
+                        <div class="text-xs mb-1 text-textsecondary" v-if="isStartOfGroup(index)">
                             {{ message.from === 'user' ? 'Tú' : 'IA' }}
                         </div>
                         <div v-for="(content, contentIndex) in message.data" :key="contentIndex">
@@ -595,25 +240,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             <div v-else-if="content.type === 'code'">
                                 <pre><code>{{ content.content }}</code></pre>
                             </div>
+                            <div v-else-if="content.type === 'markdown'" v-html="renderMarkdown(content.content)"></div>
                             <div v-else-if="content.type === 'offers'">
-                                <div v-for="(offer, offerIndex) in getVisibleOffers(content.content, message.id)" :key="offer.id" class="offer-card">
-                                    <div class="offer-card-header">
-                                        <img v-if="offer.avatar" :src="offer.avatar" class="offer-card-logo" alt="Offer logo">
-                                        <span class="offer-card-title">{{ offer.name }}</span>
+                                <div v-for="(offer, offerIndex) in getVisibleOffers(content.content, message.id)" :key="offer.id" class="bg-cardbg border border-cardborder rounded-lg p-4 my-2 flex flex-col gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <img v-if="offer.avatar" :src="offer.avatar" class="w-10 h-10 object-contain" alt="Offer logo">
+                                        <span class="text-lg font-bold text-textprimary">{{ offer.name }}</span>
                                     </div>
-                                    <div class="offer-card-details">
+                                    <div class="grid grid-cols-1 gap-2 text-sm text-textsecondary sm:grid-cols-2">
                                         <!-- {{ JSON.stringify(offer, null, 2) }} -->
-                                        <span><strong>{{offer.headers[0].title || 'N/A'}}</strong> {{ offer.headers[0].value || 'N/A' }}</span>
-                                        <span><strong>{{offer.headers[1].title || 'N/A'}}</strong> {{ offer.headers[1].value || 'N/A' }}</span>
-                                        <span><strong>{{offer.headers[2].title || 'N/A'}}</strong> {{ offer.headers[2].value || 'N/A' }}</span>
-                                        <span><strong>{{offer.headers[3].title || 'N/A'}}</strong> {{ offer.headers[3].value || 'N/A' }}</span>
+                                        <span class="block"><strong>{{offer.headers[0].title || 'N/A'}}</strong> {{ offer.headers[0].value || 'N/A' }}</span>
+                                        <span class="block"><strong>{{offer.headers[1].title || 'N/A'}}</strong> {{ offer.headers[1].value || 'N/A' }}</span>
+                                        <span class="block"><strong>{{offer.headers[2].title || 'N/A'}}</strong> {{ offer.headers[2].value || 'N/A' }}</span>
+                                        <span class="block"><strong>{{offer.headers[3].title || 'N/A'}}</strong> {{ offer.headers[3].value || 'N/A' }}</span>
                                     </div>
-                                    <a :href="offer.url" target="_blank" class="offer-card-button">Solicitar Ahora</a>
+                                    <a :href="offer.url" target="_blank" class="py-2 px-4 bg-accent text-primary text-center rounded-lg no-underline font-bold transition-colors duration-200 hover:bg-accentvariant">Solicitar Ahora</a>
                                 </div>
                                 <button 
                                     v-if="content.content.length > 3 && content.content.length > visibleOffers[message.id]"
                                     @click="showMoreOffers(message.id, content.content.length)"
-                                    class="show-more-button">
+                                    class="my-2 py-2 px-4 bg-buttonbg text-textprimary border border-[#444] rounded-lg cursor-pointer text-center transition-colors duration-200 hover:bg-accentvariant">
                                     Mostrar {{ visibleOffers[message.id] < content.content.length ? 'Más' : 'Menos' }}
                                 </button>
                             </div>
@@ -621,26 +267,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         </div>
                     </div>
                 </div>
-                <div v-if="loading" class="message ai-message" :class="{'start-group': isStartOfLoadingGroup()}">
-                    <div class="loading"></div>
+                <div v-if="loading" 
+                     :class="[
+                         'max-w-[90%] sm:max-w-[80%] py-3 px-4 rounded-2xl leading-relaxed break-words self-start bg-aimsgbg rounded-bl-sm',
+                         {'mt-4': isStartOfLoadingGroup(), 'mt-1': !isStartOfLoadingGroup() }
+                     ]">
+                    <div class="inline-block w-5 h-5 border-[3px] border-[rgba(255,255,255,0.3)] border-t-accent rounded-full animate-spin"></div>
                 </div>
             </div>
-            <div class="error-message" v-if="error">
+            <div class="text-error text-center p-2" v-if="error">
                 {{ error }}
             </div>
-            <div class="chat-input-container">
+            <div class="flex p-4 bg-tertiary border-t border-[#333]">
                 <textarea 
                     v-model="inputMessage" 
                     @keydown.enter.exact.prevent="sendMessage"
                     placeholder="Escribe tu mensaje..."
-                    class="chat-input"
+                    class="flex-1 p-3 border-none rounded-lg bg-secondary text-textprimary text-base resize-none max-h-[120px] focus:outline focus:outline-2 focus:outline-accent"
                     rows="1"
                     ref="messageInput"
                     :disabled="loading">
                 </textarea>
                 <button 
                     @click="sendMessage" 
-                    class="send-button"
+                    class="ml-2 py-3 px-6 bg-accent text-primary border-none rounded-lg cursor-pointer font-bold transition-colors duration-200 hover:bg-accentvariant disabled:opacity-60 disabled:cursor-not-allowed"
                     :disabled="!inputMessage.trim() || loading">
                     Enviar
                 </button>
@@ -648,32 +298,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         </div>
         
         <!-- Modal for chats list -->
-        <div v-if="showChatsList" class="modal">
-            <div class="modal-content">
-                <h2>Chats Existentes</h2>
-                <ul class="chat-list">
-                    <li v-for="chat in chats" :key="chat.chat_id" class="chat-item" @click="selectChat(chat.chat_id)">
-                        <div class="chat-item-title">Chat ID: {{ chat.chat_id }}</div>
-                        <div class="chat-item-preview" v-if="chat.preview">{{ chat.preview }}</div>
+        <div v-if="showChatsList" class="fixed top-0 left-0 w-full h-full bg-black/50 flex justify-center items-center z-[1000]">
+            <div class="bg-secondary p-6 rounded-lg max-w-md w-[90%] max-h-[80vh] overflow-y-auto text-center">
+                <h2 class="text-accent mb-4">Chats Existentes</h2>
+                <ul class="list-none">
+                    <li v-for="chat in chats" :key="chat.chat_id" class="p-4 bg-tertiary mb-2 rounded-lg cursor-pointer transition-colors duration-200 hover:bg-accentvariant" @click="selectChat(chat.chat_id)">
+                        <div class="font-bold">Chat ID: {{ chat.chat_id }}</div>
+                        <div class="text-sm text-textsecondary mt-1" v-if="chat.preview">{{ chat.preview }}</div>
                     </li>
                 </ul>
-                <button @click="showChatsList = false" class="close-modal">Cerrar</button>
+                <button @click="showChatsList = false" class="mt-4 w-full py-3 bg-buttonbg text-textprimary border border-[#444] rounded-lg cursor-pointer hover:bg-accentvariant">Cerrar</button>
             </div>
         </div>
         
         <!-- Modal for install loading -->
-        <div v-if="showInstallLoading" class="modal">
-            <div class="modal-content">
-                <div class="loading"></div>
+        <div v-if="showInstallLoading" class="fixed top-0 left-0 w-full h-full bg-black/50 flex justify-center items-center z-[1000]">
+            <div class="bg-secondary p-6 rounded-lg max-w-md w-[90%] max-h-[80vh] overflow-y-auto text-center">
+                <div class="inline-block w-5 h-5 border-[3px] border-[rgba(255,255,255,0.3)] border-t-accent rounded-full animate-spin"></div>
                 <p>Instalando la aplicación...</p>
             </div>
         </div>
         
         <!-- Modal for open button after install -->
-        <div v-if="showOpenButton" class="modal">
-            <div class="modal-content">
+        <div v-if="showOpenButton" class="fixed top-0 left-0 w-full h-full bg-black/50 flex justify-center items-center z-[1000]">
+            <div class="bg-secondary p-6 rounded-lg max-w-md w-[90%] max-h-[80vh] overflow-y-auto text-center">
                 <p>Aplicación instalada exitosamente.</p>
-                <button @click="openApp" class="open-app-button">Abrir Aplicación</button>
+                <button @click="openApp" class="py-3 px-6 bg-accent text-primary border-none rounded-lg cursor-pointer font-bold transition-colors duration-200 mt-4 hover:bg-accentvariant">Abrir Aplicación</button>
             </div>
         </div>
     </div>
@@ -732,6 +382,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 this.getChats();
             },
             methods: {
+                renderMarkdown(content) {
+                    return marked.parse(content);
+                },
                 isStartOfGroup(index) {
                     return index === 0 || this.messages[index].from !== this.messages[index - 1].from;
                 },
