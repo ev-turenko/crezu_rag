@@ -130,13 +130,6 @@ export class AIModel {
     }
   }
 
-  //   interface Suggestion {
-  // 	title: string;
-  // 	text: string;
-  // 	prompt: string;
-  // 	id: number;
-  // }
-
   public static async getSuggestions(lang: string): Promise<Suggestion[]> {
     const options = [
       {

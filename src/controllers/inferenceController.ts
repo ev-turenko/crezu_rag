@@ -19,6 +19,14 @@ const irrelevantChatMessageTranslations = {
     'en': "I can help you with loan search, debit card and credit card."
 }
 
+const serverErrorTryLaterTranslations = {
+    'es': "Lo siento, ha ocurrido un error en el servidor. Por favor, inténtelo de nuevo más tarde.",
+    'es-mx': "Lo siento, ha ocurrido un error en el servidor. Por favor, inténtelo de nuevo más tarde.",
+    'es-es': "Lo siento, ha ocurrido un error en el servidor. Por favor, inténtelo de nuevo más tarde.",
+    'pl': "Przepraszamy, wystąpił błąd serwera. Proszę spróbuj ponownie później.",
+    'en': "Sorry, there was an error on the server. Please try again later."
+}
+
 const unsafeChatMessageTranslations = {
     'es': "Su mensaje no cumple con la política de seguridad de la conversación.",
     'es-mx': "Su mensaje no cumple con la política de seguridad de la conversación.",
@@ -133,8 +141,8 @@ export async function reportMessage(req: Request, res: Response) {
 }
 
 export async function getHistory(req: Request, res: Response) {
+    const chatId = req.body.params.chat_id;
     try {
-        const chatId = req.body.params.chat_id;
         if (!chatId) {
             return res.status(400).json({
                 success: false,
@@ -168,25 +176,28 @@ export async function getHistory(req: Request, res: Response) {
 }
 
 export async function processRequest(req: Request, res: Response) {
+    const body: ChatProperties = req.body;
+    const countries = [
+        {
+            code: 'mx',
+            id: 2,
+            lang: 'es-mx'
+        },
+        {
+            code: 'es',
+            id: 1,
+            lang: 'es-es'
+        },
+        {
+            code: 'pl',
+            id: 14,
+            lang: 'pl'
+        }
+    ]
+    const langParam = (req.query.lang as string) || countries.filter(country => country.id === body.params.country)[0].lang;
+    const lang: 'es-mx' | 'es-es' | 'pl' | 'en' = langParam as ('es-mx' | 'es-es' | 'pl' | 'en');
     try {
-        const countries = [
-            {
-                code: 'mx',
-                id: 2,
-                lang: 'es-mx'
-            },
-            {
-                code: 'es',
-                id: 1,
-                lang: 'es-es'
-            },
-            {
-                code: 'pl',
-                id: 14,
-                lang: 'pl'
-            }
-        ]
-        const body: ChatProperties = req.body;
+
         const ip = req.headers['x-forwarded-for'] || req.ip || null;
 
         if (!body || !body.message || !body.params.client_id || !body.params.country || !body.params.provider) {
@@ -202,9 +213,7 @@ export async function processRequest(req: Request, res: Response) {
             });
         }
 
-        const langParam = (req.query.lang as string) || countries.filter(country => country.id === body.params.country)[0].lang;
         let chatWithId: ChatDbRecord | null = null;
-        const lang: 'es-mx' | 'es-es' | 'pl' | 'en' = langParam as ('es-mx' | 'es-es' | 'pl' | 'en');
 
         if (countries.filter(country => country.id === body.params.country).length === 0) {
             return res.status(400).json({
@@ -405,9 +414,50 @@ export async function processRequest(req: Request, res: Response) {
 
     } catch (error) {
         console.error('Error processing request:', error);
+        try {
+            const chatWithId = await AIModel.getChatById(req.body.params.chat_id)
+            if (!chatWithId) {
+                return res.status(500).json({
+                    success: false,
+                    answer: [
+                        {
+                            type: ContentDataType.Notification,
+                            content: serverErrorTryLaterTranslations[lang]
+                        }
+                    ]
+                });
+            }
+            await AIModel.saveMessageToChat(chatWithId.chat_id, true, {
+                role: ChatRole.System,
+                data: [
+                    {
+                        type: ContentDataType.Notification,
+                        content: serverErrorTryLaterTranslations[lang]
+                    }
+                ]
+            });
+
+            return res.status(500).json({
+                success: false,
+                answer: [
+                    {
+                        type: ContentDataType.Notification,
+                        content: serverErrorTryLaterTranslations[lang]
+                    }
+                ]
+            });
+
+        } catch (error) {
+            console.error('Error processing request:', error);
+        }
         return res.status(500).json({
             success: false,
-            error: 'Internal server error'
+            answer: [
+                {
+                    type: ContentDataType.Notification,
+                    content: serverErrorTryLaterTranslations[lang]
+                }
+            ] 
         });
     }
 }
