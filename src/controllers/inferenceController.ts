@@ -346,7 +346,7 @@ export async function processRequest(req: Request, res: Response) {
                 data: [
                     {
                         type: ContentDataType.Markdown,
-                        content: chatSummary.assistant_motivation
+                        content: chatSummary.motivation
                     }
                 ]
             });
@@ -356,7 +356,7 @@ export async function processRequest(req: Request, res: Response) {
                 answer: [
                     {
                         type: ContentDataType.Markdown,
-                        content: chatSummary.assistant_motivation
+                        content: chatSummary.motivation
                     }
                 ]
             });
