@@ -240,17 +240,24 @@ export class AIModel {
 
       const chatSummary = await sendToLLM([
         {
-          role: ChatRole.Assistant,
+          role: ChatRole.System,
           content: `
           <user infromation rules>
-            Absolutely obligatory user information:
+            Absolutely obligatory user information for loans:
             - loan period,
             - loan amount
-            optional helpful user information:
+            optional helpful user information for loans:
             - loan reason
             - user's monthly income
             - user's employment status
             - any existing debts or financial obligations
+            Absolutely obligatory user information for credit cards:
+            - user's monthly income
+            - needs
+            optional helpful user information for credit cards:
+            - user's employment status
+            - any existing debts or financial obligations
+            - any existing credit cards
             Never invent any information about the user.
           </user infromation rules>
           <base instruction>
@@ -258,11 +265,11 @@ export class AIModel {
 
             Summarize the user's messages into a concise structured response in a JSON format with three fields: can_decide (boolean), user_intent_summary (string), and assistant_motivation (string).
 
-            - can_decide must be true only if the bare minimum required user information (loan period and loan amount) is provided, making it sufficient to decide on relevant financial offers. Otherwise, set it to false.
+            - can_decide must be true only if the bare minimum required user information (loan period and loan amount for loans or user's monthly income for credit cards) is provided, making it sufficient to decide on relevant financial offers. Otherwise, set it to false.
             - user_intent_summary must be a concise but informative summary of the user's intent, needs, and any provided details (including both required and optional information).
-            - assistant_motivation must be a concise but informative explanation of why the assistant can or cannot proceed to make a decision about relevant financial offers. If information is missing, politely suggest asking for the specific missing required details. For optional information, only mention it briefly if it could help, without insisting or requiring it. Format assistant_motivation as Markdown for better readability (e.g., use bullet points for suggestions).
+            - motivation must be a concise but informative explanation of why the assistant can or cannot proceed to make a decision about relevant financial offers. If information is missing, politely suggest asking for the specific missing required details. For optional information, only mention it briefly if it could help, without insisting or requiring it. Format assistant_motivation as Markdown for better readability (e.g., use bullet points for suggestions).
 
-            assistant_motivation must be in the user's language: ${lang}.
+            motivation must be in the user's language: ${lang}. Motivations must be a markdown formatted string.
 
             Reply strictly with the structured JSON object and nothing else.
           </base instruction>
@@ -290,7 +297,7 @@ export class AIModel {
                 "user_intent_summary": {
                   "type": "string"
                 },
-                "assistant_motivation": {
+                "motivation": {
                   "type": "string"
                 }
               },
