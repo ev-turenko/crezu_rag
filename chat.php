@@ -1,6 +1,49 @@
 <?php
 $base_url = 'http://localhost:3000';
 
+$request_uri = $_SERVER['REQUEST_URI'];
+
+if (strpos($request_uri, '/manifest.json') !== false) {
+    header('Content-Type: application/json');
+    echo json_encode([
+        "name" => "Chat con IA",
+        "short_name" => "IA Chat",
+        "start_url" => "/",
+        "display" => "fullscreen",
+        "background_color" => "#121212",
+        "theme_color" => "#bb86fc",
+        "icons" => [
+            [
+                "src" => "/icon-192.png",
+                "sizes" => "192x192",
+                "type" => "image/png"
+            ],
+            [
+                "src" => "/icon-512.png",
+                "sizes" => "512x512",
+                "type" => "image/png"
+            ]
+        ]
+    ]);
+    exit;
+} elseif (strpos($request_uri, '/sw.js') !== false) {
+    header('Content-Type: application/javascript');
+    echo "
+self.addEventListener('install', (e) => {
+  e.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', (e) => {
+  e.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('fetch', (e) => {
+  // Minimal fetch handler for PWA installability
+});
+    ";
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     
@@ -116,6 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat con IA</title>
+    <link rel="manifest" href="/manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <style>
         :root {
@@ -342,6 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
+            text-align: center;
         }
         
         .modal-content h2 {
@@ -463,6 +508,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             background-color: var(--accent-variant);
         }
         
+        .open-app-button {
+            padding: 0.75rem 1.5rem;
+            background-color: var(--accent);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+            margin-top: 1rem;
+        }
+        
+        .open-app-button:hover {
+            background-color: var(--accent-variant);
+        }
+        
         @media (max-width: 600px) {
             .message {
                 max-width: 90%;
@@ -505,6 +566,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         class="new-chat-button"
                         :disabled="loading">
                         Chats Existentes
+                    </button>
+                    <button 
+                        v-if="canInstall"
+                        @click="installApp" 
+                        class="new-chat-button"
+                        :disabled="loading">
+                        Install
                     </button>
                 </div>
             </div>
@@ -592,9 +660,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 <button @click="showChatsList = false" class="close-modal">Cerrar</button>
             </div>
         </div>
+        
+        <!-- Modal for install loading -->
+        <div v-if="showInstallLoading" class="modal">
+            <div class="modal-content">
+                <div class="loading"></div>
+                <p>Instalando la aplicación...</p>
+            </div>
+        </div>
+        
+        <!-- Modal for open button after install -->
+        <div v-if="showOpenButton" class="modal">
+            <div class="modal-content">
+                <p>Aplicación instalada exitosamente.</p>
+                <button @click="openApp" class="open-app-button">Abrir Aplicación</button>
+            </div>
+        </div>
     </div>
 
     <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker registered', reg))
+                .catch(err => console.error('Service Worker registration failed', err));
+        }
+
         new Vue({
             el: '#app',
             data: {
@@ -606,7 +696,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 chats: [],
                 showChatsList: false,
                 offersCache: {},
-                visibleOffers: {}
+                visibleOffers: {},
+                isAndroid: false,
+                isStandalone: false,
+                deferredPrompt: null,
+                showInstallLoading: false,
+                showOpenButton: false
+            },
+            computed: {
+                canInstall() {
+                    return this.isAndroid && !this.isStandalone && this.deferredPrompt;
+                }
             },
             mounted() {
                 this.$refs.messageInput.focus();
@@ -614,6 +714,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 this.$refs.messageInput.addEventListener('input', function() {
                     this.style.height = 'auto';
                     this.style.height = (this.scrollHeight) + 'px';
+                });
+                
+                this.isAndroid = /Android/i.test(navigator.userAgent);
+                this.isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone || false;
+                
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    this.deferredPrompt = e;
+                });
+                
+                window.addEventListener('appinstalled', () => {
+                    this.showInstallLoading = false;
+                    this.showOpenButton = true;
                 });
                 
                 this.getChats();
@@ -727,7 +840,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         this.loading = false;
                     }
                 },
-                
+                installApp() {
+                    if (this.deferredPrompt) {
+                        this.showInstallLoading = true;
+                        this.deferredPrompt.prompt();
+                        this.deferredPrompt.userChoice.then((choiceResult) => {
+                            if (choiceResult.outcome === 'dismissed') {
+                                this.showInstallLoading = false;
+                            }
+                            this.deferredPrompt = null;
+                        });
+                    }
+                },
+                openApp() {
+                    const protocol = location.protocol.slice(0, -1);
+                    const host = location.host;
+                    window.location.href = `intent://${host}/#Intent;scheme=${protocol};package=com.android.chrome;end`;
+                },
                 startNewChat() {
                     if (this.loading) return;
                     

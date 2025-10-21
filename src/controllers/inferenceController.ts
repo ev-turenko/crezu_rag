@@ -52,6 +52,41 @@ export async function getAllChats(req: Request, res: Response) {
     }
 }
 
+export async function getSuggestions(req: Request, res: Response) {
+    const body = req.body;
+    try {
+        const countries = [
+            {
+                code: 'mx',
+                id: 2,
+                lang: 'es-mx'
+            },
+            {
+                code: 'es',
+                id: 1,
+                lang: 'es-es'
+            },
+            {
+                code: 'pl',
+                id: 14,
+                lang: 'pl'
+            }
+        ]
+        const langParam = (req.query.lang as string) || countries.filter(country => country.id === body.params.country)[0].lang;
+        const suggestions = await AIModel.getSuggestions(langParam);
+        return res.status(200).json({
+            success: true,
+            suggestions: suggestions
+        });
+    } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+}
+
 export async function reportMessage(req: Request, res: Response) {
     const chatId = req.body.params.chat_id;
     const { answer_index, message } = req.body;
@@ -167,7 +202,7 @@ export async function processRequest(req: Request, res: Response) {
             });
         }
 
-        const langParam = req.query.lang || countries.filter(country => country.id === body.params.country)[0].lang;
+        const langParam = (req.query.lang as string) || countries.filter(country => country.id === body.params.country)[0].lang;
         let chatWithId: ChatDbRecord | null = null;
         const lang: 'es-mx' | 'es-es' | 'pl' | 'en' = langParam as ('es-mx' | 'es-es' | 'pl' | 'en');
 
@@ -212,7 +247,7 @@ export async function processRequest(req: Request, res: Response) {
 
         chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord
 
-        if (!langParam || !['es-mx', 'es-es', 'pl', 'en'].includes(langParam as string)) {
+        if (!langParam || !['es-mx', 'es-es', 'pl', 'en'].includes(langParam)) {
             return res.status(400).json({
                 success: false,
                 chat_id: chatWithId.chat_id,

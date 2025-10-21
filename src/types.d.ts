@@ -42,3 +42,16 @@ interface ChatNotification {
 interface Offer {
   [key: string]: any;
 }
+
+interface Suggestion {
+	title: string;
+	text: string;
+	prompt: string;
+	id: number;
+  category: string
+}
+
+interface SuggestionsResponse {
+  success: boolean;
+  suggestions?: Suggestion[];
+}

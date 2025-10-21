@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/common.js";
 import { ChatIntent, ChatRole, LLMProvider, PbCollections } from '../enums/enums.js';
 import PocketBase from 'pocketbase';
+import { Suggestion } from '../types.js';
 
 
 export interface ChatMessage {
@@ -127,6 +128,82 @@ export class AIModel {
       console.log('Chat not found:', error);
       return null;
     }
+  }
+
+  //   interface Suggestion {
+  // 	title: string;
+  // 	text: string;
+  // 	prompt: string;
+  // 	id: number;
+  // }
+
+  public static async getSuggestions(lang: string): Promise<Suggestion[]> {
+    const options = [
+      {
+        langs: ['es-es', 'es-mx', 'es'],
+        title: 'Prestamos',
+        text: 'Encuectre el mejor préstamo',
+        prompt:
+          'Necesito un préstamo urgente, ayúdame a encontrar la mejor opción, basando en todo lo que conoces',
+        id: 0,
+        category: 'loan',
+      },
+      {
+        langs: ['pl'],
+        title: 'Kredyty',
+        text: 'Znajdziesz najlepszy kredyt',
+        prompt:
+          'Potrzebuje kredytu, pomoc mi znalezc najlepszy kredyt, na podstawie wszystkiego co wiem',
+        id: 1,
+        category: 'loan',
+      },
+      {
+        langs: ['en'],
+        title: 'Loans',
+        text: 'Find the best loan',
+        prompt:
+          'I need a loan, help me find the best loan, based on everything I know',
+        id: 2,
+        category: 'loan',
+      },
+      {
+        langs: ['es-es', 'es-mx', 'es'],
+        title: 'Tarjetas de crédito',
+        text: 'le ayudaré con la busqueda de tarjetas de crédito',
+        prompt:
+          'Necesito una tarjeta de crédito personalizada, ayúdame a encontrar la mejor opció, basando en todo lo que conoces',
+        id: 3,
+        category: 'credit_card',
+      },
+      {
+        langs: ['pl'],
+        title: 'Karty kredytowe',
+        text: 'Karty kredytowe personalizowane',
+        prompt:
+          'Potrzebuje karty kredytowe personalizowane, pomoc mi znalezc najlepsze karty kredytowe, na podstawie wszystkiego co wiem',
+        id: 4,
+        category: 'credit_card',
+      },
+      {
+        langs: ['en'],
+        title: 'Credit cards',
+        text: 'I need a custom credit card, help me find the best credit card, based on everything I know',
+        prompt:
+          'I need a custom credit card, help me find the best credit card, based on everything I know',
+        id: 5,
+        category: 'credit_card',
+      },
+    ];
+    const result = [];
+    const filtered = options.filter(option => option.langs.includes(lang));
+    const seen = new Set();
+    for (const option of filtered) {
+      if (!seen.has(option.category)) {
+        seen.add(option.category);
+        result.push(option);
+      }
+    }
+    return result;
   }
 
   public static async isMessageSafe(payload: ChatDbRecord): Promise<boolean | null> {
