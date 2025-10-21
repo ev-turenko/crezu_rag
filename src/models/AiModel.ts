@@ -301,7 +301,7 @@ export class AIModel {
                   "type": "string"
                 }
               },
-              required: ['can_decide', 'user_intent_summary', "assistant_motivation"],
+              required: ['can_decide', 'user_intent_summary', "motivation"],
               additionalProperties: false
             }
           }
