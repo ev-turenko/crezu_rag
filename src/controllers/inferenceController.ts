@@ -355,7 +355,7 @@ export async function processRequest(req: Request, res: Response) {
                 role: ChatRole.Assistant,
                 data: [
                     {
-                        type: ContentDataType.Markdown,
+                        type: ContentDataType.Html,
                         content: chatSummary.motivation
                     }
                 ]
