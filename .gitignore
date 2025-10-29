@@ -13,3 +13,6 @@ offers_with_categories.json
 .DS_Store
 dist
 index.js
+pwa
+chats_admin.php
+chat

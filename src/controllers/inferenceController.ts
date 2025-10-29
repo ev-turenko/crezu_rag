@@ -44,6 +44,14 @@ const chatViolationMessageTranslations = {
     'en': "The chat has been terminated by the system due to previous violations of the safety policy. Please start a new chat."
 }
 
+const failedToSummarizeTranslations = {
+    'es': "No se pudo resumir el chat. Por favor, inicie un nuevo chat.",
+    'es-mx': "No se pudo resumir el chat. Por favor, inicie un nuevo chat.",
+    'es-es': "No se pudo resumir el chat. Por favor, inicie un nuevo chat.",
+    'pl': "Nie udało się resumować czatu. Proszę rozpocząć nowy czat.",
+    'en': "Failed to summarize the chat. Please start a new chat."
+}
+
 export async function getAllChats(req: Request, res: Response) {
     try {
         const client_id = req.body.client_id;
@@ -311,7 +319,7 @@ export async function processRequest(req: Request, res: Response) {
         chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord;
 
         const offersAndIntents = await getSortedffersAndCategories(country.code);
-        const chatIntent = await AIModel.getIntent(chatWithId, [...offersAndIntents.types.map(el => `intent_${el}`), ChatIntent.OTHER]);
+        const chatIntent = await AIModel.getIntent(chatWithId, [...offersAndIntents.types.map(el => `intent_${el}`), ChatIntent.OTHER, ChatIntent.FINANCIAL_ADVICE]);
 
         if (chatIntent.intent === ChatIntent.OTHER) {
             await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
@@ -335,6 +343,50 @@ export async function processRequest(req: Request, res: Response) {
             });
         }
 
+        if (chatIntent.intent === ChatIntent.FINANCIAL_ADVICE) {
+            const adviceResponse = await sendToLLM([
+                {
+                    role: ChatRole.System,
+                    content: `
+                    You're a multilingual financial advisor.
+                    You must reply in: ${lang}. 
+                    You must be clear and concise. Help the user resolve their latest financial problem that the user describes in his latter messages.
+                    You must not use any information about the user that is not directly related to the problem. Ask to provide more info, if appropriate.
+                    Here's the chat history with the user:
+
+                    ----Chat history start-----
+                    ${chatWithId.messages.map(el => `${el.role}: ${el.data[0].content}`).join('\n')}
+                    ----Chat history end-----
+
+                    Reply with the unstyled html output.
+                `
+                },
+            ], {
+                model: 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
+                temperature: 0.3,
+                maxTokens: 3000,
+            });
+            await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
+                role: ChatRole.Assistant,
+                data: [
+                    {
+                        type: ContentDataType.Html,
+                        content: adviceResponse
+                    }
+                ]
+            });
+            return res.status(200).json({
+                success: true,
+                chat_id: chatWithId.chat_id,
+                answer: [
+                    {
+                        type: ContentDataType.Html,
+                        content: adviceResponse
+                    }
+                ]
+            });
+        }
+
         const chatSummary = await AIModel.summarizeChat(chatWithId, lang);
 
         if (chatSummary === null) {
@@ -344,7 +396,7 @@ export async function processRequest(req: Request, res: Response) {
                 answer: [
                     {
                         type: ContentDataType.Notification,
-                        content: "Failed to summarize the chat, please try again"
+                        content: failedToSummarizeTranslations[lang]
                     }
                 ]
             });
@@ -458,7 +510,7 @@ export async function processRequest(req: Request, res: Response) {
                     type: ContentDataType.Notification,
                     content: serverErrorTryLaterTranslations[lang]
                 }
-            ] 
+            ]
         });
     }
 }

@@ -12,6 +12,7 @@ export enum ChatRole {
 }
 
 export enum ChatIntent {
+    FINANCIAL_ADVICE = 'financial_advice',
     LOAN_SEARCH = 'loan_search',
     DEBIT_CARD_SEARCH = 'debit_card_search',
     CREDIT_CARD_SEARCH = 'credit_card_search',

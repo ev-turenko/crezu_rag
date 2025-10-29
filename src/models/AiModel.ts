@@ -262,7 +262,7 @@ export class AIModel {
             - user_intent_summary must be a concise but informative summary of the user's intent, needs, and any provided details (including both required and optional information).
             - motivation must be a concise but informative explanation of why the assistant can or cannot proceed to make a decision about relevant financial offers. If information is missing, politely suggest asking for the specific missing required details. For optional information, only mention it briefly if it could help, without insisting or requiring it. Format assistant_motivation as Markdown for better readability (e.g., use bullet points for suggestions).
 
-            motivation must be in the user's language: ${lang}. Motivations must be a markdown formatted string.
+            motivation must be in the user's language: ${lang}. Motivations must be provided as bare unstyled html output.
 
             Reply strictly with the structured JSON object and nothing else.
           </base instruction>
