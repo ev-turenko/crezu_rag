@@ -358,7 +358,7 @@ export async function processRequest(req: Request, res: Response) {
                     ${chatWithId.messages.map(el => `${el.role}: ${el.data[0].content}`).join('\n')}
                     ----Chat history end-----
 
-                    Reply with the unstyled html output.
+                    Reply with the unstyled html output. Do not nest list tag inside paragraphs or divs.
                 `
                 },
             ], {
