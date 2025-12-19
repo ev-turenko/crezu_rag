@@ -295,7 +295,7 @@ export async function processRequest(req: Request, res: Response) {
 
         chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord
 
-        if (!langParam || !['es-mx', 'es-es', 'pl', 'en'].includes(langParam)) {
+        if (!langParam || !['es-mx', 'es-es', 'pl', 'en', 'ro', 'se'].includes(langParam)) {
             return res.status(400).json({
                 success: false,
                 chat_id: chatWithId.chat_id,
@@ -303,7 +303,7 @@ export async function processRequest(req: Request, res: Response) {
                 answer: [
                     {
                         type: ContentDataType.Notification,
-                        content: "Your message should be either in Spanish or English or Polish"
+                        content: `Your message should be either in either of these languages: es-mx, es-es, pl, en, ro, se`
                     }
                 ]
             });
