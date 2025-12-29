@@ -11,6 +11,7 @@ import { translations } from '../../utils/translations.js';
 export class InferenceController {
 
     public static getAiResponse(): any {
+        // expected payload: { f_message: string, ... }
         return async (req: InferenceRequest, res: Response): Promise<any> => {
             const schema = z.object({
                 response_text: z.string().describe(

@@ -5,6 +5,7 @@ import { checkSafety } from '../../middleware/intent.js';
 
 const router = Router();
 
+// /api/v2/ai/message
 router.post('/message', initDefaults(), checkSafety(), InferenceController.getAiResponse());
 
 export default router;
