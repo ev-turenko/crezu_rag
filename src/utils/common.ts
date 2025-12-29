@@ -1,5 +1,9 @@
-import OpenAI from 'openai';
-import { LLMProvider } from '../enums/enums.js';
+import { OpenAI } from 'openai';
+import { DeepInfraModels, DeepSeekModels, LLMProvider } from '../enums/enums.js';
+import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
+import { getAiProvider } from '../ai/client.js';
+import { RequestOptions } from 'openai/src/core.js';
+import z from 'zod';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -284,3 +288,118 @@ export async function getSortedffersAndCategories(countryCode: string = 'mx'): P
 export function getOffersByType(offers: OriginalOfferData[], type: string): OriginalOfferData[] {
   return offers.filter(offer => offer.offer_type.type === type);
 }
+
+
+export const resolveTranslation = <T>(
+  id: number | undefined,
+  list: { id: number; lang: string }[],
+  translations: Record<string, T>,
+  defaultKey: keyof typeof translations = 'en'
+): T => {
+  const lang = list.find(item => item.id === id)?.lang ?? defaultKey;
+  return translations[lang as keyof typeof translations] ?? translations[defaultKey];
+};
+
+export function modifyLastMessage(options: {
+  messages: ChatCompletionMessageParam[],
+  text: string,
+  position: 'prepend' | 'append',
+  role: 'user' | 'assistant'
+}
+): ChatCompletionMessageParam[] {
+  const lastMessageIndex = [...options.messages].reverse().findIndex(msg => msg.role === options.role);
+
+  if (lastMessageIndex === -1) {
+    throw new Error('No user message found in the provided messages array.');
+  }
+
+  const index = options.messages.length - 1 - lastMessageIndex;
+  const newMessages = [...options.messages];
+
+  const originalContent = newMessages[index].content;
+  const modifiedContent =
+    options.position === 'prepend' ? options.text + originalContent : originalContent + options.text;
+  newMessages[index] = {
+    ...newMessages[index],
+    content: modifiedContent,
+  };
+
+  return newMessages;
+}
+
+
+export async function getResponse(
+  options: {
+    messages: ChatCompletionMessageParam[],
+    schema: z.ZodSchema,
+    aiProvider: 'deepseek' | 'deepinfra',
+    model: DeepSeekModels | DeepInfraModels,
+    jsonSchemaName?: string,
+    maxTokens?: number
+  }
+) {
+  if (options.aiProvider === 'deepseek') {
+    return getAiProvider(options.aiProvider).chat.completions.create({
+      model: options.model,
+      messages: modifyLastMessage(
+        {
+          messages: options.messages,
+          text: `Respond with respect to this scheme: ${JSON.stringify(z.toJSONSchema(options.schema))}`,
+          position: 'append',
+          role: 'user'
+        }
+      ),
+      temperature: 0,
+      response_format: {
+        type: 'json_object',
+      },
+      max_completion_tokens: options.maxTokens || 100,
+    });
+  } else {
+    if (!options.jsonSchemaName) {
+      throw new Error('jsonSchemaName is required when using DeepInfra provider');
+    }
+    return getAiProvider(options.aiProvider).chat.completions.create({
+      model: options.model,
+      messages: options.messages,
+      temperature: 0,
+      max_completion_tokens: options.maxTokens || 100,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: options.jsonSchemaName,
+          strict: true,
+          schema: z.toJSONSchema(options.schema)
+        }
+      },
+    });
+  }
+}
+
+export const countries = [
+  {
+    code: 'mx',
+    id: 2,
+    lang: 'es-mx'
+  },
+  {
+    code: 'es',
+    id: 1,
+    lang: 'es-es'
+  },
+  {
+    code: 'pl',
+    id: 14,
+    lang: 'pl'
+  },
+  {
+    code: 'ro',
+    id: 12,
+    lang: 'ro'
+  },
+  {
+    code: 'se',
+    id: 22,
+    lang: 'se'
+  }
+]

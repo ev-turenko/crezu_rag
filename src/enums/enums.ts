@@ -30,3 +30,23 @@ export enum LLMProvider {
     DEEPSEEK = 'deepseek',
     DEEPINFRA = 'deepinfra',
 }
+
+export enum TextFormat {
+    HTML = 'html',
+    MARKDOWN = 'markdown',
+}
+
+export enum MessageFormat {
+    TEXT = 'text',
+    OBJECT = 'object',
+}
+
+export enum DeepInfraModels {
+    LLAMA4_SCOUT_17B = 'meta-llama/Llama-4-Scout-17B-16E-Instruct',
+    LLAMA4_MAVERICK_17B = 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
+}
+
+export enum DeepSeekModels {
+    CHAT = 'deepseek-chat',
+    REASONER = 'deepseek-reasoner',
+}
