@@ -8,6 +8,31 @@ import { translations } from '../../utils/translations.js';
 
 
 
+
+const tools: any[] = [
+    {
+        type: "function",
+        name: "get_horoscope",
+        description: "Get today's horoscope for an astrological sign.",
+        parameters: {
+            type: "object",
+            properties: {
+                sign: {
+                    type: "string",
+                    description: "An astrological sign like Taurus or Aquarius",
+                },
+            },
+            required: ["sign"],
+        },
+    },
+];
+
+function getHoroscope(sign: string): string {
+  return sign + " Next Tuesday you will befriend a baby otter.";
+}
+
+
+
 export class InferenceController {
 
     public static getAiResponse(): any {

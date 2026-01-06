@@ -1,8 +1,7 @@
 import { OpenAI } from 'openai';
 import { DeepInfraModels, DeepSeekModels, LLMProvider } from '../enums/enums.js';
-import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
+import { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/index.mjs";
 import { getAiProvider } from '../ai/client.js';
-import { RequestOptions } from 'openai/src/core.js';
 import z from 'zod';
 
 export interface ChatMessage {
@@ -330,6 +329,7 @@ export function modifyLastMessage(options: {
 
 export async function getResponse(
   options: {
+    tools?: ChatCompletionTool[],
     messages: ChatCompletionMessageParam[],
     schema: z.ZodSchema,
     aiProvider: 'deepseek' | 'deepinfra',
@@ -341,6 +341,7 @@ export async function getResponse(
   if (options.aiProvider === 'deepseek') {
     return getAiProvider(options.aiProvider).chat.completions.create({
       model: options.model,
+      tools: options.tools,
       messages: modifyLastMessage(
         {
           messages: options.messages,
