@@ -17,7 +17,9 @@ const irrelevantChatMessageTranslations = {
     'es-mx': "Solo puedo ayudarle con la busqueda de préstamos, tarjetas de débito y tarjetas de crédito.",
     'es-es': "Solo puedo ayudarte con la busqueda de préstamos, tarjetas de débito y tarjetas de crédito.",
     'pl': "Możę Ci pomóc z wyszukiwaniem kredytu, kartą debetową i kartą kredytową.",
-    'en': "I can help you with loan search, debit card and credit card."
+    'en': "I can help you with loan search, debit card and credit card.",
+    'ro': "Pot sa va ajut cu cautarea de imprumuturi, carduri de debit si carduri de credit.",
+    'se': "Jag kan hjälpa dig med lånesökning, betalkort och kreditkort."
 }
 
 const serverErrorTryLaterTranslations = {
@@ -25,7 +27,9 @@ const serverErrorTryLaterTranslations = {
     'es-mx': "Lo siento, ha ocurrido un error en el servidor. Por favor, inténtelo de nuevo más tarde.",
     'es-es': "Lo siento, ha ocurrido un error en el servidor. Por favor, inténtelo de nuevo más tarde.",
     'pl': "Przepraszamy, wystąpił błąd serwera. Proszę spróbuj ponownie później.",
-    'en': "Sorry, there was an error on the server. Please try again later."
+    'en': "Sorry, there was an error on the server. Please try again later.",
+    'ro': "Ne pare rau, a apărut o eroare pe server. Vă rugăm să încercați din nou mai târziu.",
+    'se': "Tyvärr uppstod ett fel på servern. Vänligen försök igen senare."
 }
 
 const unsafeChatMessageTranslations = {
@@ -33,7 +37,9 @@ const unsafeChatMessageTranslations = {
     'es-mx': "Su mensaje no cumple con la política de seguridad de la conversación.",
     'es-es': "Tu mensaje no cumple con la política de seguridad de la conversación.",
     'pl': "Twoja wiadomość nie spełnia polityki bezpieczeństwa rozmowy.",
-    'en': "Your message does not meet the conversation security policy."
+    'en': "Your message does not meet the conversation security policy.",
+    'ro': "Mesajul dvs. nu respectă politica de securitate a conversației.",
+    'se': "Ditt meddelande uppfyller inte konversationens säkerhetspolicy."
 }
 
 const chatViolationMessageTranslations = {
@@ -41,7 +47,9 @@ const chatViolationMessageTranslations = {
     'es-mx': "El chat ha sido terminado por el sistema debido a violaciones previas de la política de seguridad. Por favor, inicie un nuevo chat.",
     'es-es': "El chat ha sido terminado por el sistema debido a violaciones previas de la política de seguridad. Por favor, inicie un nuevo chat.",
     'pl': "Czat zostało zakończone przez system z powodu poprzednich naruszeń polityki bezpieczeństwa. Proszę rozpocząć nowy czat.",
-    'en': "The chat has been terminated by the system due to previous violations of the safety policy. Please start a new chat."
+    'en': "The chat has been terminated by the system due to previous violations of the safety policy. Please start a new chat.",
+    'ro': "Chatul a fost încheiat de sistem din cauza încălcărilor anterioare ale politicii de securitate. Vă rugăm să începeți un nou chat.",
+    'se': "Chatten har avslutats av systemet på grund av tidigare överträdelser av säkerhetspolicyn. Vänligen starta en ny chatt."
 }
 
 const failedToSummarizeTranslations = {
@@ -49,7 +57,9 @@ const failedToSummarizeTranslations = {
     'es-mx': "No se pudo resumir el chat. Por favor, inicie un nuevo chat.",
     'es-es': "No se pudo resumir el chat. Por favor, inicie un nuevo chat.",
     'pl': "Nie udało się resumować czatu. Proszę rozpocząć nowy czat.",
-    'en': "Failed to summarize the chat. Please start a new chat."
+    'en': "Failed to summarize the chat. Please start a new chat.",
+    'ro': "Nu s-a reușit rezumarea chatului. Vă rugăm să începeți un nou chat.",
+    'se': "Misslyckades med att sammanfatta chatten. Vänligen starta en ny chatt."
 }
 
 export async function getAllChats(req: Request, res: Response) {
@@ -87,6 +97,16 @@ export async function getSuggestions(req: Request, res: Response) {
                 code: 'pl',
                 id: 14,
                 lang: 'pl'
+            },
+            {
+                code: 'ro',
+                id: 12,
+                lang: 'ro'
+            },
+            {
+                code: 'se',
+                id: 22,
+                lang: 'se'
             }
         ]
         const langParam = (req.query.lang as string) || countries.filter(country => country.id === body.params.country)[0].lang;
@@ -201,6 +221,16 @@ export async function processRequest(req: Request, res: Response) {
             code: 'pl',
             id: 14,
             lang: 'pl'
+        },
+        {
+            code: 'ro',
+            id: 12,
+            lang: 'ro'
+        },
+        {
+            code: 'se',
+            id: 22,
+            lang: 'se'
         }
     ]
     const langParam = (req.query.lang as string) || countries.filter(country => country.id === body.params.country)[0].lang;
@@ -265,7 +295,7 @@ export async function processRequest(req: Request, res: Response) {
 
         chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord
 
-        if (!langParam || !['es-mx', 'es-es', 'pl', 'en'].includes(langParam)) {
+        if (!langParam || !['es-mx', 'es-es', 'pl', 'en', 'ro', 'se'].includes(langParam)) {
             return res.status(400).json({
                 success: false,
                 chat_id: chatWithId.chat_id,
@@ -273,7 +303,7 @@ export async function processRequest(req: Request, res: Response) {
                 answer: [
                     {
                         type: ContentDataType.Notification,
-                        content: "Your message should be either in Spanish or English or Polish"
+                        content: `Your message should be either in either of these languages: es-mx, es-es, pl, en, ro, se`
                     }
                 ]
             });

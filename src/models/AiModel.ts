@@ -142,6 +142,42 @@ export class AIModel {
         category: 'loan',
       },
       {
+        langs: ['se'],
+        title: 'Lån',
+        text: 'Hitta det bästa lånet',
+        prompt:
+          'Jag behöver ett lån, hjälp mig att hitta det bästa lånet, baserat på allt jag vet',
+        id: 6,
+        category: 'loan',
+      },
+      {
+        langs: ['ro'],
+        title: 'Împrumuturi',
+        text: 'Găsiți cel mai bun împrumut',
+        prompt:
+          'Am nevoie de un împrumut, ajută-mă să găsesc cel mai bun împrumut, bazat pe tot ce știu',
+        id: 7,
+        category: 'loan',
+      },
+      {
+        langs: ['ro'],
+        title: 'Carduri de credit',
+        text: 'Vă voi ajuta să găsiți carduri de credit',
+        prompt:
+          'Am nevoie de un card de credit personalizat, ajută-mă să găsesc cea mai bună opțiune, bazat pe tot ce știi',
+        id: 8,
+        category: 'credit_card',
+      },
+      {
+        langs: ['se'],
+        title: 'Kreditkort',
+        text: 'Jag hjälper dig med att hitta kreditkort',
+        prompt:
+          'Jag behöver ett anpassat kreditkort, hjälp mig att hitta det bästa alternativet, baserat på allt du vet',
+        id: 9,
+        category: 'credit_card',
+      },
+      {
         langs: ['pl'],
         title: 'Kredyty',
         text: 'Znajdziesz najlepszy kredyt',
