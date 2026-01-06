@@ -266,6 +266,7 @@ export class AIModel {
   public static async summarizeChat(payload: ChatDbRecord, lang: string = "es-mx", format: "html" | "markdown" = "html"): Promise<{ can_decide: boolean, user_intent_summary: string, motivation: string } | null> {
     try {
       const userMessages = payload.messages.filter(el => el.role === "user").map(el => `---user message start---\n${el.data[0].content}\n---user message end---`).join('\n\n')
+      console.log("Summarization format:", format);
 
       const chatSummary = await sendToLLM([
         {
