@@ -452,8 +452,8 @@ export async function processRequest(req: Request, res: Response) {
                 chat_id: chatWithId.chat_id,
                 answer: [
                     {
-                        type: ContentDataType.Html,
-                        content: marked.parse(chatSummary.motivation)
+                        type: summaryFormat === 'markdown' ? ContentDataType.Markdown : ContentDataType.Html,
+                        content: summaryFormat === 'markdown' ? chatSummary.motivation : marked.parse(chatSummary.motivation)
                     }
                 ]
             });
