@@ -387,7 +387,12 @@ export async function processRequest(req: Request, res: Response) {
             });
         }
 
-        const chatSummary = await AIModel.summarizeChat(chatWithId, lang);
+        let summaryFormat = req.query.summary_format ?? 'html';
+        if(summaryFormat !== 'html' && summaryFormat !== 'markdown') {
+            summaryFormat = 'html';
+        }
+
+        const chatSummary = await AIModel.summarizeChat(chatWithId, lang, summaryFormat as 'html' | 'markdown');
 
         if (chatSummary === null) {
             return res.status(200).json({

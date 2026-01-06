@@ -227,7 +227,7 @@ export class AIModel {
     }
   }
 
-  public static async summarizeChat(payload: ChatDbRecord, lang: string = "es-mx"): Promise<{ can_decide: boolean, user_intent_summary: string, motivation: string } | null> {
+  public static async summarizeChat(payload: ChatDbRecord, lang: string = "es-mx", format: "html" | "markdown" = "html"): Promise<{ can_decide: boolean, user_intent_summary: string, motivation: string } | null> {
     try {
       const userMessages = payload.messages.filter(el => el.role === "user").map(el => `---user message start---\n${el.data[0].content}\n---user message end---`).join('\n\n')
 
@@ -262,7 +262,7 @@ export class AIModel {
             - user_intent_summary must be a concise but informative summary of the user's intent, needs, and any provided details (including both required and optional information).
             - motivation must be a concise but informative explanation of why the assistant can or cannot proceed to make a decision about relevant financial offers. If information is missing, politely suggest asking for the specific missing required details. For optional information, only mention it briefly if it could help, without insisting or requiring it. Format assistant_motivation as Markdown for better readability (e.g., use bullet points for suggestions).
 
-            motivation must be in the user's language: ${lang}. Motivations must be provided as bare unstyled html output.
+            motivation must be in the user's language: ${lang}. Motivations must be provided as bare ${format === "html" ? "unstyled" : ""} ${format} output.
 
             Reply strictly with the structured JSON object and nothing else.
           </base instruction>
