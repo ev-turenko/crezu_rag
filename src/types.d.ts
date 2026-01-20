@@ -26,10 +26,18 @@ interface Message {
   data: ChatDataItem[];
 }
 
+interface ChatDataItemAction {
+  text: string;
+  type: 'link' | 'button';
+  destination: string;
+}
+
 interface ChatDataItem {
   type?: ContentDataType;
   content: string | Offer[];
+  actions?: ChatDataItemAction[];
   tags?: string[];
+  isError?: boolean;
 }
 
 interface ChatNotification {
