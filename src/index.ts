@@ -5,6 +5,7 @@ import cors from 'cors';
 import inferenceRoutes from './routes/inferenceRoutes.js';
 import healthcheckRoutes from './routes/healthcheckRoutes.js';
 import employmentIndustriesRoutes from './routes/employmentIndustriesRoutes.js';
+import incomeTypesRoutes from './routes/incomeTypesRoutes.js';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(cookieParser());
 app.use('/api/ai', inferenceRoutes);
 app.use('/api/health', healthcheckRoutes);
 app.use('/api/fields/industries', employmentIndustriesRoutes);
+app.use('/api/fields/income-types', incomeTypesRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
