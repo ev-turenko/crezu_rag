@@ -3,6 +3,6 @@ import { getIncomeTypes } from '../controllers/incomeTypesController.js';
 
 const router = Router();
 
-router.get('/income-types', getIncomeTypes);
+router.get('/', getIncomeTypes);
 
 export default router;
