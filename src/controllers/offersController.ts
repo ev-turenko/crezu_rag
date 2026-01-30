@@ -38,7 +38,7 @@ export class OffersController {
             appendParam('size', size);
 
             try {
-                const url = new URL('https://finmart.mx/api/offers');
+                const url = new URL('https://finmatcher.com/api/offer');
                 url.search = params.toString();
 
                 const response = await fetch(url.toString());

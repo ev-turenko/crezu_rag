@@ -21,7 +21,7 @@ app.use('/api/ai', inferenceRoutes);
 app.use('/api/health', healthcheckRoutes);
 app.use('/api/fields/industries', employmentIndustriesRoutes);
 app.use('/api/fields/income-types', incomeTypesRoutes);
-app.use('/api/offers', offersRoutes);
+app.use('/api/offer', offersRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
