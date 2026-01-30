@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/common.js";
 import { ChatIntent, ChatRole, LLMProvider, PbCollections } from '../enums/enums.js';
 import PocketBase from 'pocketbase';
-import { Suggestion } from '../types.js';
+import { Suggestion } from '../types/types.js';
 
 
 export interface ChatMessage {

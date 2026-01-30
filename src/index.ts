@@ -6,6 +6,7 @@ import inferenceRoutes from './routes/inferenceRoutes.js';
 import healthcheckRoutes from './routes/healthcheckRoutes.js';
 import employmentIndustriesRoutes from './routes/employmentIndustriesRoutes.js';
 import incomeTypesRoutes from './routes/incomeTypesRoutes.js';
+import offersRoutes from './routes/offersRoutes.js';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.use('/api/ai', inferenceRoutes);
 app.use('/api/health', healthcheckRoutes);
 app.use('/api/fields/industries', employmentIndustriesRoutes);
 app.use('/api/fields/income-types', incomeTypesRoutes);
+app.use('/api/offers', offersRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
