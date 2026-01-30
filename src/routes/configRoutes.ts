@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { getEmploymentIndustries } from '../controllers/employmentIndustriesController.js';
+import { getConfig } from '../controllers/configController.js';
 
 const router = Router();
 
-router.get('/', getEmploymentIndustries);
+router.get('/', getConfig());
 
 export default router;
