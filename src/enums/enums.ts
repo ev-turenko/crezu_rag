@@ -3,6 +3,7 @@ export enum ContentDataType {
     Offers = 'offers',
     Html = 'html',
     Notification = 'notification',
+    AppOffers = 'app_offers',
 }
 
 export enum ChatRole {

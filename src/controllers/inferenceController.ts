@@ -9,7 +9,7 @@ TODO:
 import { Request, Response } from 'express';
 import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
 import { ChatIntent, ChatRole, ContentDataType } from '../enums/enums.js';
-import { getSortedffersAndCategories, sendToLLM } from '../utils/common.js';
+import { getSortedffersAndCategories, sendToLLM, fetchOffersByIds } from '../utils/common.js';
 import { marked } from 'marked';
 
 const irrelevantChatMessageTranslations = {
@@ -233,12 +233,12 @@ export async function processRequest(req: Request, res: Response) {
             lang: 'se'
         }
     ]
-    const langParam = (req.query.lang as string) || countries.filter(country => country.id === body.params.country)[0].lang;
+    const source = (req.query.source as string) || 'web';
+    const langParam = (req.query.lang as string) || countries.filter(country => `${country.id}` === `${body.params.country}`)[0].lang;
     const lang: 'es-mx' | 'es-es' | 'pl' | 'en' = langParam as ('es-mx' | 'es-es' | 'pl' | 'en');
     try {
 
         const ip = req.headers['x-forwarded-for'] || req.ip || null;
-
         if (!body || !body.message || !body.params.client_id || !body.params.country || !body.params.provider) {
             return res.status(400).json({
                 success: false,
@@ -418,7 +418,7 @@ export async function processRequest(req: Request, res: Response) {
         }
 
         let summaryFormat = req.query.summary_format ?? 'html';
-        if(summaryFormat !== 'html' && summaryFormat !== 'markdown') {
+        if (summaryFormat !== 'html' && summaryFormat !== 'markdown') {
             summaryFormat = 'html';
         }
 
@@ -485,6 +485,28 @@ export async function processRequest(req: Request, res: Response) {
                 }
             ]
         });
+
+        
+
+        if (source === 'app') {
+            const resolvedOffers = await fetchOffersByIds(loanResponse, country.code);
+
+            return res.status(200).json({
+                success: true,
+                chat_id: chatWithId.chat_id,
+                answer: [
+                    {
+                        type: ContentDataType.Markdown,
+                        content: textualResponse
+                    },
+                    {
+                        type: ContentDataType.Offers,
+                        content: resolvedOffers
+                    }
+                ]
+            });
+        }
+
         return res.status(200).json({
             success: true,
             chat_id: chatWithId.chat_id,

@@ -284,3 +284,27 @@ export async function getSortedffersAndCategories(countryCode: string = 'mx'): P
 export function getOffersByType(offers: OriginalOfferData[], type: string): OriginalOfferData[] {
   return offers.filter(offer => offer.offer_type.type === type);
 }
+
+export async function fetchOffersByIds(offerIds: number[] | string[], countryCode: string): Promise<any[]> {
+  const offerPromises = offerIds.map(async (offerId) => {
+    const url = new URL('https://finmatcher.com/api/offer');
+    url.searchParams.append('id', String(offerId));
+    url.searchParams.append('country_code', countryCode);
+    
+    const response = await fetch(url.toString());
+    if (response.status === 200) {
+      const data = await response.json();
+      return data.items?.[0] || null;
+    }
+    return null;
+  });
+
+  const settledOffers = await Promise.allSettled(offerPromises);
+  const resolvedOffers = settledOffers
+    .filter((result): result is PromiseFulfilledResult<any> => 
+      result.status === 'fulfilled' && result.value !== null
+    )
+    .map(result => result.value);
+
+  return resolvedOffers;
+}
