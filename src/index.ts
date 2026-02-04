@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import os from 'os';
 import inferenceRoutes from './routes/inferenceRoutes.js';
 import healthcheckRoutes from './routes/healthcheckRoutes.js';
 import employmentIndustriesRoutes from './routes/employmentIndustriesRoutes.js';
@@ -13,7 +14,7 @@ import countriesRoutes from './routes/countriesRoutes.js';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = parseInt(process.env.PORT || '3000', 10);
 
 app.use(cors());
 app.use(express.json());
@@ -27,6 +28,20 @@ app.use('/api/offer', offersRoutes);
 app.use('/api/config', configRoutes)
 app.use('/api/countries', countriesRoutes);
 
-app.listen(port, () => {
+const getLocalIpAddress = () => {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]!) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'N/A';
+};
+
+app.listen(port, '0.0.0.0', () => {
+  const localIp = getLocalIpAddress();
   console.log(`Server is running on http://localhost:${port}`);
+  console.log(`Network access: http://${localIp}:${port}`);
 });

@@ -266,10 +266,14 @@ export async function processRequest(req: Request, res: Response) {
             });
         };
 
-        const country = countries.filter(country => country.id === body.params.country)[0];
+        const country = countries.filter(country => `${country.id}` === `${body.params.country}`)[0];
+
+        console.log("STEP 1 - Request received:", body.message);
 
         if (!body.params.chat_id) chatWithId = await AIModel.initChat(body, `${ip}`);
         else chatWithId = await AIModel.getChatById(body.params.chat_id);
+
+        console.log("STEP 2 - Request received");
 
         if (chatWithId === null) {
             return res.status(500).json({
@@ -283,6 +287,7 @@ export async function processRequest(req: Request, res: Response) {
                 ]
             });
         }
+        console.log("STEP 2 - Request received");
 
         await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
             role: ChatRole.User,
@@ -292,6 +297,7 @@ export async function processRequest(req: Request, res: Response) {
                 }
             ]
         });
+        console.log("STEP 4 - Request received");
 
         chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord
 
@@ -309,6 +315,8 @@ export async function processRequest(req: Request, res: Response) {
             });
         }
 
+        console.log("STEP 5 - Request received");
+
         if (chatWithId.is_terminated_by_system) {
             return res.status(200).json({
                 success: false,
@@ -321,6 +329,8 @@ export async function processRequest(req: Request, res: Response) {
                 ]
             });
         }
+
+        console.log("STEP 6 - Request received");
 
         const isChatSafe = await AIModel.isMessageSafe(chatWithId);
 
@@ -346,10 +356,19 @@ export async function processRequest(req: Request, res: Response) {
             })
         }
 
+        console.log("STEP 7 - Request received");
+
+        console.log("CHAT RECORD:", chatWithId);
+
         chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord;
+
+        console.log("STEP 8 - Request received");
+        console.log("DEBUG RECORD ", country)
 
         const offersAndIntents = await getSortedffersAndCategories(country.code);
         const chatIntent = await AIModel.getIntent(chatWithId, [...offersAndIntents.types.map(el => `intent_${el}`), ChatIntent.OTHER, ChatIntent.FINANCIAL_ADVICE]);
+
+        console.log("STEP 9 - Request received");
 
         if (chatIntent.intent === ChatIntent.OTHER) {
             await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
@@ -372,6 +391,8 @@ export async function processRequest(req: Request, res: Response) {
                 ]
             });
         }
+
+        console.log("STEP 10 - Request received");
 
         if (chatIntent.intent === ChatIntent.FINANCIAL_ADVICE) {
             const adviceResponse = await sendToLLM([
@@ -523,7 +544,7 @@ export async function processRequest(req: Request, res: Response) {
         });
 
     } catch (error) {
-        console.error('Error processing request:', error);
+        console.error('Error processing request 1:', error);
         try {
             const chatWithId = await AIModel.getChatById(req.body.params.chat_id)
             if (!chatWithId) {
@@ -558,7 +579,7 @@ export async function processRequest(req: Request, res: Response) {
             });
 
         } catch (error) {
-            console.error('Error processing request:', error);
+            console.error('Error processing request 2:', error);
         }
         return res.status(500).json({
             success: false,

@@ -119,6 +119,7 @@ export class AIModel {
   }
 
   public static async getChatById(chatId: string): Promise<ChatDbRecord | null> {
+    console.log("Fetching chat by ID:", chatId);
     const pb = new PocketBase('https://pb.cashium.pro/');
     pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
     try {
