@@ -304,7 +304,16 @@ export async function fetchOffersByIds(offerIds: number[] | string[], countryCod
     .filter((result): result is PromiseFulfilledResult<any> => 
       result.status === 'fulfilled' && result.value !== null
     )
-    .map(result => result.value);
+    .map(result => {
+      const offer = result.value;
+      return {
+        id: offer.id,
+        headers: offer.headers,
+        name: offer.name,
+        url: offer.url,
+        avatar: offer.avatar
+      }
+    });
 
   return resolvedOffers;
 }
