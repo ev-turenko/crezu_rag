@@ -254,7 +254,7 @@ export async function processRequest(req: Request, res: Response) {
 
         let chatWithId: ChatDbRecord | null = null;
 
-        if (countries.filter(country => country.id === body.params.country).length === 0) {
+        if (countries.filter(country => `${country.id}` === `${body.params.country}`).length === 0) {
             return res.status(400).json({
                 success: false,
                 answer: [
