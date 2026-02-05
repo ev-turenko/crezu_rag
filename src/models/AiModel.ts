@@ -43,6 +43,7 @@ export interface ChatDbRecord {
   chat_id: string;
   messages: ChatMessage[];
   is_terminated_by_system: boolean;
+  is_public?: boolean;
   reported_messages: number[] | null;
   created: string;
   updated: string;
@@ -83,6 +84,19 @@ export class AIModel {
     } catch (error) {
       console.log('Error updating reported messages:', error);
       return null
+    }
+  }
+
+  public static async updateChatPublicStatus(chatId: string, isPublic: boolean): Promise<ChatDbRecord | null> {
+    const pb = new PocketBase('https://pb.cashium.pro/');
+    pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
+    try {
+      const chat = await pb.collection(PbCollections.CHATS).getFirstListItem<ChatDbRecord>(`chat_id="${chatId}"`);
+      const updatedChat = await pb.collection(PbCollections.CHATS).update(chat.id, { is_public: isPublic });
+      return updatedChat as ChatDbRecord;
+    } catch (error) {
+      console.log('Error updating chat public status:', error);
+      return null;
     }
   }
 

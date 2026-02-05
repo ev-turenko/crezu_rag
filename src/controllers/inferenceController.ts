@@ -4,7 +4,7 @@ TODO:
 2) improve routing and scroing based on JSON, not on LLM sentiment.
 */
 
-
+// 1e3912eb-7b0c-4875-bbaf-0c9096b0e4e0
 
 import { Request, Response } from 'express';
 import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
@@ -167,6 +167,46 @@ export async function reportMessage(req: Request, res: Response) {
         });
     }
 
+}
+
+export async function shareChat(req: Request, res: Response) {
+    const chatId = req.params.chat_id;
+    const { is_public } = req.body;
+    
+    try {
+        if (!chatId) {
+            return res.status(400).json({
+                success: false,
+                error: 'chat_id is required'
+            });
+        }
+
+        if (typeof is_public !== 'boolean') {
+            return res.status(400).json({
+                success: false,
+                error: 'is_public must be a boolean'
+            });
+        }
+
+        const updatedChat = await AIModel.updateChatPublicStatus(chatId, is_public);
+        
+        if (!updatedChat) {
+            return res.status(404).json({
+                success: false,
+                error: 'Chat not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true
+        });
+    } catch (error) {
+        console.error('Error sharing chat:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
 }
 
 export async function getHistory(req: Request, res: Response) {
