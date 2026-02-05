@@ -533,6 +533,41 @@ export async function processRequest(req: Request, res: Response) {
             maxTokens: 300,
         });
 
+        
+
+        if (source === 'app') {
+            const resolvedOffers = await fetchOffersByIds(loanResponse, country.code);
+            
+            await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
+                role: ChatRole.Assistant,
+                data: [
+                    {
+                        type: ContentDataType.Markdown,
+                        content: textualResponse
+                    },
+                    {
+                        type: ContentDataType.Offers,
+                        content: resolvedOffers
+                    }
+                ]
+            });
+
+            return res.status(200).json({
+                success: true,
+                chat_id: chatWithId.chat_id,
+                answer: [
+                    {
+                        type: ContentDataType.Markdown,
+                        content: textualResponse
+                    },
+                    {
+                        type: ContentDataType.AppOffers,
+                        content: resolvedOffers
+                    }
+                ]
+            });
+        }
+
         await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
             role: ChatRole.Assistant,
             data: [
@@ -546,27 +581,6 @@ export async function processRequest(req: Request, res: Response) {
                 }
             ]
         });
-
-        
-
-        if (source === 'app') {
-            const resolvedOffers = await fetchOffersByIds(loanResponse, country.code);
-
-            return res.status(200).json({
-                success: true,
-                chat_id: chatWithId.chat_id,
-                answer: [
-                    {
-                        type: ContentDataType.Markdown,
-                        content: textualResponse
-                    },
-                    {
-                        type: ContentDataType.Offers,
-                        content: resolvedOffers
-                    }
-                ]
-            });
-        }
 
         return res.status(200).json({
             success: true,
