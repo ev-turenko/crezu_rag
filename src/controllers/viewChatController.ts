@@ -243,16 +243,16 @@ export class ViewChatController {
                             </div>
 
                             <!-- App Offers (full offer objects) -->
-                            <div v-if="item.type === 'app_offers'" class="space-y-4">
+                            <div v-if="item.type === 'app_offers'">
                                 <div v-if="!Array.isArray(item.content) || item.content.length === 0" 
                                      class="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
                                     No offers available
                                 </div>
-                                <div v-else class="space-y-4">
+                                <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                     <div v-for="offer in item.content" 
                                          :key="offer.id" 
-                                         class="border border-gray-200 rounded-lg overflow-hidden hover:border-blue-500 hover:shadow-md transition-all">
-                                        <div class="p-5">
+                                         class="border border-gray-200 rounded-lg overflow-hidden hover:border-blue-500 hover:shadow-md transition-all flex flex-col">
+                                        <div class="p-5 flex-1 flex flex-col">
                                             <!-- Offer Header -->
                                             <div class="flex items-start space-x-4 mb-4">
                                                 <img :src="offer.avatar || 'https://via.placeholder.com/64'" 
@@ -275,14 +275,14 @@ export class ViewChatController {
                                                     </div>
                                                 </div>
                                             </div>
-
+                                            <br/>
                                             <!-- Action Button -->
                                             <a v-if="offer.url" 
                                                :href="offer.url" 
                                                target="_blank" 
                                                rel="noopener noreferrer"
-                                               class="mt-5 block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-3 px-4 rounded-lg font-medium transition-colors">
-                                                Ver Detalles →
+                                               class="mt-auto pt-5 block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-3 px-4 rounded-lg font-medium transition-colors">
+                                                Details →
                                             </a>
                                         </div>
                                     </div>
