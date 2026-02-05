@@ -317,3 +317,13 @@ export async function fetchOffersByIds(offerIds: number[] | string[], countryCod
 
   return resolvedOffers;
 }
+
+export const resolveTranslation = <T>(
+  id: number | undefined,
+  list: { id: number; lang: string }[],
+  translations: Record<string, T>,
+  defaultKey: keyof typeof translations = 'en'
+): T => {
+  const lang = list.find(item => item.id === id)?.lang ?? defaultKey;
+  return translations[lang as keyof typeof translations] ?? translations[defaultKey];
+};
