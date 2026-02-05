@@ -295,7 +295,7 @@ export class ViewChatController {
 
             <!-- Footer -->
             <div class="mt-8 text-center">
-                <p class="text-sm text-gray-500">Powered by Crezu RAG</p>
+                <p class="text-sm text-gray-500">Powered by Finmart and Finmatcher</p>
             </div>
         </div>
     </div>
