@@ -546,7 +546,7 @@ export async function processRequest(req: Request, res: Response) {
                         content: textualResponse
                     },
                     {
-                        type: ContentDataType.Offers,
+                        type: ContentDataType.AppOffers,
                         content: resolvedOffers
                     }
                 ]

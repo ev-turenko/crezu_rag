@@ -62,6 +62,8 @@ export class ViewChatController {
                 data: msg.data
             }));
 
+            console.log('Rendering chat with messages:', JSON.stringify(messagesData, null, 2));
+
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -252,23 +254,25 @@ export class ViewChatController {
                                          class="border border-gray-200 rounded-lg overflow-hidden hover:border-blue-500 hover:shadow-md transition-all">
                                         <div class="p-5">
                                             <!-- Offer Header -->
-                                            <div class="flex items-start space-x-4">
+                                            <div class="flex items-start space-x-4 mb-4">
                                                 <img :src="offer.avatar || 'https://via.placeholder.com/64'" 
-                                                     :alt="offer.bank?.name || 'Bank'" 
-                                                     class="w-16 h-16 rounded-lg object-contain bg-gray-50 p-2 flex-shrink-0">
+                                                     :alt="offer.name" 
+                                                     class="w-16 h-16 rounded-lg object-contain bg-white border border-gray-100 p-2 flex-shrink-0">
                                                 <div class="flex-1 min-w-0">
-                                                    <h3 class="text-lg font-semibold text-gray-900 mb-1">{{ offer.name }}</h3>
-                                                    <p class="text-sm text-gray-500">{{ offer.bank?.name || 'Unknown Bank' }}</p>
+                                                    <h3 class="text-lg font-semibold text-gray-900">{{ offer.name }}</h3>
                                                 </div>
                                             </div>
 
                                             <!-- Offer Details -->
-                                            <div v-if="offer.headers && offer.headers.length > 0" class="mt-4 space-y-2">
-                                                <div v-for="header in offer.headers.slice(0, 3)" 
+                                            <div v-if="offer.headers && offer.headers.length > 0" class="space-y-3">
+                                                <div v-for="header in offer.headers" 
                                                      :key="header.title" 
-                                                     class="flex justify-between items-center py-2 border-t border-gray-100">
-                                                    <span class="text-sm text-gray-600">{{ header.title }}</span>
-                                                    <span class="text-sm font-semibold text-gray-900">{{ header.value }}</span>
+                                                     class="flex justify-between items-start gap-4 py-2 border-t border-gray-100 first:border-t-0">
+                                                    <span class="text-sm text-gray-600 font-medium">{{ header.title }}</span>
+                                                    <div class="text-right">
+                                                        <span class="text-sm font-semibold text-gray-900 block">{{ header.value }}</span>
+                                                        <span v-if="header.additional_term" class="text-xs text-gray-500 block mt-0.5">{{ header.additional_term }}</span>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -276,8 +280,9 @@ export class ViewChatController {
                                             <a v-if="offer.url" 
                                                :href="offer.url" 
                                                target="_blank" 
-                                               class="mt-4 block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2.5 px-4 rounded-lg font-medium transition-colors">
-                                                View Details
+                                               rel="noopener noreferrer"
+                                               class="mt-5 block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-3 px-4 rounded-lg font-medium transition-colors">
+                                                Ver Detalles →
                                             </a>
                                         </div>
                                     </div>
