@@ -7,6 +7,7 @@ export function getConfig() {
         const appVersion = req.query.app_version as string | undefined;
         const appBuildNumber = req.query.app_build_number as string | undefined;
         const platform = req.query.platform as string | undefined;
+        const lang = req.query.lang as string | undefined;
         let client_id = req.query.client_id as string | undefined;
         if(!client_id) {
             // generate v4 uuid
@@ -15,6 +16,7 @@ export function getConfig() {
         return res.json({
             client_id: client_id,
             version: appBuildNumber,
+            feedDisclaimer: "AI generated suggestions. AI data may be outdated or inaccurate.",
             supportedLanguages: ['en', 'es', 'pl'],
             regScreens: ['auth1', 'auth2', 'auth3', 'auth4', 'auth5'],
             regScreensPolicy: "enforce", // enforce | optional | disabled
