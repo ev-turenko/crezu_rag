@@ -10,6 +10,8 @@ import incomeTypesRoutes from './routes/incomeTypesRoutes.js';
 import offersRoutes from './routes/offersRoutes.js';
 import configRoutes from './routes/configRoutes.js';
 import countriesRoutes from './routes/countriesRoutes.js';
+import viewChatRoutes from './routes/viewChatRoutes.js';
+
 
 dotenv.config();
 
@@ -27,6 +29,7 @@ app.use('/api/fields/income-types', incomeTypesRoutes);
 app.use('/api/offer', offersRoutes);
 app.use('/api/config', configRoutes)
 app.use('/api/countries', countriesRoutes);
+app.use('/api/view', viewChatRoutes);
 
 const getLocalIpAddress = () => {
   const interfaces = os.networkInterfaces();
