@@ -5,7 +5,7 @@ import { countries, getResponse, resolveTranslation } from '../utils/common.js';
 import { DeepSeekModels } from '../enums/enums.js';
 import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
 import { translations } from '../utils/translations.js';
-import { InferenceRequest } from '../types/types.js';
+import { InferenceBody, InferenceRequest } from '../types/types.js';
 
 const intentSchema = z.object({
     message_objective: z.enum(['DANGER', 'LOAN', 'FINANCE', 'OTHER', 'CURRENCY_EXCHANGE']).describe(
@@ -38,14 +38,29 @@ const summarySchema = z.object({
 
 export function checkSafety(): any {
     return async (req: InferenceRequest, res: Response, next: NextFunction) => {
-        const messages: ChatCompletionMessageParam[] = JSON.parse(JSON.stringify(req.messages)) || [];
-
-        messages.push({ role: 'user', content: req.message });
-
-        if (req.message.trim().length === 0) {
+        const messages: ChatCompletionMessageParam[] = req.body?.messages ? JSON.parse(JSON.stringify(req.body.messages)) || [] : [];
+        const body: InferenceBody = req.body;
+        if(!body?.params?.country) {
             return res.status(400).json({
                 success: false,
-                message: 'Message cannot be empty'
+                message: resolveTranslation(
+                    undefined,
+                    countries,
+                    translations.emptyCountryCodeMessage
+                )
+            })
+        }
+
+        messages.push({ role: 'user', content: req.body.message });
+
+        if (req.body.message.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: resolveTranslation(
+                    body.params.country,
+                    countries,
+                    translations.emptyMessage
+                )
             })
         }
 
@@ -65,13 +80,11 @@ export function checkSafety(): any {
                 maxTokens: 100
             });
 
-
-
             const intentResult = JSON.parse(intentCheckResponse.choices[0].message?.content?.trim() || '{}') as z.infer<typeof intentSchema>;
 
             if (['DANGER'].includes(intentResult.message_objective)) {
                 const unsafeMessage = resolveTranslation(
-                    req.params.country,
+                    body.params.country,
                     countries,
                     translations.unsafeChatMessage
                 );
@@ -87,7 +100,7 @@ export function checkSafety(): any {
 
             if (['OTHER'].includes(intentResult.message_objective)) {
                 const onlyFinanceMessage = resolveTranslation(
-                    req.params.country,
+                    body.params.country,
                     countries,
                     translations.onlyFinanceMessage
                 );
@@ -118,13 +131,14 @@ export function checkSafety(): any {
 
             const summaryResult = JSON.parse(summaryResponse.choices[0].message?.content?.trim() || '{}') as z.infer<typeof summarySchema>;
 
+            req.system = req.system || {};
             req.system.summaries = summaryResult;
 
             next();
 
         } catch (error) {
             const serverErrorMessage = resolveTranslation(
-                req.params.country,
+                body.params.country,
                 countries,
                 translations.serverErrorMessage
             );

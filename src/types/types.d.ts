@@ -53,10 +53,10 @@ interface Offer {
 }
 
 interface Suggestion {
-	title: string;
-	text: string;
-	prompt: string;
-	id: number;
+  title: string;
+  text: string;
+  prompt: string;
+  id: number;
   category: string
 }
 
@@ -65,20 +65,23 @@ interface SuggestionsResponse {
   suggestions?: Suggestion[];
 }
 
-export interface InferenceRequest extends Request {
-  system: {
-    summaries?: {
-      general_summary?: string | null,
-      last_intent_summary?: string | null
-    }
-  }
-  message: string
-  messages?: ChatMessage[]
+export interface InferenceBody {
+  message: string;
+  messages?: ChatMessage[];
   params: {
-    country: string | number
-    provider: string | number
-    expflow?: string | null
-    chat_id?: string | null
-    client_id?: string | null
-  }
+    country: string | number;
+    provider: string | number;
+    expflow?: string | null;
+    chat_id?: string | null;
+    client_id?: string | null;
+  };
+}
+
+export interface InferenceRequest extends Request<ParamsDictionary, any, InferenceBody, ParsedQs> {
+  system?: {
+    summaries?: {
+      general_summary?: string | null;
+      last_intent_summary?: string | null;
+    };
+  };
 }

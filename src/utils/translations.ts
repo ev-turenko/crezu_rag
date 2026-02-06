@@ -38,9 +38,31 @@ const failedToGenerateResponseTranslations = {
     'se': "Det gick inte att generera ett svar. Vänligen försök igen."
 }
 
+const emptyCountryCodeMessageTranslations = {
+    'es': "El código de país es obligatorio.",
+    'es-mx': "El código de país es obligatorio.",
+    'es-es': "El código de país es obligatorio.",
+    'pl': "Kod kraju jest obowiązkowy.",
+    'en': "Country code is required.",
+    'ro': "Codul țării este obligatoriu.",
+    'se': "Landskoden är obligatorisk."
+}
+
+const emptyMessageTranslations = {
+    'es': "El mensaje no puede estar vacío.",
+    'es-mx': "El mensaje no puede estar vacío.",
+    'es-es': "El mensaje no puede estar vacío.",
+    'pl': "Wiadomość nie może być pusta.",
+    'en': "Message cannot be empty.",
+    'ro': "Mesajul nu poate fi gol.",
+    'se': "Meddelandet kan inte vara tomt."
+}
+
 export const translations = {
     unsafeChatMessage: unsafeChatMessageTranslations,
     onlyFinanceMessage: onlyFinanceMessageTranslations,
     serverErrorMessage: serverErrorMessageTranslations,
-    generationErrorMessage: failedToGenerateResponseTranslations
+    generationErrorMessage: failedToGenerateResponseTranslations,
+    emptyCountryCodeMessage: emptyCountryCodeMessageTranslations,
+    emptyMessage: emptyMessageTranslations
 }
