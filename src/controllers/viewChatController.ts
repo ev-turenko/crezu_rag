@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import puppeteer from 'puppeteer';
 import { AIModel, ChatDbRecord } from '../models/AiModel.js';
 
 export class ViewChatController {
@@ -25,6 +26,56 @@ export class ViewChatController {
 
         } catch (error) {
             console.error('Error viewing shared chat:', error);
+            return res.status(500).send(this.renderErrorPage('Internal server error'));
+        }
+    }
+
+    async downloadSharedChatPdf(req: Request, res: Response) {
+        const chatId = req.params.chat_id;
+
+        try {
+            if (!chatId) {
+                return res.status(400).send(this.renderErrorPage('Invalid chat ID'));
+            }
+
+            const chat: ChatDbRecord | null = await AIModel.getChatById(chatId);
+
+            if (!chat) {
+                return res.status(404).send(this.renderErrorPage('Chat not found'));
+            }
+
+            if (!chat.is_public) {
+                return res.status(403).send(this.renderErrorPage('This chat is not public'));
+            }
+
+            const html = this.renderChatPage(chat);
+
+            const browser = await puppeteer.launch({
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
+            });
+
+            try {
+                const page = await browser.newPage();
+                await page.setContent(html, { waitUntil: 'networkidle0' });
+
+                const pdfBuffer = await page.pdf({
+                    format: 'A4',
+                    printBackground: true
+                });
+
+                res.setHeader('Content-Type', 'application/pdf');
+                res.setHeader(
+                    'Content-Disposition',
+                    `attachment; filename="chat-${chatId}.pdf"`
+                );
+
+                return res.status(200).send(pdfBuffer);
+            } finally {
+                await browser.close();
+            }
+
+        } catch (error) {
+            console.error('Error downloading chat PDF:', error);
             return res.status(500).send(this.renderErrorPage('Internal server error'));
         }
     }

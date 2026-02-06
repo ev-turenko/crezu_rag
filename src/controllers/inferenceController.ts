@@ -622,3 +622,10 @@ export async function processRequest(req: Request, res: Response) {
         });
     }
 }
+
+
+export function processQuery() {
+    return async (req: Request, res: Response) => {
+
+    }
+}
