@@ -2,13 +2,14 @@
 import type { Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { countries, getResponse, resolveTranslation } from '../utils/common.js';
-import { DeepSeekModels } from '../enums/enums.js';
+import { ChatRole, DeepSeekModels } from '../enums/enums.js';
 import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
 import { translations } from '../utils/translations.js';
 import { InferenceBody, InferenceRequest } from '../types/types.js';
+import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
 
 const intentSchema = z.object({
-    message_objective: z.enum(['DANGER', 'LOAN', 'FINANCE', 'OTHER', 'CURRENCY_EXCHANGE']).describe(
+    message_objective: z.enum(['DANGER', 'LOAN', 'CREDIT_CARD', 'DEBIT_CARD', 'BANK_ACCOUNT', 'FINANCE', 'OTHER', 'CURRENCY_EXCHANGE']).describe(
         "The primary objective of the user's message. " +
         "- 'DANGER': The user is asking about something potentially harmful or unsafe. " +
         "- 'LOAN': The user is asking about a loan. " +
@@ -40,7 +41,11 @@ export function checkSafety(): any {
     return async (req: InferenceRequest, res: Response, next: NextFunction) => {
         const messages: ChatCompletionMessageParam[] = req.body?.messages ? JSON.parse(JSON.stringify(req.body.messages)) || [] : [];
         const body: InferenceBody = req.body;
-        if(!body?.params?.country) {
+        const ip = req.headers['x-forwarded-for'] || req.ip || null;
+
+        let chatWithId: ChatDbRecord | null = null;
+
+        if (!body?.params?.country) {
             return res.status(400).json({
                 success: false,
                 message: resolveTranslation(
@@ -65,20 +70,37 @@ export function checkSafety(): any {
         }
 
         try {
-            const intentCheckResponse = await getResponse({
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are a multilingual text safety manager and intent classifier. Check the provided text and tell to which category it belongs based on provided schema. Loans are always LEGAL!`
-                    },
-                    ...messages
-                ],
-                schema: intentSchema,
-                aiProvider: 'deepseek',
-                model: DeepSeekModels.CHAT,
-                jsonSchemaName: 'safety_check',
-                maxTokens: 100
-            });
+
+
+            if (!body.params.chat_id) chatWithId = await AIModel.initChat(body as ChatProperties, `${ip}`);
+
+
+            const [_savedMessageRecord, intentCheckResponse] = await Promise.all([
+                AIModel.saveMessageToChat(chatWithId!.chat_id, false, {
+                    role: ChatRole.User,
+                    data: [
+                        {
+                            content: body.message
+                        }
+                    ]
+                }),
+
+                getResponse({
+                    messages: [
+                        {
+                            role: 'system',
+                            content: `You are a multilingual text safety manager and intent classifier. Check the provided text and tell to which category it belongs based on provided schema. Loans are always LEGAL!`
+                        },
+                        ...messages
+                    ],
+                    schema: intentSchema,
+                    aiProvider: 'deepseek',
+                    model: DeepSeekModels.CHAT,
+                    jsonSchemaName: 'safety_check',
+                    maxTokens: 100
+                })
+            ])
+
 
             const intentResult = JSON.parse(intentCheckResponse.choices[0].message?.content?.trim() || '{}') as z.infer<typeof intentSchema>;
 
