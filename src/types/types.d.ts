@@ -66,7 +66,14 @@ interface SuggestionsResponse {
 }
 
 export interface InferenceRequest extends Request {
+  system: {
+    summaries?: {
+      general_summary?: string | null,
+      last_intent_summary?: string | null
+    }
+  }
   message: string
+  messages?: ChatMessage[]
   params: {
     country: string | number
     provider: string | number

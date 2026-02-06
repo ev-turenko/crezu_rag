@@ -322,12 +322,12 @@ export async function fetchOffersByIds(offerIds: number[] | string[], countryCod
 }
 
 export const resolveTranslation = <T>(
-  id: number | undefined,
-  list: { id: number; lang: string }[],
+  id: number | string | undefined,
+  list: { id: number | string; lang: string }[],
   translations: Record<string, T>,
   defaultKey: keyof typeof translations = 'en'
 ): T => {
-  const lang = list.find(item => item.id === id)?.lang ?? defaultKey;
+  const lang = list.find(item => `${item.id}` === `${id}`)?.lang ?? defaultKey;
   return translations[lang as keyof typeof translations] ?? translations[defaultKey];
 };
 
@@ -350,7 +350,7 @@ export function modifyLastMessage(options: {
 
   const originalContent = newMessages[index].content;
   const modifiedContent =
-    options.position === 'prepend' ? options.text + originalContent : originalContent + options.text;
+    options.position === 'prepend' ? `${options.text}\n` + originalContent : originalContent + `\n${options.text}`;
   newMessages[index] = {
     ...newMessages[index],
     content: modifiedContent,
