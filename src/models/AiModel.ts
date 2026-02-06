@@ -3,7 +3,8 @@ import { normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/com
 import { ChatIntent, ChatRole, LLMProvider, PbCollections } from '../enums/enums.js';
 import PocketBase from 'pocketbase';
 import { Suggestion } from '../types/types.js';
-
+import OpenAI from 'openai';
+import dotenv from 'dotenv';
 
 export interface ChatMessage {
   index: number;
@@ -569,5 +570,36 @@ export class AIModel {
   public static extractInformation(payload: ChatPayload): Promise<ChatPayload> {
 
     return Promise.resolve(payload);
+  }
+}
+
+
+export const getAiProvider = (name: 'deepinfra' | 'deepseek'): OpenAI => {
+  dotenv.config();
+  // const deepInfra = createDeepInfra({
+  //   apiKey: process.env.DEEPINFRA_API_KEY!,
+  // });
+
+  // const deepSeek = createDeepSeek({
+  //   apiKey: process.env.DEEPSEEK_OPENAI_KEY!,
+  // });
+
+
+  const deepInfraOpenAI: OpenAI = new OpenAI({
+      apiKey: process.env.DEEPINFRA_API_KEY || '',
+      baseURL: process.env.OPENAI_API_BASE_URL,
+  });
+  const deepSeekOpenAI: OpenAI = new OpenAI({
+      apiKey: process.env.DEEPSEEK_OPENAI_KEY || '',
+      baseURL: process.env.DEEPSEEK_OPENAI_BASE_URL,
+  });
+
+  switch (name) {
+    case 'deepseek':
+      return deepSeekOpenAI;
+    case 'deepinfra':
+      return deepInfraOpenAI;
+    default:
+      return deepInfraOpenAI;
   }
 }

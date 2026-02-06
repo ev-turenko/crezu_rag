@@ -1,3 +1,4 @@
+import { Request } from "express";
 
 export interface ChatMessage {
   index: number;
@@ -62,4 +63,15 @@ interface Suggestion {
 interface SuggestionsResponse {
   success: boolean;
   suggestions?: Suggestion[];
+}
+
+export interface InferenceRequest extends Request {
+  message: string
+  params: {
+    country: string | number
+    provider: string | number
+    expflow?: string | null
+    chat_id?: string | null
+    client_id?: string | null
+  }
 }
