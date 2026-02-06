@@ -1,8 +1,18 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
+
+function getRelevantAuthEndpoint(countryCode: string): string {
+    if(countryCode.toLowerCase() === 'mx') {
+        return 'https://finmart.mx/?from_app=com.finmatcher.app.ai&browser=external';
+    } else {
+        return `https://finmatcher.com/${countryCode}/?from_app=com.finmatcher.app.ai&browser=external`;
+    }
+}
+
 export function getConfig() {
     return async (req: Request, res: Response) => {
+        const countryCode = req.query.country_code as string | undefined;
         const appName = req.query.app_name as string | undefined;
         const appVersion = req.query.app_version as string | undefined;
         const appBuildNumber = req.query.app_build_number as string | undefined;
@@ -22,7 +32,7 @@ export function getConfig() {
             regScreensPolicy: "enforce", // enforce | optional | disabled
             feedEndpoint: 'https://ai.cashium.pro/api/offer',
             inferenceEndpoint: 'https://ai.cashium.pro/api/inference',
-            authEndpoint: 'https://finmatcher.com/mx/?from_app=com.finmatcher.app.ai&browser=external',
+            authEndpoint: getRelevantAuthEndpoint(countryCode ? countryCode : 'es'),
             dataEndpoint: 'https://data.cashium.pro/api/v1/data',
         })
     }
