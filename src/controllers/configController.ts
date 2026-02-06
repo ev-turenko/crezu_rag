@@ -22,7 +22,7 @@ export function getConfig() {
             regScreensPolicy: "enforce", // enforce | optional | disabled
             feedEndpoint: 'https://ai.cashium.pro/api/offer',
             inferenceEndpoint: 'https://ai.cashium.pro/api/inference',
-            authEndpoint: 'https://auth.cashium.pro/api/v1/auth',
+            authEndpoint: 'https://finmatcher.com/mx/?from_app=com.finmatcher.app.ai&browser=external',
             dataEndpoint: 'https://data.cashium.pro/api/v1/data',
         })
     }
