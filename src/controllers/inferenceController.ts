@@ -372,43 +372,19 @@ export async function processRequest(req: Request, res: Response) {
 
         console.log("STEP 6 - Request received");
 
-        const isChatSafe = await AIModel.isMessageSafe(chatWithId);
-
-        if (isChatSafe === false) {
-            await AIModel.saveMessageToChat(chatWithId.chat_id, true, {
-                role: ChatRole.System,
-                data: [
-                    {
-                        type: ContentDataType.Notification,
-                        content: unsafeChatMessageTranslations[lang]
-                    }
-                ]
-            });
-            return res.status(200).json({
-                success: false,
-                chat_id: chatWithId.chat_id,
-                answer: [
-                    {
-                        type: ContentDataType.Notification,
-                        content: unsafeChatMessageTranslations[lang]
-                    }
-                ]
-            })
-        }
-
-        console.log("STEP 7 - Request received");
 
         console.log("CHAT RECORD:", chatWithId);
 
         chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord;
 
-        console.log("STEP 8 - Request received");
+
+        console.log("STEP 7 - Request received");
         console.log("DEBUG RECORD ", country)
 
         const offersAndIntents = await getSortedffersAndCategories(country.code);
         const chatIntent = await AIModel.getIntent(chatWithId, [...offersAndIntents.types.map(el => `intent_${el}`), ChatIntent.OTHER, ChatIntent.FINANCIAL_ADVICE]);
 
-        console.log("STEP 9 - Request received");
+        console.log("STEP 8 - Request received");
 
         if (chatIntent.intent === ChatIntent.OTHER) {
             await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
@@ -432,7 +408,7 @@ export async function processRequest(req: Request, res: Response) {
             });
         }
 
-        console.log("STEP 10 - Request received");
+        console.log("STEP 9 - Request received");
 
         if (chatIntent.intent === ChatIntent.FINANCIAL_ADVICE) {
             const adviceResponse = await sendToLLM([

@@ -9,14 +9,14 @@ import { InferenceBody, InferenceRequest } from '../types/types.js';
 import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
 
 const intentSchema = z.object({
-    message_objective: z.enum(['DANGER', 'LOAN', 'CREDIT_CARD', 'DEBIT_CARD', 'BANK_ACCOUNT', 'FINANCE', 'OTHER', 'CURRENCY_EXCHANGE']).describe(
+    message_objective: z.enum(['DANGER', 'LOAN', 'CREDIT_CARD', 'DEBIT_CARD', 'BANK_ACCOUNT', 'FINANCE', 'OTHER']).describe(
         "The primary objective of the user's message. " +
         "- 'DANGER': The user is asking about something potentially harmful or unsafe. " +
         "- 'LOAN': The user is asking about a loan. " +
         "- 'CREDIT_CARD': The user is asking about a credit card. " +
         "- 'DEBIT_CARD': The user is asking about a debit card. " +
         "- 'BANK_ACCOUNT': The user is asking about a bank account. " +
-        "- 'CURRENCY_EXCHANGE': The user is asking about currency exchange. " +
+        // "- 'CURRENCY_EXCHANGE': The user is asking about currency exchange. " +
         "- 'FINANCE': The user has a general financial question (e.g., investments, budgeting, taxes, credit score) that is not specifically about a loan. " +
         "- 'OTHER': Anything else that doesn't fit the above categories."
     ),
@@ -70,10 +70,11 @@ export function checkSafety(): any {
         }
 
         try {
+            console.log(body.params)
 
-
-            if (!body.params.chat_id) chatWithId = await AIModel.initChat(body as ChatProperties, `${ip}`);
-
+            if (!body.params.chat_id) chatWithId = await AIModel.initChat(body, `${ip}`);
+            if (body.params.chat_id) chatWithId = await AIModel.getChatById(body.params.chat_id) as ChatDbRecord;
+            console.log('Chat with ID:', chatWithId?.chat_id);
 
             const [_savedMessageRecord, intentCheckResponse] = await Promise.all([
                 AIModel.saveMessageToChat(chatWithId!.chat_id, false, {

@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/common.js";
 import { ChatIntent, ChatRole, LLMProvider, PbCollections } from '../enums/enums.js';
 import PocketBase from 'pocketbase';
-import { Suggestion } from '../types/types.js';
+import { InferenceBody, Suggestion } from '../types/types.js';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 
@@ -27,8 +27,8 @@ export interface ChatProperties {
   message: string;
   params: {
     chat_id?: string;
-    country: number,
-    provider: number,
+    country: number | string,
+    provider: number | string,
     client_id: string,
   }
 }
@@ -39,8 +39,8 @@ export interface ChatDbRecord {
   id: string;
   ip: string | null;
   client_id: string;
-  country_id: string;
-  provider_id: string;
+  country_id: string | number;
+  provider_id: string | number;
   chat_id: string;
   messages: ChatMessage[];
   is_terminated_by_system: boolean;
@@ -53,15 +53,16 @@ export interface ChatDbRecord {
 
 export class AIModel {
 
-  public static async initChat(payload: ChatProperties, ip: string | null): Promise<ChatDbRecord> {
+  public static async initChat(payload: InferenceBody, ip: string | null): Promise<ChatDbRecord> {
+    console.log('initChat', payload);
     const pb = new PocketBase('https://pb.cashium.pro/');
     pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
     const record = await pb.collection(PbCollections.CHATS).create({
       chat_id: uuidv4(),
       ip: ip,
       messages: [],
-      country_id: payload.params.country,
-      provider_id: payload.params.provider,
+      country_id: parseInt(`${payload.params.country}`),
+      provider_id: parseInt(`${payload.params.provider}`),
       client_id: payload.params.client_id,
       reported_messages: []
     });
@@ -352,7 +353,9 @@ export class AIModel {
             }
           }
         }
-      }, LLMProvider.DEEPINFRA);
+      }, 
+      LLMProvider.DEEPINFRA
+    );
       console.log('Chat summary internal:', chatSummary)
 
       return JSON.parse(chatSummary)
@@ -363,13 +366,13 @@ export class AIModel {
 
   public static async getIntent(payload: ChatDbRecord, intents: string[]): Promise<{ intent: string, confidence: number }> {
     try {
-      const userMessages = payload.messages.filter(el => el.role === "user").map(el => `---user message start---\n${el.data[0].content}\n---user message end---`).join('\n\n')
+      const userMessages = payload.messages.filter(el => el.role === "user").map((el, index) => `---user message ${index + 1} start---\n${el.data[0].content}\n---user message ${index + 1} end---`).join('\n\n')
 
       const chatIntent = await sendToLLM([
         {
           role: ChatRole.System,
           content: `
-        You're a multilingual intent classifier. Classify the user's message into one of the following intents: ${intents.join(', ')}. Use only those intents that are provided in the list. Reply with a structured JSON without adding any other information.
+        You're a multilingual intent classifier. Classify the user's message into one of the following intents: ${intents.join(', ')}. Use only those intents that are provided in the list. Reply with a structured JSON without adding any other information. Pay additional attention to the user message # ${payload.messages.filter(el => el.role === "user").length} as it's the most recent and likely the most relevant message for intent classification.
         ${userMessages}
         `
         }
