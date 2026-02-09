@@ -6,6 +6,7 @@ import { InferenceBody, Suggestion } from '../types/types.js';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import z, { int } from 'zod';
+import { Chat } from 'openai/resources';
 
 export interface ChatMessage {
   index: number;
@@ -323,17 +324,19 @@ export class AIModel {
             rolling_summary: ${previousMemory?.rolling_summary ?? ""}
             last_request: ${previousMemory?.last_request ?? ""}
           </previous_memory>
-
-          <user messages>
-            ${userMessages}
-          </user messages>
         `
-            }
+            },
+            ...payload.messages.filter(el => el.role === ChatRole.User).map(el => {
+              return {
+                role: ChatRole.User as const,
+                content: `message #${el.index}: ${el.data[0].content}`
+              }
+            })
           ],
-          model: DeepInfraModels.LLAMA4_MAVERICK_17B,
+          model: DeepSeekModels.CHAT,
           temperature: 0.0,
           maxTokens: 1000,
-          aiProvider: LLMProvider.DEEPINFRA,
+          aiProvider: LLMProvider.DEEPSEEK,
           schema: z.object({
             can_decide: z.boolean(),
             user_intent_summary: z.string().optional(),
