@@ -2,7 +2,7 @@
 import type { Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { countries, getResponse, resolveTranslation } from '../utils/common.js';
-import { ChatRole, DeepSeekModels, LLMProvider } from '../enums/enums.js';
+import { ChatRole, ContentDataType, DeepSeekModels, LLMProvider } from '../enums/enums.js';
 import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
 import { translations } from '../utils/translations.js';
 import { InferenceBody, InferenceRequest } from '../types/types.js';
@@ -175,9 +175,16 @@ export function checkSafety(): any {
                     translations.unsafeChatMessage
                 );
 
-                return res.status(403).json({
-                    success: false,
+                return res.status(200).json({
+                    success: true,
+                    chat_id: req.body.params.chat_id,
                     message: unsafeMessage,
+                    answer: [
+                        {
+                            type: ContentDataType.Markdown,
+                            content: unsafeMessage
+                        }
+                    ]
                 })
             }
 
@@ -189,8 +196,14 @@ export function checkSafety(): any {
                 );
 
                 return res.status(200).json({
-                    success: false,
-                    message: onlyFinanceMessage,
+                    success: true,
+                    chat_id: req.body.params.chat_id,
+                    answer: [
+                        {
+                            type: ContentDataType.Markdown,
+                            content: onlyFinanceMessage
+                        }
+                    ]
                 })
             }
 
