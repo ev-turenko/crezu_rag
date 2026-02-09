@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { getResponse, normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/common.js";
-import { ChatIntent, ChatRole, DeepInfraModels, LLMProvider, PbCollections } from '../enums/enums.js';
+import { ChatIntent, ChatRole, DeepInfraModels, DeepSeekModels, LLMProvider, PbCollections } from '../enums/enums.js';
 import PocketBase from 'pocketbase';
 import { InferenceBody, Suggestion } from '../types/types.js';
 import OpenAI from 'openai';
@@ -357,37 +357,24 @@ export class AIModel {
       console.log('Getting intent for chat messages:', intents);
       const userMessages = payload.messages.filter(el => el.role === "user").map((el, index) => `---user message ${index + 1} start---\n${el.data[0].content}\n---user message ${index + 1} end---`).join('\n\n')
 
-      const chatIntent = await sendToLLM([
-        {
-          role: ChatRole.System,
-          content: `
+      const chatIntent = await getResponse({
+        messages: [
+          {
+            role: ChatRole.System,
+            content: `
         You're a multilingual intent classifier. Classify the user's message into one of the following intents: ${intents.join(', ')}. Use only those intents that are provided in the list. Reply with a structured JSON without adding any other information. Pay additional attention to the user message # ${payload.messages.filter(el => el.role === "user").length} as it's the most recent and likely the most relevant message for intent classification.
         ${userMessages}
         `
-        }
-      ], {
+          }
+        ],
+        aiProvider: LLMProvider.DEEPSEEK,
+        model: DeepSeekModels.CHAT,
         temperature: 0.0,
         maxTokens: 60,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: "intent_schema",
-            strict: true,
-            schema: {
-              type: 'object',
-              properties: {
-                "intent": {
-                  "type": "string"
-                },
-                "confidence": {
-                  "type": "number"
-                }
-              },
-              required: ['intent', 'confidence'],
-              additionalProperties: false
-            }
-          }
-        }
+        schema: z.object({
+          intent: z.string(),
+          confidence: z.number(),
+        }).strict()
       });
 
       return JSON.parse(chatIntent)
@@ -480,9 +467,9 @@ export class AIModel {
       const normalizedOffers = offers.map((el: OriginalOfferData) => normalizeOfferForLLM(el))
       const chatResult = await getResponse({
         messages: [
-        {
-          role: ChatRole.System,
-          content: `
+          {
+            role: ChatRole.System,
+            content: `
           <base instruction>
         You're a financial expert in finding the best relevant financial offers. Do your best to answer the user's question using the provided offers. Use only those offers that are provided in the list. Reply with a structured JSON without adding any other information, order_id_list must contain ordered offers by relevance for the user.
         If the user's information is not enough to make a decision, reply with an empty for offer_id_list and kindly request information that may help you request for additional information. Always reply in user's language. Your sole purpose is to assist with finding the best relevant financial offers.
@@ -508,14 +495,14 @@ export class AIModel {
 
         Provide maximum 15 offer ids in array
         `
-        },
-        ...payload.messages.map(el => {
-          return {
-            role: el.role,
-            content: el.data[0].content
-          }
-        })
-      ],
+          },
+          ...payload.messages.map(el => {
+            return {
+              role: el.role,
+              content: el.data[0].content
+            }
+          })
+        ],
         aiProvider: LLMProvider.DEEPINFRA,
         model: DeepInfraModels.LLAMA4_SCOUT_17B,
         temperature: 0.0,
