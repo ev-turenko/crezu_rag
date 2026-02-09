@@ -362,10 +362,14 @@ export class AIModel {
           {
             role: ChatRole.System,
             content: `
-        You're a multilingual intent classifier. Classify the user's message into one of the following intents: ${intents.join(', ')}. Use only those intents that are provided in the list. Reply with a structured JSON without adding any other information. Pay additional attention to the user message # ${payload.messages.filter(el => el.role === "user").length} as it's the most recent and likely the most relevant message for intent classification.
-        ${userMessages}
-        `
-          }
+        You're a multilingual intent classifier. Classify the user's latest messages into one of the following intents: ${intents.join(', ')}. Use only those intents that are provided in the list. Reply with a structured JSON without adding any other information. Pay additional attention to the user message # ${payload.messages.filter(el => el.role === "user").length} as it's the most recent and likely the most relevant message for intent classification.`
+          },
+          ...payload.messages.filter(el => el.role === "user").map((el, index) => {
+            return {
+              role: ChatRole.User as const,
+              content: `message # ${index + 1}:\n${el.data[0].content}`
+            }
+          })
         ],
         aiProvider: LLMProvider.DEEPSEEK,
         model: DeepSeekModels.CHAT,
@@ -377,8 +381,11 @@ export class AIModel {
         }).strict()
       });
 
+      console.log('Intent check response raw:', chatIntent, userMessages);
+
       return JSON.parse(chatIntent)
     } catch (error) {
+      console.error('Error getting intent:', error);
       return { intent: ChatIntent.UNKNOWN, confidence: 1 }
     }
   }
