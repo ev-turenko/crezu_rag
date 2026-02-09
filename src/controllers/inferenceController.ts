@@ -8,9 +8,114 @@ TODO:
 
 import { Request, Response } from 'express';
 import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
-import { ChatIntent, ChatRole, ContentDataType } from '../enums/enums.js';
-import { getSortedffersAndCategories, sendToLLM, fetchOffersByIds } from '../utils/common.js';
+import { ChatIntent, ChatRole, ContentDataType, DeepInfraModels, LLMProvider } from '../enums/enums.js';
+import { getSortedffersAndCategories, fetchOffersByIds, normalizeOfferForLLM, OriginalOfferData, getResponse } from '../utils/common.js';
 import { marked } from 'marked';
+import z from 'zod';
+
+const INTERNAL_MEMORY_TYPE = 'internal_memory';
+
+function getLatestMemory(chat: ChatDbRecord): { preferences: Record<string, string>, rolling_summary: string, last_request: string } | null {
+    const memoryMessage = [...chat.messages].reverse().find(msg =>
+        msg.role === ChatRole.System && msg.data?.some(item => item?.type === INTERNAL_MEMORY_TYPE)
+    );
+    const raw = memoryMessage?.data?.find(item => item?.type === INTERNAL_MEMORY_TYPE)?.content;
+    if (typeof raw !== 'string' || !raw.trim()) return null;
+    try {
+        const parsed = JSON.parse(raw);
+        return {
+            preferences: parsed?.preferences ?? {},
+            rolling_summary: parsed?.rolling_summary ?? '',
+            last_request: parsed?.last_request ?? ''
+        };
+    } catch {
+        return null;
+    }
+}
+
+function buildMemoryContext(summary: { preferences: Record<string, string>, rolling_summary: string, last_request: string } | null): string {
+    if (!summary) return '';
+    const parts: string[] = [];
+    if (summary.last_request) {
+        parts.push(`Last request: ${summary.last_request}`);
+    }
+    const prefEntries = Object.entries(summary.preferences || {});
+    if (prefEntries.length > 0) {
+        parts.push(`Preferences:\n${prefEntries.map(([key, value]) => `- ${key}: ${value}`).join('\n')}`);
+    }
+    if (summary.rolling_summary) {
+        parts.push(`Rolling summary:\n${summary.rolling_summary}`);
+    }
+    return parts.join('\n\n');
+}
+
+async function extractRequestedOfferIds(options: { latestMessage: string; offers: OriginalOfferData[]; lang: string; }): Promise<number[]> {
+    if (!options.latestMessage || options.offers.length === 0) return [];
+
+    const compactOffers = options.offers.slice(0, 200).map(offer => ({
+        id: offer.id,
+        name: offer.name,
+        bank: offer.bank?.name,
+        url: offer.url
+    }));
+
+    try {
+
+        const response = await getResponse({
+            messages: [
+                {
+                    role: ChatRole.System,
+                    content: `You extract user-requested offer IDs for comparison. The user message is in ${options.lang}. Only select offers explicitly requested or clearly referenced by name/brand/link. If the user did not request specific offers for comparison, return an empty array. Use only the provided offer list. Respond strictly with JSON.`
+                },
+                {
+                    role: ChatRole.Dev,
+                    content: `User message: ${options.latestMessage}\n\nOffer list (max 200): ${JSON.stringify(compactOffers)}`
+                }
+            ],
+            schema: z.object({
+                selected_offer_ids: z.array(z.number()).max(2),
+                reason: z.string(),
+            }).strict(),
+            aiProvider: LLMProvider.DEEPINFRA,
+            model: DeepInfraModels.LLAMA4_MAVERICK_17B,
+            temperature: 0.0,
+            maxTokens: 400,
+        })
+
+
+        const parsed = JSON.parse(response);
+        const ids = Array.isArray(parsed.selected_offer_ids) ? parsed.selected_offer_ids : [];
+        return ids.filter((id: number) => compactOffers.some(offer => offer.id === id)).slice(0, 2);
+    } catch (error) {
+        console.error('Failed to extract requested offer ids:', error);
+        return [];
+    }
+}
+
+async function buildComparisonText(options: { offerA: OriginalOfferData; offerB: OriginalOfferData; lang: string; userIntent: string; memoryContext: string; }): Promise<string> {
+    const offerAText = normalizeOfferForLLM(options.offerA);
+    const offerBText = normalizeOfferForLLM(options.offerB);
+
+    const response = await getResponse({
+        messages: [
+            {
+                role: ChatRole.System,
+                content: `You compare two financial offers. Reply in ${options.lang}. Use a strict, mobile-friendly two-column label format with fixed labels Offer A and Offer B. Each line must follow: "Label: <Offer A> | <Offer B>". No tables, no extra text, no bullets outside the line. Include the following labels in order: Offer A Name, Offer B Name, Fees/Rate, Eligibility, Benefits, Pros, Cons, Summary. For Pros and Cons, use short semicolon-separated phrases. Keep lines concise.`
+            },
+            {
+                role: ChatRole.User,
+                content: `User intent: ${options.userIntent}\n\nMemory context:\n${options.memoryContext || 'N/A'}\n\nOffer A:\n${offerAText}\n\nOffer B:\n${offerBText}`
+            }
+        ],
+        schema: z.string(),
+        aiProvider: LLMProvider.DEEPINFRA,
+        model: DeepInfraModels.LLAMA4_MAVERICK_17B,
+        temperature: 0.2,
+        maxTokens: 800,
+    });
+
+    return response;
+}
 
 const irrelevantChatMessageTranslations = {
     'es': "Solo puedo ayudarle con la busqueda de préstamos, tarjetas de débito y tarjetas de crédito.",
@@ -172,7 +277,7 @@ export async function reportMessage(req: Request, res: Response) {
 export async function shareChat(req: Request, res: Response) {
     const chatId = req.params.chat_id;
     const { is_public } = req.body;
-    
+
     try {
         if (!chatId) {
             return res.status(400).json({
@@ -189,7 +294,7 @@ export async function shareChat(req: Request, res: Response) {
         }
 
         const updatedChat = await AIModel.updateChatPublicStatus(chatId, is_public);
-        
+
         if (!updatedChat) {
             return res.status(404).json({
                 success: false,
@@ -382,9 +487,9 @@ export async function processRequest(req: Request, res: Response) {
         console.log("DEBUG RECORD ", country)
 
         const offersAndIntents = await getSortedffersAndCategories(country.code);
-        const chatIntent = await AIModel.getIntent(chatWithId, [...offersAndIntents.types.map(el => `intent_${el}`), ChatIntent.OTHER, ChatIntent.FINANCIAL_ADVICE]);
+        const chatIntent = await AIModel.getIntent(chatWithId, [...offersAndIntents.types.map(el => `intent_${el}`), ChatIntent.OTHER, ChatIntent.FINANCIAL_ADVICE, ChatIntent.PRODUCT_COMPARISON]);
 
-        console.log("STEP 8 - Request received");
+        console.log("STEP 8 - Request received", chatIntent);
 
         if (chatIntent.intent === ChatIntent.OTHER) {
             await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
@@ -411,14 +516,39 @@ export async function processRequest(req: Request, res: Response) {
         console.log("STEP 9 - Request received");
 
         if (chatIntent.intent === ChatIntent.FINANCIAL_ADVICE) {
-            const adviceResponse = await sendToLLM([
-                {
+            const adviceSummary = await AIModel.summarizeChat(chatWithId, lang, 'markdown');
+            if (adviceSummary) {
+                await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
                     role: ChatRole.System,
-                    content: `
+                    data: [
+                        {
+                            type: INTERNAL_MEMORY_TYPE,
+                            content: JSON.stringify({
+                                preferences: adviceSummary.preferences,
+                                rolling_summary: adviceSummary.rolling_summary,
+                                last_request: adviceSummary.last_request
+                            })
+                        }
+                    ]
+                });
+            }
+            const adviceMemoryContext = buildMemoryContext(adviceSummary ? {
+                preferences: adviceSummary.preferences,
+                rolling_summary: adviceSummary.rolling_summary,
+                last_request: adviceSummary.last_request
+            } : getLatestMemory(chatWithId));
+
+            const adviceResponse = await getResponse({
+                messages: [
+                    {
+                        role: ChatRole.System,
+                        content: `
                     You're a multilingual financial advisor.
                     You must reply in: ${lang}. 
                     You must be clear and concise. Help the user resolve their latest financial problem that the user describes in his latter messages.
                     You must not use any information about the user that is not directly related to the problem. Ask to provide more info, if appropriate.
+                    Use the memory context to resolve references and preferences.
+                    Memory context (if available):\n${adviceMemoryContext || 'N/A'}
                     Here's the chat history with the user:
 
                     ----Chat history start-----
@@ -427,9 +557,11 @@ export async function processRequest(req: Request, res: Response) {
 
                     Reply with the unstyled html output. Do not nest list tag inside paragraphs or divs.
                 `
-                },
-            ], {
-                model: 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
+                    },
+                ],
+                aiProvider: LLMProvider.DEEPINFRA,
+                schema: z.string(),
+                model: DeepInfraModels.LLAMA4_MAVERICK_17B,
                 temperature: 0.3,
                 maxTokens: 3000,
             });
@@ -474,6 +606,26 @@ export async function processRequest(req: Request, res: Response) {
             });
         }
 
+        await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
+            role: ChatRole.System,
+            data: [
+                {
+                    type: INTERNAL_MEMORY_TYPE,
+                    content: JSON.stringify({
+                        preferences: chatSummary.preferences,
+                        rolling_summary: chatSummary.rolling_summary,
+                        last_request: chatSummary.last_request
+                    })
+                }
+            ]
+        });
+
+        const memoryContext = buildMemoryContext({
+            preferences: chatSummary.preferences,
+            rolling_summary: chatSummary.rolling_summary,
+            last_request: chatSummary.last_request
+        });
+
         if (chatSummary.can_decide === false) {
             await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
                 role: ChatRole.Assistant,
@@ -496,81 +648,84 @@ export async function processRequest(req: Request, res: Response) {
             });
         }
 
-        const loanResponse = await AIModel.getRelevantOffersV2(offersAndIntents.offers, chatSummary.user_intent_summary, chatIntent.intent.replace('intent_', ''));
+        const intentType = chatIntent.intent.replace('intent_', '');
+        const userIntentWithMemory = memoryContext ? `${chatSummary.user_intent_summary}\n\n${memoryContext}` : chatSummary.user_intent_summary;
 
-        const textualResponse = await sendToLLM([
-            {
-                role: ChatRole.System,
-                content: `You must reply in: ${lang}. Tell the user that there was found this amount of relevant financial offers for them: ${loanResponse.length || 0}, if there are no offers found tell the user that there are no offers found and suggest to adjust the query. Be brief and clear. Initial user intent: ${chatSummary.user_intent_summary}`
-            },
-        ], {
-            model: 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
+        const loanResponse = await AIModel.getRelevantOffersV2(offersAndIntents.offers, userIntentWithMemory, intentType);
+
+        const requestedOfferIds = await extractRequestedOfferIds({
+            latestMessage: body.message,
+            offers: offersAndIntents.offers.filter(offer => offer.offer_type.type === intentType),
+            lang
+        });
+
+        let comparisonText: string | null = null;
+        if (requestedOfferIds.length === 2) {
+            const offerA = offersAndIntents.offers.find(offer => offer.id === requestedOfferIds[0]);
+            const offerB = offersAndIntents.offers.find(offer => offer.id === requestedOfferIds[1]);
+            if (offerA && offerB) {
+                comparisonText = await buildComparisonText({
+                    offerA,
+                    offerB,
+                    lang,
+                    userIntent: chatSummary.user_intent_summary,
+                    memoryContext
+                });
+            }
+        }
+
+        const textualResponse = await getResponse({
+            messages: [
+                {
+                    role: ChatRole.System,
+                    content: `You must reply in: ${lang}. Tell the user that there was found this amount of relevant financial offers for them: ${loanResponse.length || 0}, if there are no offers found tell the user that there are no offers found and suggest to adjust the query. Be brief and clear. Initial user intent: ${chatSummary.user_intent_summary}\nMemory context (if available):\n${memoryContext || 'N/A'}`
+                },
+            ],
+            model: DeepInfraModels.LLAMA4_MAVERICK_17B,
+            aiProvider: LLMProvider.DEEPINFRA,
+            schema: z.string(),
             temperature: 0.3,
             maxTokens: 300,
         });
 
-        
+
 
         if (source === 'app') {
             const resolvedOffers = await fetchOffersByIds(loanResponse, country.code);
-            
+
+            const appAnswerData = [
+                ...(comparisonText ? [{ type: ContentDataType.Markdown, content: comparisonText }] : []),
+                { type: ContentDataType.Markdown, content: textualResponse },
+                { type: ContentDataType.AppOffers, content: resolvedOffers }
+            ];
+
             await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
                 role: ChatRole.Assistant,
-                data: [
-                    {
-                        type: ContentDataType.Markdown,
-                        content: textualResponse
-                    },
-                    {
-                        type: ContentDataType.AppOffers,
-                        content: resolvedOffers
-                    }
-                ]
+                data: appAnswerData
             });
 
             return res.status(200).json({
                 success: true,
                 chat_id: chatWithId.chat_id,
-                answer: [
-                    {
-                        type: ContentDataType.Markdown,
-                        content: textualResponse
-                    },
-                    {
-                        type: ContentDataType.AppOffers,
-                        content: resolvedOffers
-                    }
-                ]
+                answer: appAnswerData
             });
         }
 
+        const webAnswerData = [
+            ...(comparisonText ? [{ type: ContentDataType.Markdown, content: comparisonText }] : []),
+            { type: ContentDataType.Markdown, content: textualResponse },
+            { type: ContentDataType.Offers, content: loanResponse }
+        ];
+
         await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
             role: ChatRole.Assistant,
-            data: [
-                {
-                    type: ContentDataType.Markdown,
-                    content: textualResponse
-                },
-                {
-                    type: ContentDataType.Offers,
-                    content: loanResponse
-                }
-            ]
+            data: webAnswerData
         });
 
         return res.status(200).json({
             success: true,
             chat_id: chatWithId.chat_id,
-            answer: [
-                {
-                    type: ContentDataType.Markdown,
-                    content: textualResponse
-                },
-                {
-                    type: ContentDataType.Offers,
-                    content: loanResponse
-                }
-            ]
+            answer: webAnswerData
         });
 
     } catch (error) {

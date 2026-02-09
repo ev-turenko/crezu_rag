@@ -5,12 +5,13 @@ import { getAiProvider } from '../models/AiModel.js';
 import { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/index.mjs";
 
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'function' | 'tool' | 'developer';
   content: string;
 }
 
 export interface LLMConfig {
-  model?: string;
+  // model?: string;
+  model?: DeepSeekModels | DeepInfraModels,
   temperature?: number;
   maxTokens?: number;
   topP?: number;
@@ -36,30 +37,16 @@ export interface LLMConfig {
 }
 
 export async function sendToLLM(
-  messages: ChatMessage[],
+  messages: ChatCompletionMessageParam[],
   config: LLMConfig = {},
   provider: LLMProvider = LLMProvider.DEEPINFRA
 ): Promise<string> {
   try {
 
-    const llmConfig = {
-      deepinfra: {
-        baseURL: process.env.OPENAI_API_BASE_URL || 'https://api.deepinfra.com/v1/openai',
-        apiKey: process.env.OPENAI_API_KEY || '',
-      },
-      deepseek: {
-        baseURL: process.env.DEEPSEEK_OPENAI_BASE_URL || 'https://api.deepseek.com',
-        apiKey: process.env.DEEPSEEK_OPENAI_KEY || '',
-      },
-    }[provider] || { baseURL: '', apiKey: '' };
-
-    const { baseURL, apiKey } = llmConfig;
+    const ai = getAiProvider(provider)
 
 
-    const openai = new OpenAI({ apiKey, baseURL });
-
-
-    const completion = await openai.chat.completions.create({
+    const completion = await ai.chat.completions.create({
       model: config.model ?? 'meta-llama/Llama-4-Scout-17B-16E-Instruct',
       messages,
       temperature: config.temperature ?? 1.0,
@@ -293,7 +280,7 @@ export async function fetchOffersByIds(offerIds: number[] | string[], countryCod
     const url = new URL('https://finmatcher.com/api/offer');
     url.searchParams.append('id', String(offerId));
     url.searchParams.append('country_code', countryCode);
-    
+
     const response = await fetch(url.toString());
     if (response.status === 200) {
       const data = await response.json();
@@ -304,7 +291,7 @@ export async function fetchOffersByIds(offerIds: number[] | string[], countryCod
 
   const settledOffers = await Promise.allSettled(offerPromises);
   const resolvedOffers = settledOffers
-    .filter((result): result is PromiseFulfilledResult<any> => 
+    .filter((result): result is PromiseFulfilledResult<any> =>
       result.status === 'fulfilled' && result.value !== null
     )
     .map(result => {
@@ -365,48 +352,64 @@ export async function getResponse(
     tools?: ChatCompletionTool[],
     messages: ChatCompletionMessageParam[],
     schema: z.ZodSchema,
-    aiProvider: 'deepseek' | 'deepinfra',
+    aiProvider: LLMProvider,
     model: DeepSeekModels | DeepInfraModels,
+    temperature?: number,
+    topP?: number,
     jsonSchemaName?: string,
     maxTokens?: number
   }
-) {
-  if (options.aiProvider === 'deepseek') {
-    return getAiProvider(options.aiProvider).chat.completions.create({
-      model: options.model,
-      tools: options.tools,
-      messages: modifyLastMessage(
-        {
-          messages: options.messages,
-          text: `Respond with respect to this scheme: ${JSON.stringify(z.toJSONSchema(options.schema))}`,
-          position: 'append',
-          role: 'user'
-        }
-      ),
-      temperature: 0,
-      response_format: {
-        type: 'json_object',
-      },
-      max_completion_tokens: options.maxTokens || 100,
-    });
-  } else {
-    if (!options.jsonSchemaName) {
-      throw new Error('jsonSchemaName is required when using DeepInfra provider');
+): Promise<string> {
+  let completion: OpenAI.Chat.Completions.ChatCompletion;
+  try {
+    if (options.aiProvider === LLMProvider.DEEPSEEK) {
+
+      completion = await getAiProvider(options.aiProvider).chat.completions.create({
+        model: options.model,
+        tools: options.tools,
+        top_p: options.topP,
+        messages: modifyLastMessage(
+          {
+            messages: options.messages,
+            text: `Respond with respect to this scheme: ${JSON.stringify(z.toJSONSchema(options.schema))}`,
+            position: 'append',
+            role: 'user'
+          }
+        ),
+        temperature: options.temperature ?? 0,
+        response_format: {
+          type: 'json_object',
+        },
+        max_completion_tokens: options.maxTokens || 100,
+      });
+
+    } else {
+      // if (!options.jsonSchemaName) {
+      //   throw new Error('jsonSchemaName is required when using DeepInfra provider');
+      // }
+      completion = await getAiProvider(options.aiProvider).chat.completions.create({
+        model: options.model,
+        messages: options.messages,
+        temperature: options.temperature ?? 0,
+        max_completion_tokens: options.maxTokens || 100,
+        top_p: options.topP,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: options.jsonSchemaName ?? 'json_schema',
+            strict: true,
+            schema: z.toJSONSchema(options.schema)
+          }
+        },
+      });
     }
-    return getAiProvider(options.aiProvider).chat.completions.create({
-      model: options.model,
-      messages: options.messages,
-      temperature: 0,
-      max_completion_tokens: options.maxTokens || 100,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: options.jsonSchemaName,
-          strict: true,
-          schema: z.toJSONSchema(options.schema)
-        }
-      },
-    });
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response content received from LLM');
+    }
+    return content;
+  } catch (error) {
+    return `Error: ${error instanceof Error ? error.message : String(error)}`;
   }
 }
 

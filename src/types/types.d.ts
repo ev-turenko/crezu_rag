@@ -85,3 +85,12 @@ export interface InferenceRequest extends Request<ParamsDictionary, any, Inferen
     };
   };
 }
+
+export interface ChatSummary {
+  can_decide: boolean;
+  user_intent_summary: string;
+  motivation: string;
+  preferences: Record<string, string>;
+  rolling_summary: string;
+  last_request: string;
+}

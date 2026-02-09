@@ -2,7 +2,7 @@
 import type { Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { countries, getResponse, resolveTranslation } from '../utils/common.js';
-import { ChatRole, DeepSeekModels } from '../enums/enums.js';
+import { ChatRole, DeepSeekModels, LLMProvider } from '../enums/enums.js';
 import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
 import { translations } from '../utils/translations.js';
 import { InferenceBody, InferenceRequest } from '../types/types.js';
@@ -37,9 +37,51 @@ const summarySchema = z.object({
     )
 });
 
+const INTERNAL_MEMORY_TYPE = 'internal_memory';
+
+function buildChatContext(chat: ChatDbRecord | null): string {
+    if (!chat || !Array.isArray(chat.messages) || chat.messages.length === 0) {
+        return '';
+    }
+
+    const recentMessages = chat.messages.slice(-8).map(msg => {
+        const content = msg.data?.[0]?.content;
+        const safeContent = typeof content === 'string' ? content : JSON.stringify(content);
+        return `${msg.role}: ${safeContent}`;
+    }).join('\n');
+
+    const memoryMessage = [...chat.messages].reverse().find(msg =>
+        msg.role === 'system' && Array.isArray(msg.data) && msg.data.some(item => item?.type === INTERNAL_MEMORY_TYPE)
+    );
+    const memoryRaw = memoryMessage?.data?.find(item => item?.type === INTERNAL_MEMORY_TYPE)?.content;
+    let memorySummary = '';
+    if (typeof memoryRaw === 'string' && memoryRaw.trim()) {
+        try {
+            const parsed = JSON.parse(memoryRaw);
+            const prefEntries = Object.entries(parsed?.preferences ?? {});
+            const preferencesText = prefEntries.length > 0
+                ? `Preferences:\n${prefEntries.map(([key, value]) => `- ${key}: ${value}`).join('\n')}`
+                : '';
+            const rollingSummary = parsed?.rolling_summary ? `Rolling summary:\n${parsed.rolling_summary}` : '';
+            const lastRequest = parsed?.last_request ? `Last request: ${parsed.last_request}` : '';
+            memorySummary = [lastRequest, preferencesText, rollingSummary].filter(Boolean).join('\n\n');
+        } catch {
+            memorySummary = '';
+        }
+    }
+
+    return [memorySummary ? `Memory context:\n${memorySummary}` : '', recentMessages ? `Recent messages:\n${recentMessages}` : '']
+        .filter(Boolean)
+        .join('\n\n');
+}
+
 export function checkSafety(): any {
     return async (req: InferenceRequest, res: Response, next: NextFunction) => {
-        const messages: ChatCompletionMessageParam[] = req.body?.messages ? JSON.parse(JSON.stringify(req.body.messages)) || [] : [];
+        const rawMessages = req.body?.messages ? JSON.parse(JSON.stringify(req.body.messages)) || [] : [];
+        let messages: ChatCompletionMessageParam[] = rawMessages.map((msg: any) => ({
+            role: msg.role as ChatCompletionMessageParam['role'],
+            content: msg.content
+        }));
         const body: InferenceBody = req.body;
         const ip = req.headers['x-forwarded-for'] || req.ip || null;
 
@@ -76,6 +118,25 @@ export function checkSafety(): any {
             if (body.params.chat_id) chatWithId = await AIModel.getChatById(body.params.chat_id) as ChatDbRecord;
             console.log('Chat with ID:', chatWithId?.chat_id);
 
+            if (messages.length === 0 && chatWithId?.messages?.length) {
+                messages = chatWithId.messages
+                    .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+                    .map(msg => {
+                        const content = msg.data?.[0]?.content;
+                        const safeContent = typeof content === 'string' ? content : JSON.stringify(content);
+                        return {
+                            role: msg.role as ChatCompletionMessageParam['role'],
+                            content: safeContent
+                        } as ChatCompletionMessageParam;
+                    }) as ChatCompletionMessageParam[];
+            }
+
+            const contextText = buildChatContext(chatWithId);
+
+            const contextMessages: ChatCompletionMessageParam[] = contextText
+                ? [{ role: 'system', content: `Use the following context only if it helps classify the latest user message.\n${contextText}` }]
+                : [];
+
             const [_savedMessageRecord, intentCheckResponse] = await Promise.all([
                 AIModel.saveMessageToChat(chatWithId!.chat_id, false, {
                     role: ChatRole.User,
@@ -92,19 +153,21 @@ export function checkSafety(): any {
                             role: 'system',
                             content: `You are a multilingual text safety manager and intent classifier. Check the provided text and tell to which category it belongs based on provided schema. Loans are always LEGAL!`
                         },
+                        ...contextMessages,
                         ...messages
                     ],
                     schema: intentSchema,
-                    aiProvider: 'deepseek',
+                    aiProvider: LLMProvider.DEEPSEEK,
                     model: DeepSeekModels.CHAT,
                     jsonSchemaName: 'safety_check',
                     maxTokens: 100
                 })
             ])
 
-
-            const intentResult = JSON.parse(intentCheckResponse.choices[0].message?.content?.trim() || '{}') as z.infer<typeof intentSchema>;
-
+            console.log("Check point 1")
+            console.log('Intent check response:', intentCheckResponse);
+            const intentResult = JSON.parse(intentCheckResponse || '{}') as z.infer<typeof intentSchema>;
+            console.log("Check point 2")
             if (['DANGER'].includes(intentResult.message_objective)) {
                 const unsafeMessage = resolveTranslation(
                     body.params.country,
@@ -115,9 +178,6 @@ export function checkSafety(): any {
                 return res.status(403).json({
                     success: false,
                     message: unsafeMessage,
-                    meta: {
-                        usage: intentCheckResponse.usage
-                    }
                 })
             }
 
@@ -131,9 +191,6 @@ export function checkSafety(): any {
                 return res.status(200).json({
                     success: false,
                     message: onlyFinanceMessage,
-                    meta: {
-                        usage: intentCheckResponse.usage
-                    }
                 })
             }
 
@@ -143,16 +200,17 @@ export function checkSafety(): any {
                         role: 'system',
                         content: `You are a summarization guru. Summarize the provided the provided conversation in a concise manner, that would be helpful for a specialized LLM model or human expert.`
                     },
+                    ...(contextText ? [{ role: 'system', content: `Context for summarization (use if relevant):\n${contextText}` } as ChatCompletionMessageParam] : []),
                     ...messages
                 ],
                 schema: summarySchema,
-                aiProvider: 'deepseek',
+                aiProvider: LLMProvider.DEEPSEEK,
                 model: DeepSeekModels.CHAT,
                 jsonSchemaName: 'safety_check',
                 maxTokens: 100
             });
 
-            const summaryResult = JSON.parse(summaryResponse.choices[0].message?.content?.trim() || '{}') as z.infer<typeof summarySchema>;
+            const summaryResult = JSON.parse(summaryResponse || '{}') as z.infer<typeof summarySchema>;
 
             req.system = req.system || {};
             req.system.summaries = summaryResult;
@@ -167,7 +225,7 @@ export function checkSafety(): any {
             );
             return res.status(500).json({
                 success: false,
-                message: serverErrorMessage,
+                message: `1: ${serverErrorMessage}`,
                 error: (error as Error).message
             })
         }

@@ -1,10 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
-import { normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/common.js";
-import { ChatIntent, ChatRole, LLMProvider, PbCollections } from '../enums/enums.js';
+import { getResponse, normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/common.js";
+import { ChatIntent, ChatRole, DeepInfraModels, LLMProvider, PbCollections } from '../enums/enums.js';
 import PocketBase from 'pocketbase';
 import { InferenceBody, Suggestion } from '../types/types.js';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import z, { int } from 'zod';
 
 export interface ChatMessage {
   index: number;
@@ -252,43 +253,30 @@ export class AIModel {
     return result;
   }
 
-  public static async isMessageSafe(payload: ChatDbRecord): Promise<boolean | null> {
-    const lastUserMessage = payload.messages.slice().reverse().find(msg => msg.role === 'user');
-    if (!lastUserMessage) {
-      return null
-    }
-    try {
 
-      const safetyResponse = await sendToLLM([
-        {
-          role: ChatRole.System,
-          content: "You're a multilingual text safety manager. Check if the user's message is safe or unsafe."
-        },
-        {
-          role: ChatRole.User,
-          content: lastUserMessage?.data[0].content
+  public static async summarizeChat(payload: ChatDbRecord, lang: string = "es-mx", format: "html" | "markdown" = "html"): Promise<{ can_decide: boolean, user_intent_summary: string, motivation: string, preferences: Record<string, string>, rolling_summary: string, last_request: string } | null> {
+    try {
+      const previousMemoryMessage = [...payload.messages].reverse().find(msg =>
+        msg.role === "system" && Array.isArray(msg.data) && msg.data.some(item => item?.type === "internal_memory")
+      );
+      const previousMemoryRaw = previousMemoryMessage?.data?.find(item => item?.type === "internal_memory")?.content;
+      let previousMemory: { preferences?: Record<string, string>, rolling_summary?: string, last_request?: string } | null = null;
+      if (typeof previousMemoryRaw === 'string' && previousMemoryRaw.trim()) {
+        try {
+          previousMemory = JSON.parse(previousMemoryRaw);
+        } catch (error) {
+          console.log('Failed to parse previous memory summary:', error);
         }
-      ], {
-        model: 'meta-llama/Llama-Guard-4-12B',
-        temperature: 0.0,
-        maxTokens: 30,
-      });
-
-      return !safetyResponse?.toLowerCase().includes('unsafe')
-    } catch (_) {
-      return null
-    }
-  }
-
-  public static async summarizeChat(payload: ChatDbRecord, lang: string = "es-mx", format: "html" | "markdown" = "html"): Promise<{ can_decide: boolean, user_intent_summary: string, motivation: string } | null> {
-    try {
+      }
       const userMessages = payload.messages.filter(el => el.role === "user").map(el => `---user message start---\n${el.data[0].content}\n---user message end---`).join('\n\n')
       console.log("Summarization format:", format);
 
-      const chatSummary = await sendToLLM([
+      const chatSummary = await getResponse(
         {
-          role: ChatRole.System,
-          content: `
+          messages: [
+            {
+              role: ChatRole.System,
+              content: `
           <user infromation rules>
             Absolutely obligatory user information for loans:
             - loan period,
@@ -310,52 +298,52 @@ export class AIModel {
           <base instruction>
             You're a multilingual text summarizer that strictly follows the provided rules and carefully reads <user information rules>. 
 
-            Summarize the user's messages into a concise structured response in a JSON format with three fields: can_decide (boolean), user_intent_summary (string), and assistant_motivation (string).
+            Summarize the user's messages into a concise structured response in a JSON format with the following fields:
+            - can_decide (boolean)
+            - user_intent_summary (string)
+            - motivation (string)
+            - preferences (object of localized key/value strings)
+            - rolling_summary (string, 3-4 paragraphs maximum)
+            - last_request (string, one concise sentence)
 
             - can_decide must be true only if the bare minimum required user information (loan period and loan amount for loans or user's monthly income for credit cards) is provided, making it sufficient to decide on relevant financial offers. Otherwise, set it to false.
             - user_intent_summary must be a concise but informative summary of the user's intent, needs, and any provided details (including both required and optional information).
             - motivation must be a concise but informative explanation of why the assistant can or cannot proceed to make a decision about relevant financial offers. If information is missing, politely suggest asking for the specific missing required details. For optional information, only mention it briefly if it could help, without insisting or requiring it. Format assistant_motivation as Markdown for better readability (e.g., use bullet points for suggestions).
+            - preferences must be a localized key/value object. Use the user's language for keys and values. Include only preferences stated or strongly implied by the user.
+            - rolling_summary must be updated from any previous rolling summary and the new user messages, capped to 3-4 paragraphs max.
+            - last_request must describe the user's latest request in one concise sentence in the user's language.
 
             motivation must be in the user's language: ${lang}. Motivations must be provided as bare ${format === "html" ? "unstyled" : ""} ${format} output.
 
             Reply strictly with the structured JSON object and nothing else.
           </base instruction>
 
+          <previous_memory>
+            preferences: ${previousMemory?.preferences ? JSON.stringify(previousMemory.preferences) : "{}"}
+            rolling_summary: ${previousMemory?.rolling_summary ?? ""}
+            last_request: ${previousMemory?.last_request ?? ""}
+          </previous_memory>
+
           <user messages>
             ${userMessages}
           </user messages>
         `
-        }
-      ], {
-        model: 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
-        temperature: 0.0,
-        maxTokens: 1000,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: "rule_schema",
-            strict: true,
-            schema: {
-              type: 'object',
-              properties: {
-                "can_decide": {
-                  "type": "boolean"
-                },
-                "user_intent_summary": {
-                  "type": "string"
-                },
-                "motivation": {
-                  "type": "string"
-                }
-              },
-              required: ['can_decide', 'user_intent_summary', "motivation"],
-              additionalProperties: false
             }
-          }
+          ],
+          model: DeepInfraModels.LLAMA4_MAVERICK_17B,
+          temperature: 0.0,
+          maxTokens: 1000,
+          aiProvider: LLMProvider.DEEPINFRA,
+          schema: z.object({
+            can_decide: z.boolean(),
+            user_intent_summary: z.string().optional(),
+            motivation: z.string().optional(),
+            preferences: z.object({}).passthrough().optional(),
+            rolling_summary: z.string().optional(),
+            last_request: z.string().optional(),
+          }).strict()
         }
-      }, 
-      LLMProvider.DEEPINFRA
-    );
+      );
       console.log('Chat summary internal:', chatSummary)
 
       return JSON.parse(chatSummary)
@@ -366,6 +354,7 @@ export class AIModel {
 
   public static async getIntent(payload: ChatDbRecord, intents: string[]): Promise<{ intent: string, confidence: number }> {
     try {
+      console.log('Getting intent for chat messages:', intents);
       const userMessages = payload.messages.filter(el => el.role === "user").map((el, index) => `---user message ${index + 1} start---\n${el.data[0].content}\n---user message ${index + 1} end---`).join('\n\n')
 
       const chatIntent = await sendToLLM([
@@ -418,39 +407,28 @@ export class AIModel {
     const offerAnalysisPromises = normalizedOffers.map(async (offer: { text: string; id: number; }) => {
       const messages = [
         {
-          role: ChatRole.System,
+          role: ChatRole.System as const,
           content: 'You are an expert at matching offers to user intent. Analyze if the offer is relevant to the user\'s intent and respond with a relevance score from 0-10 and a brief explanation.'
         },
         {
-          role: ChatRole.User,
+          role: ChatRole.Dev as const,
           content: `User Intent: ${user_intent_summary}\n\nOffer: ${offer.text}\n\nIs this offer relevant to the user's intent? Provide a JSON response with format: {"score": <0-10>, "reason": "<brief explanation>"}, do not add anything else.`
         }
       ];
 
       try {
-        const response = await sendToLLM(messages, {
-          model: 'meta-llama/Llama-4-Scout-17B-16E-Instruct',
+        const response = await getResponse({
+          messages: messages,
+          maxTokens: 1000,
+          aiProvider: LLMProvider.DEEPINFRA,
+          model: DeepInfraModels.LLAMA4_SCOUT_17B,
           temperature: 0.0,
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: "scoring_schema",
-              strict: true,
-              schema: {
-                type: 'object',
-                properties: {
-                  "score": {
-                    "type": "number"
-                  },
-                  "reason": {
-                    "type": "string"
-                  }
-                },
-                required: ['score', 'reason'],
-                additionalProperties: false
-              }
-            }
-          }
+          schema: z.object({
+            score: z.number()
+              .min(0, "Score cannot be negative")
+              .max(10, "Score cannot exceed 10"),
+            reason: z.string().min(20, "A brief explanation is required"),
+          }).strict()
         });
 
         const analysis = JSON.parse(response);
@@ -500,7 +478,8 @@ export class AIModel {
     try {
 
       const normalizedOffers = offers.map((el: OriginalOfferData) => normalizeOfferForLLM(el))
-      const chatResult = await sendToLLM([
+      const chatResult = await getResponse({
+        messages: [
         {
           role: ChatRole.System,
           content: `
@@ -536,32 +515,15 @@ export class AIModel {
             content: el.data[0].content
           }
         })
-      ], {
+      ],
+        aiProvider: LLMProvider.DEEPINFRA,
+        model: DeepInfraModels.LLAMA4_SCOUT_17B,
         temperature: 0.0,
         maxTokens: 3000,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: "intent_schema",
-            strict: true,
-            schema: {
-              type: 'object',
-              properties: {
-                "motivation": {
-                  "type": "string"
-                },
-                "offer_id_list": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              required: ['motivation', 'offer_id_list'],
-              additionalProperties: false
-            }
-          }
-        }
+        schema: z.object({
+          motivation: z.string(),
+          offer_id_list: z.array(z.string()),
+        }).strict()
       });
 
       return JSON.parse(chatResult)
@@ -589,12 +551,12 @@ export const getAiProvider = (name: 'deepinfra' | 'deepseek'): OpenAI => {
 
 
   const deepInfraOpenAI: OpenAI = new OpenAI({
-      apiKey: process.env.DEEPINFRA_API_KEY || '',
-      baseURL: process.env.OPENAI_API_BASE_URL,
+    apiKey: process.env.DEEPINFRA_API_KEY || '',
+    baseURL: process.env.OPENAI_API_BASE_URL,
   });
   const deepSeekOpenAI: OpenAI = new OpenAI({
-      apiKey: process.env.DEEPSEEK_OPENAI_KEY || '',
-      baseURL: process.env.DEEPSEEK_OPENAI_BASE_URL,
+    apiKey: process.env.DEEPSEEK_OPENAI_KEY || '',
+    baseURL: process.env.DEEPSEEK_OPENAI_BASE_URL,
   });
 
   switch (name) {

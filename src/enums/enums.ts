@@ -10,11 +10,15 @@ export enum ChatRole {
     System = 'system',
     User = 'user',
     Assistant = 'assistant',
+    Dev = 'developer',
+    Tool = 'tool',
+    Function = 'function',
 }
 
 export enum ChatIntent {
     FINANCIAL_ADVICE = 'financial_advice',
     LOAN_SEARCH = 'loan_search',
+    PRODUCT_COMPARISON = 'product_comparison',
     DEBIT_CARD_SEARCH = 'debit_card_search',
     CREDIT_CARD_SEARCH = 'credit_card_search',
     URGENT_LOAN_SEARCH = 'urgent_loan_search',
