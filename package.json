@@ -4,7 +4,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && cp -R src/static dist/static",
+    "build": "tsc && rm -rf dist/static && cp -R src/static dist/static",
     "start": "node ./dist/index.js",
     "dev": "tsc -w & nodemon dist/index.js",
     "lint": "eslint src/**/*.ts",
