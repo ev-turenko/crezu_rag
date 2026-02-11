@@ -718,13 +718,13 @@ class ScriptDebugger {
           nodeInfo.type = "stylesheet"
         }
 
+        const stack = new Error().stack
         console.log(
           "%c[Script Debugger] Node Removed:",
           "color: #ff3366; font-weight: bold",
-          nodeInfo,
-          "\nStack:",
-          new Error().stack
+          nodeInfo
         )
+        console.log("%cStack trace:", "color: #999", stack)
       }
 
       return originalRemoveChild.call(this, child)
@@ -752,13 +752,13 @@ class ScriptDebugger {
           nodeInfo.type = "stylesheet"
         }
 
+        const stack = new Error().stack
         console.log(
           "%c[Script Debugger] Element Removed (via .remove()):",
           "color: #ff3366; font-weight: bold",
-          nodeInfo,
-          "\nStack:",
-          new Error().stack
+          nodeInfo
         )
+        console.log("%cStack trace:", "color: #999", stack)
       }
 
       return originalRemove.call(this)
@@ -787,13 +787,13 @@ class ScriptDebugger {
           nodeInfo.type = "stylesheet"
         }
 
+        const stack = new Error().stack
         console.log(
           "%c[Script Debugger] Node Replaced:",
           "color: #ff9933; font-weight: bold",
-          nodeInfo,
-          "\nStack:",
-          new Error().stack
+          nodeInfo
         )
+        console.log("%cStack trace:", "color: #999", stack)
       }
 
       return originalReplaceChild.call(this, newChild, oldChild)
