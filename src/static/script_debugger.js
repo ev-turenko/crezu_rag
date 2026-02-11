@@ -403,5 +403,3 @@ class ScriptDebugger {
 if (typeof window !== "undefined") {
   window.scriptDebugger = new ScriptDebugger()
 }
-
-export default ScriptDebugger
