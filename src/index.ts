@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import os from 'os';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import inferenceRoutes from './routes/inferenceRoutes.js';
 import healthcheckRoutes from './routes/healthcheckRoutes.js';
 import employmentIndustriesRoutes from './routes/employmentIndustriesRoutes.js';
@@ -19,9 +21,23 @@ dotenv.config();
 const app = express();
 const port = parseInt(process.env.PORT || '3000', 10);
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const staticDir = path.resolve(__dirname, 'static');
+
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
+
+app.use(
+  '/static',
+  express.static(staticDir, {
+    setHeaders: res => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    }
+  })
+);
 
 app.use('/api/ai', inferenceRoutes);
 app.use('/api/health', healthcheckRoutes);
