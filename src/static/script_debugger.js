@@ -7,6 +7,7 @@
  * &block_all=true              - Block ALL scripts and CSS
  * &block_duplicates=true       - Block duplicate scripts and CSS files
  * &log_events=true             - Log all DOM events
+ * &monitor_deletions=true      - Monitor and log node removal operations
  * 
  * SCRIPT BLOCKING:
  * &block_script=file1.js,file2.js     - Block specific scripts (comma-separated)
@@ -23,6 +24,7 @@
  * ?debug_scripts=true&allow_only=main.js&allow_css_only=styles.css
  * ?debug_scripts=true&block_duplicates=true&log_events=true
  * ?debug_scripts=true&block_index=0,1&block_css_index=2
+ * ?debug_scripts=true&monitor_deletions=true&log_events=true
  * 
  * PUBLIC API (window.scriptDebugger):
  * .blockScript(identifier)      - Block a script at runtime
@@ -39,7 +41,9 @@
  * .getCurrentStyleIndex()       - Get current CSS index
  * .resetScriptIndex()           - Reset script counter
  * .resetStyleIndex()            - Reset CSS counter
- * .enableEventLogging()         - Enable event logging at runtime
+ * .enableEventLogging()         - Enable event logging at runtime 
+ * .enableDeletionMonitoring()   - Enable node deletion monitoring at runtime
+ * .disableDeletionMonitoring()  - Disable node deletion monitoring 
  * .getConfig()                  - Get current configuration
  */
 
@@ -60,7 +64,8 @@ class ScriptDebugger {
       logEvents: false,
       blockDuplicates: false,
       blockIndices: new Set(),
-      styleBlockIndices: new Set()
+      styleBlockIndices: new Set(),
+      monitorDeletions: false
     }
 
     this.originalDispatchEvent = window.dispatchEvent.bind(window)
@@ -123,6 +128,16 @@ class ScriptDebugger {
       if (urlParams.get("log_events") === "true") {
         this.config.logEvents = true
         this.interceptEvents()
+      }
+
+      // Monitor deletions
+      if (urlParams.get("monitor_deletions") === "true") {
+        this.config.monitorDeletions = true
+        this.interceptDeletions()
+        console.log(
+          "%c[Script Debugger] Monitoring node deletions",
+          "color: #00ccff; font-weight: bold"
+        )
       }
 
       // Block duplicates
@@ -679,6 +694,112 @@ class ScriptDebugger {
     }
   }
 
+  interceptDeletions() {
+    // Intercept removeChild
+    const originalRemoveChild = Node.prototype.removeChild
+    const scriptDebugger = this
+
+    Node.prototype.removeChild = function(child) {
+      if (scriptDebugger.config.monitorDeletions) {
+        const nodeInfo = {
+          nodeName: child.nodeName,
+          nodeType: child.nodeType,
+          id: child.id || "(no id)",
+          className: child.className || "(no class)",
+          parent: this.nodeName,
+          timestamp: new Date().toISOString()
+        }
+
+        // Add additional info for script and link tags
+        if (child.nodeName === "SCRIPT") {
+          nodeInfo.src = child.src || "(inline)"
+        } else if (child.nodeName === "LINK" && child.rel === "stylesheet") {
+          nodeInfo.href = child.href || "(inline)"
+          nodeInfo.type = "stylesheet"
+        }
+
+        console.log(
+          "%c[Script Debugger] Node Removed:",
+          "color: #ff3366; font-weight: bold",
+          nodeInfo,
+          "\nStack:",
+          new Error().stack
+        )
+      }
+
+      return originalRemoveChild.call(this, child)
+    }
+
+    // Intercept remove() method on Element
+    const originalRemove = Element.prototype.remove
+
+    Element.prototype.remove = function() {
+      if (scriptDebugger.config.monitorDeletions) {
+        const nodeInfo = {
+          nodeName: this.nodeName,
+          nodeType: this.nodeType,
+          id: this.id || "(no id)",
+          className: this.className || "(no class)",
+          parent: this.parentNode?.nodeName || "(no parent)",
+          timestamp: new Date().toISOString()
+        }
+
+        // Add additional info for script and link tags
+        if (this.nodeName === "SCRIPT") {
+          nodeInfo.src = this.src || "(inline)"
+        } else if (this.nodeName === "LINK" && this.rel === "stylesheet") {
+          nodeInfo.href = this.href || "(inline)"
+          nodeInfo.type = "stylesheet"
+        }
+
+        console.log(
+          "%c[Script Debugger] Element Removed (via .remove()):",
+          "color: #ff3366; font-weight: bold",
+          nodeInfo,
+          "\nStack:",
+          new Error().stack
+        )
+      }
+
+      return originalRemove.call(this)
+    }
+
+    // Intercept replaceChild
+    const originalReplaceChild = Node.prototype.replaceChild
+
+    Node.prototype.replaceChild = function(newChild, oldChild) {
+      if (scriptDebugger.config.monitorDeletions) {
+        const nodeInfo = {
+          nodeName: oldChild.nodeName,
+          nodeType: oldChild.nodeType,
+          id: oldChild.id || "(no id)",
+          className: oldChild.className || "(no class)",
+          parent: this.nodeName,
+          replacedBy: newChild.nodeName,
+          timestamp: new Date().toISOString()
+        }
+
+        // Add additional info for script and link tags
+        if (oldChild.nodeName === "SCRIPT") {
+          nodeInfo.src = oldChild.src || "(inline)"
+        } else if (oldChild.nodeName === "LINK" && oldChild.rel === "stylesheet") {
+          nodeInfo.href = oldChild.href || "(inline)"
+          nodeInfo.type = "stylesheet"
+        }
+
+        console.log(
+          "%c[Script Debugger] Node Replaced:",
+          "color: #ff9933; font-weight: bold",
+          nodeInfo,
+          "\nStack:",
+          new Error().stack
+        )
+      }
+
+      return originalReplaceChild.call(this, newChild, oldChild)
+    }
+  }
+
   shouldBlockScript(scriptSrc) {
     if (!this.config.enabled) return false
     if (this.config.blockAll) return true
@@ -763,6 +884,25 @@ class ScriptDebugger {
       this.config.logEvents = true
       this.interceptEvents()
     }
+  }
+
+  enableDeletionMonitoring() {
+    if (!this.config.monitorDeletions) {
+      this.config.monitorDeletions = true
+      this.interceptDeletions()
+      console.log(
+        "%c[Script Debugger] Node deletion monitoring enabled",
+        "color: #00ccff; font-weight: bold"
+      )
+    }
+  }
+
+  disableDeletionMonitoring() {
+    this.config.monitorDeletions = false
+    console.log(
+      "%c[Script Debugger] Node deletion monitoring disabled",
+      "color: #ff9900; font-weight: bold"
+    )
   }
 
   getConfig() {
