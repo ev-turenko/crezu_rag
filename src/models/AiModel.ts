@@ -408,7 +408,7 @@ export class AIModel {
           content: 'You are an expert at matching offers to user intent. Analyze if the offer is relevant to the user\'s intent and respond with a relevance score from 0-10 and a brief explanation.'
         },
         {
-          role: ChatRole.Dev as const,
+          role: ChatRole.System as const,
           content: `User Intent: ${user_intent_summary}\n\nOffer: ${offer.text}\n\nIs this offer relevant to the user's intent? Provide a JSON response with format: {"score": <0-10>, "reason": "<brief explanation>"}, do not add anything else.`
         }
       ];
