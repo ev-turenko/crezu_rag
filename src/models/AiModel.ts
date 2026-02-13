@@ -1,12 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getResponse, normalizeOfferForLLM, OriginalOfferData, sendToLLM } from "../utils/common.js";
+import { getResponse, normalizeOfferForLLM, OriginalOfferData } from "../utils/common.js";
 import { ChatIntent, ChatRole, DeepInfraModels, DeepSeekModels, LLMProvider, PbCollections } from '../enums/enums.js';
 import PocketBase from 'pocketbase';
 import { InferenceBody, Suggestion } from '../types/types.js';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import z, { int } from 'zod';
-import { Chat } from 'openai/resources';
 
 export interface ChatMessage {
   index: number;
