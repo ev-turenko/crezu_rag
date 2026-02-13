@@ -441,3 +441,24 @@ export const countries = [
     lang: 'se'
   }
 ]
+
+
+export const dateGroups = {
+  today: 't',
+  yesterday: 'y',
+  this_week: 'tw',
+  last_week: 'lw',
+  this_month: 'tm',
+  january: 'm1',
+  february: 'm2',
+  march: 'm3',
+  april: 'm4',
+  may: 'm5',
+  june: 'm6',
+  july: 'm7',
+  august: 'm8',
+  september: 'm9',
+  october: 'm10',
+  november: 'm11',
+  december: 'm12'
+}
