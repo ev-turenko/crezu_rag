@@ -58,7 +58,7 @@ const getLocalIpAddress = () => {
       }
     }
   }
-  return 'N/A';
+  return 'UNKNOWN';
 };
 
 app.listen(port, '0.0.0.0', () => {
