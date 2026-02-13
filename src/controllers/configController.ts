@@ -26,6 +26,7 @@ export function getConfig() {
         return res.json({
             client_id: client_id,
             version: appBuildNumber,
+            finalScreen: 'offers', // chat | offers
             feedDisclaimer: "AI generated suggestions. AI data may be outdated or inaccurate.",
             supportedLanguages: ['en', 'es', 'pl'],
             regScreens: ['auth1', 'auth2', 'auth3', 'auth4', 'auth5'],
