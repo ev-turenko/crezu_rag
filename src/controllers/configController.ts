@@ -18,6 +18,12 @@ export function getConfig() {
         const appBuildNumber = req.query.app_build_number as string | undefined;
         const platform = req.query.platform as string | undefined;
         const lang = req.query.lang as string | undefined;
+        
+        void lang
+        void platform
+        void appVersion
+        void appName
+
         let client_id = req.query.client_id as string | undefined;
         if(!client_id) {
             // generate v4 uuid
