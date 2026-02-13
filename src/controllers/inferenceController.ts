@@ -82,7 +82,7 @@ async function extractRequestedOfferIds(options: { latestMessage: string; offers
             maxTokens: 400,
         })
 
-
+        console.log('EXTRACTED RESPONSE:', response);
         const parsed = JSON.parse(response);
         const ids = Array.isArray(parsed.selected_offer_ids) ? parsed.selected_offer_ids : [];
         return ids.filter((id: number) => compactOffers.some(offer => offer.id === id)).slice(0, 2);

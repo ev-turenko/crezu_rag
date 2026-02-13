@@ -33,12 +33,12 @@ export function getConfig() {
             client_id: client_id,
             version: appBuildNumber,
             finalScreen: 'offers', // chat | offers
-            feedDisclaimer: "AI generated suggestions. AI data may be outdated or inaccurate.",
+            feedDisclaimer: "AI generated suggestions. Consult with a professional before making decisions.",
             supportedLanguages: ['en', 'es', 'pl'],
             regScreens: ['auth1', 'auth2', 'auth3', 'auth4', 'auth5'],
             regScreensPolicy: "enforce", // enforce | optional | disabled
-            feedEndpoint: 'https://ai.cashium.pro/api/offer',
-            inferenceEndpoint: 'https://ai.cashium.pro/api/inference',
+            feedEndpoint: 'https://ai.finmatcher.com/api/offer',
+            inferenceEndpoint: 'https://ai.finmatcher.com/api/inference',
             authEndpoint: getRelevantAuthEndpoint(countryCode ? countryCode : 'es'),
             dataEndpoint: 'https://data.cashium.pro/api/v1/data',
         })
