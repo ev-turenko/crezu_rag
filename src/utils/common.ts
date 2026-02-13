@@ -3,6 +3,7 @@ import { DeepInfraModels, DeepSeekModels, LLMProvider } from '../enums/enums.js'
 import z from 'zod';
 import { getAiProvider } from '../models/AiModel.js';
 import { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/index.mjs";
+import PocketBase from 'pocketbase';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'function' | 'tool' | 'developer';

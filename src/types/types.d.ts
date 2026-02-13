@@ -1,4 +1,5 @@
 import { Request } from "express";
+import PocketBase from 'pocketbase';
 
 export interface ChatMessage {
   index: number;
@@ -77,7 +78,18 @@ export interface InferenceBody {
   };
 }
 
-export interface InferenceRequest extends Request<ParamsDictionary, any, InferenceBody, ParsedQs> {
+export interface ClientRecord {
+  id?: string | null;
+  client_id?: string | null;
+  email?: string | null;
+  name?: string | null;
+  city?: string | null;
+}
+export interface InferenceRequest extends Request {
+  pb?: PocketBase
+  pbSuperAdmin?: PocketBase,
+  userProfile?: ClientRecord | null;
+
   system?: {
     summaries?: {
       general_summary?: string | null;

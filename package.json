@@ -44,7 +44,7 @@
     "langdetect": "0.2.1",
     "marked": "16.4.1",
     "openai": "6.18.0",
-    "pocketbase": "0.26.2",
+    "pocketbase": "0.26.8",
     "puppeteer": "^23.9.0",
     "uuid": "^13.0.0",
     "zod": "^4.3.6"

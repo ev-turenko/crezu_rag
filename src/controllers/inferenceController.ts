@@ -335,9 +335,11 @@ export async function getHistory(req: Request, res: Response) {
         return res.status(200).json({
             success: true,
             chat_id: chat.chat_id,
+            is_terminated_by_system: chat.is_terminated_by_system, // deletable
             messages: chat.messages.map(msg => ({
                 from: msg.role as ChatRole,
-                data: msg.data
+                data: msg.data,
+                created: msg.created_at // deletable
             }))
         });
     } catch (error) {
