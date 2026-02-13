@@ -58,11 +58,95 @@ const emptyMessageTranslations = {
     'se': "Meddelandet kan inte vara tomt."
 }
 
+export const dateTranslations = {
+  today: {
+    'es':    "Hoy",
+    'es-mx': "Hoy",
+    'es-es': "Hoy",
+    'pl':    "Dzisiaj",
+    'en':    "Today",
+    'ro':    "Astăzi",
+    'se':    "Idag"
+  },
+
+  yesterday: {
+    'es':    "Ayer",
+    'es-mx': "Ayer",
+    'es-es': "Ayer",
+    'pl':    "Wczoraj",
+    'en':    "Yesterday",
+    'ro':    "Ieri",
+    'se':    "Igår"
+  },
+
+  thisWeek: {
+    'es':    "Esta semana",
+    'es-mx': "Esta semana",
+    'es-es': "Esta semana",
+    'pl':    "Ten tydzień",
+    'en':    "This week",
+    'ro':    "Săptămâna aceasta",
+    'se':    "Den här veckan"
+  },
+
+  lastWeek: {
+    'es':    "La semana pasada",
+    'es-mx': "La semana pasada",
+    'es-es': "La semana pasada",
+    'pl':    "W zeszłym tygodniu",
+    'en':    "Last week",
+    'ro':    "Săptămâna trecută",
+    'se':    "Förra veckan"
+  },
+
+  thisMonth: {
+    'es':    "Este mes",
+    'es-mx': "Este mes",
+    'es-es': "Este mes",
+    'pl':    "Ten miesiąc",
+    'en':    "This month",
+    'ro':    "Luna această",
+    'se':    "Detta månad"
+  },
+
+  months: {
+    'es': [
+      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ],
+    'es-mx': [
+      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ],
+    'es-es': [
+      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ],
+    'pl': [
+      "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
+      "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"
+    ],
+    'en': [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ],
+    'ro': [
+      "Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie",
+      "Iulie", "August", "Septembrie", "Octombrie", "Noiembrie", "Decembrie"
+    ],
+    'se': [
+      "Januari", "Februari", "Mars", "April", "Maj", "Juni",
+      "Juli", "Augusti", "September", "Oktober", "November", "December"
+    ]
+  }
+} as const;
+
 export const translations = {
     unsafeChatMessage: unsafeChatMessageTranslations,
     onlyFinanceMessage: onlyFinanceMessageTranslations,
     serverErrorMessage: serverErrorMessageTranslations,
     generationErrorMessage: failedToGenerateResponseTranslations,
     emptyCountryCodeMessage: emptyCountryCodeMessageTranslations,
-    emptyMessage: emptyMessageTranslations
+    emptyMessage: emptyMessageTranslations,
+    date: dateTranslations
 }
