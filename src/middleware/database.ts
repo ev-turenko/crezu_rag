@@ -34,7 +34,8 @@ export function initPbInstance(pbUrl: string): any {
 export function getUserEntry() {
   return async (req: InferenceRequest, res: Response, next: NextFunction) => {
     let uuid = req.cookies?.uuid as string | undefined;
-    const clientId = req.params?.client_id || req.body?.params?.client_id;
+    // here handle also the case when client id is provided as :client_id in url
+    const clientId = req.params?.client_id || req.body?.params?.client_id || req.params?.client_id;
 
     if (!uuid) {
       uuid = uuidv4();
@@ -62,6 +63,8 @@ export function getUserEntry() {
 
       isUserProfileValid = profileSchema.safeParse(responseJson).success;
 
+      console.log("USER PROFILE VALID:", isUserProfileValid, responseJson)
+
       if (isUserProfileValid) {
         userProfile = responseJson;
 
@@ -78,15 +81,15 @@ export function getUserEntry() {
               ].join(','),
             });
 
-            req.userProfile = {
-              id: client.id,
-              client_id: client.client_id || '',
-              email: client.email || null,
-              name: client.name || '',
-              city: client.city || null,
-            };
-            
-            next();
+          req.userProfile = {
+            id: client.id,
+            client_id: client.client_id || '',
+            email: client.email || null,
+            name: client.name || '',
+            city: client.city || null,
+          };
+
+          next();
 
 
         } catch (error) {
@@ -103,12 +106,15 @@ export function getUserEntry() {
           }
         }
       } else {
-
+        
       }
     } else {
+      req.userProfile = {
+        client_id: clientId || '',
+      };
       next();
     }
 
-    
+
   }
 }
