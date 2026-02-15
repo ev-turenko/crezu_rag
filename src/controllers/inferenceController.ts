@@ -61,17 +61,19 @@ async function extractRequestedOfferIds(options: { latestMessage: string; offers
 
     try {
 
+        const messages: any[] = [
+            {
+                role: ChatRole.System,
+                content: `You extract user-requested offer IDs for comparison. The user message is in ${options.lang}. Only select offers explicitly requested or clearly referenced by name/brand/link. If the user did not request specific offers for comparison, return an empty array. Use only the provided offer list. Respond strictly with JSON.`
+            },
+            {
+                role: ChatRole.Dev,
+                content: `User message: ${options.latestMessage}\n\nOffer list (max 200): ${JSON.stringify(compactOffers)}`
+            }
+        ]
+
         const response = await getResponse({
-            messages: [
-                {
-                    role: ChatRole.System,
-                    content: `You extract user-requested offer IDs for comparison. The user message is in ${options.lang}. Only select offers explicitly requested or clearly referenced by name/brand/link. If the user did not request specific offers for comparison, return an empty array. Use only the provided offer list. Respond strictly with JSON.`
-                },
-                {
-                    role: ChatRole.Dev,
-                    content: `User message: ${options.latestMessage}\n\nOffer list (max 200): ${JSON.stringify(compactOffers)}`
-                }
-            ],
+            messages: messages,
             schema: z.object({
                 selected_offer_ids: z.array(z.number()).max(2),
                 reason: z.string(),
@@ -83,6 +85,14 @@ async function extractRequestedOfferIds(options: { latestMessage: string; offers
         })
 
         console.log('EXTRACTED RESPONSE:', response);
+
+        // Check if response is an error message
+        if (typeof response === 'string' && response.startsWith('Error:')) {
+            console.log("MESSAGES:", messages)
+            console.error('API returned error:', response);
+            return [];
+        }
+
         const parsed = JSON.parse(response);
         const ids = Array.isArray(parsed.selected_offer_ids) ? parsed.selected_offer_ids : [];
         return ids.filter((id: number) => compactOffers.some(offer => offer.id === id)).slice(0, 2);
@@ -653,13 +663,17 @@ export async function processRequest(req: Request, res: Response) {
         const intentType = chatIntent.intent.replace('intent_', '');
         const userIntentWithMemory = memoryContext ? `${chatSummary.user_intent_summary}\n\n${memoryContext}` : chatSummary.user_intent_summary;
 
-        const loanResponse = await AIModel.getRelevantOffersV2(offersAndIntents.offers, userIntentWithMemory, intentType);
+        const [loanResponse, requestedOfferIds] = await Promise.all([
+            AIModel.getRelevantOffersV2(offersAndIntents.offers, userIntentWithMemory, intentType),
+            extractRequestedOfferIds({
+                latestMessage: body.message,
+                offers: offersAndIntents.offers.filter(offer => offer.offer_type.type === intentType),
+                lang
+            })
+        ]);
+    
 
-        const requestedOfferIds = await extractRequestedOfferIds({
-            latestMessage: body.message,
-            offers: offersAndIntents.offers.filter(offer => offer.offer_type.type === intentType),
-            lang
-        });
+        console.log("STEP 10 - Request received", { requestedOfferIds, loanResponse });
 
         let comparisonText: string | null = null;
         if (requestedOfferIds.length === 2) {
