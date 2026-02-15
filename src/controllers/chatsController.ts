@@ -65,7 +65,7 @@ export function getChatsByClientId() {
         let client: ClientRecord | null | undefined = req.userProfile;
 
         try {
-            console.log()
+            console.log("CLIENT", client)
             const chats = await req.pbSuperAdmin!
                 .collection('chats')
                 .getFullList({
