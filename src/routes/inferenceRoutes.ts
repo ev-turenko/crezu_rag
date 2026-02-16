@@ -12,6 +12,7 @@ const router = Router();
 router.post('/message', checkSafety(), processRequest);
 router.post('/chats', getAllChats);
 router.post('/client/:client_id/chats', initPbInstance(process.env.PB_URL || 'https://pb.cashium.pro/'), getUserEntry(), getChatsByClientId());
+router.get('/client/:client_id/chats', initPbInstance(process.env.PB_URL || 'https://pb.cashium.pro/'), getUserEntry(), getChatsByClientId());
 router.post('/history', getHistory);
 router.post('/report', reportMessage);
 router.post('/suggestions', getSuggestions);
