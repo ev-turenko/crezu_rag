@@ -33,15 +33,16 @@ export function getConfig() {
             client_id: client_id,
             version: appBuildNumber,
             finalScreen: 'offers', // chat | offers
+            offersScreenPolicy: 'with_offers', // with offers | empty where empty means that initially no offers will be shown to the user before initial requests
             feedDisclaimer: "AI generated suggestions. Consult with a professional before making decisions.",
             supportedLanguages: ['en', 'es', 'pl'],
             regScreens: ['auth1', 'auth2', 'auth3', 'auth4', 'auth5'],
             regScreensPolicy: "optional", // enforce | optional | disabled
             feedEndpoint: 'https://ai.finmatcher.com/api/offer',
-            inferenceEndpoint: 'https://ai.finmatcher.com/api/inference',
-            authEndpoint: getRelevantAuthEndpoint(countryCode ? countryCode : 'es'),
-            dataEndpoint: 'https://data.cashium.pro/api/v1/data',
-            geoDataEndpoint: 'https://geoip.loanfinder24.com/geoip/',
+            inferenceEndpoint: 'https://ai.finmatcher.com/api/inference', 
+            authEndpoint: getRelevantAuthEndpoint(countryCode ? countryCode : 'es'), // endpoint for auth navigation
+            dataEndpoint: 'https://data.cashium.pro/api/v1/data', // sends collected user data to this endpoint
+            geoDataEndpoint: 'https://geoip.loanfinder24.com/geoip/', // sends user location data
         })
     }
 }
