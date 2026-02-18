@@ -12,6 +12,7 @@ import { ChatIntent, ChatRole, ContentDataType, DeepInfraModels, LLMProvider } f
 import { getSortedffersAndCategories, fetchOffersByIds, normalizeOfferForLLM, OriginalOfferData, getResponse } from '../utils/common.js';
 import { marked } from 'marked';
 import z from 'zod';
+import { InferenceRequest } from '../types/types.js';
 
 const INTERNAL_MEMORY_TYPE = 'internal_memory';
 
@@ -361,7 +362,7 @@ export async function getHistory(req: Request, res: Response) {
     }
 }
 
-export async function processRequest(req: Request, res: Response) {
+export async function processRequest(req: InferenceRequest, res: Response) {
     const body: ChatProperties = req.body;
     const countries = [
         {
@@ -446,14 +447,16 @@ export async function processRequest(req: Request, res: Response) {
         }
         console.log("STEP 2 - Request received");
 
-        await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
-            role: ChatRole.User,
-            data: [
-                {
-                    content: body.message
-                }
-            ]
-        });
+        if (!req.system?.user_message_saved) {
+            await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
+                role: ChatRole.User,
+                data: [
+                    {
+                        content: body.message
+                    }
+                ]
+            });
+        }
         console.log("STEP 4 - Request received");
 
         chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord

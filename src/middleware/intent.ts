@@ -116,6 +116,11 @@ export function checkSafety(): any {
 
             if (!body.params.chat_id) chatWithId = await AIModel.initChat(body, `${ip}`);
             if (body.params.chat_id) chatWithId = await AIModel.getChatById(body.params.chat_id) as ChatDbRecord;
+            if (chatWithId?.chat_id) {
+                body.params.chat_id = chatWithId.chat_id;
+                req.system = req.system || {};
+                req.system.middleware_chat_id = chatWithId.chat_id;
+            }
             console.log('Chat with ID:', chatWithId?.chat_id);
 
             if (messages.length === 0 && chatWithId?.messages?.length) {
@@ -163,6 +168,9 @@ export function checkSafety(): any {
                     maxTokens: 100
                 })
             ])
+
+            req.system = req.system || {};
+            req.system.user_message_saved = true;
 
             console.log("Check point 1")
             console.log('Intent check response:', intentCheckResponse);

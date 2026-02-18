@@ -91,6 +91,8 @@ export interface InferenceRequest extends Request {
   userProfile?: ClientRecord | null;
 
   system?: {
+    user_message_saved?: boolean;
+    middleware_chat_id?: string;
     summaries?: {
       general_summary?: string | null;
       last_intent_summary?: string | null;
