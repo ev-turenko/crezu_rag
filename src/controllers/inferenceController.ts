@@ -458,6 +458,9 @@ export async function processRequest(req: Request, res: Response) {
 
         chatWithId = await AIModel.getChatById(chatWithId.chat_id) as ChatDbRecord
 
+        console.log("CHAT 1", chatWithId)
+        console.log("CHAT 1 ID", chatWithId.chat_id)
+
         if (!langParam || !['es-mx', 'es-es', 'pl', 'en', 'ro', 'se'].includes(langParam)) {
             return res.status(400).json({
                 success: false,
