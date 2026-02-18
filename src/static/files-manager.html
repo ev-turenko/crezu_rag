@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>File Manager</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      color: #222;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 24px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    button {
+      padding: 8px 14px;
+      border: 0;
+      border-radius: 6px;
+      background: #1f6feb;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .delete {
+      background: #d1242f;
+    }
+
+    .message {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      background: #eef5ff;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      border-bottom: 1px solid #ececec;
+      padding: 10px 6px;
+      font-size: 14px;
+    }
+
+    .mono {
+      font-family: Menlo, Monaco, Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="container">
+    <h1>File Upload / Download / Delete</h1>
+    <p>Max file size: <strong>{{ maxFileSizeMb }} MB</strong></p>
+
+    <div class="section">
+      <h2>Upload</h2>
+      <div class="row">
+        <input type="file" @change="onFileSelected" />
+        <button @click="uploadFile" :disabled="!selectedFile || loading">Upload</button>
+      </div>
+      <div v-if="selectedFile" class="row">
+        <span class="mono">{{ selectedFile.name }}</span>
+        <span>({{ formatBytes(selectedFile.size) }})</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Files</h2>
+      <div class="row">
+        <button @click="loadFiles" :disabled="loading">Refresh list</button>
+      </div>
+
+      <table v-if="files.length">
+        <thead>
+          <tr>
+            <th>Filename</th>
+            <th>Size</th>
+            <th>Updated</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="file in files" :key="file.name">
+            <td class="mono">{{ file.name }}</td>
+            <td>{{ formatBytes(file.size) }}</td>
+            <td>{{ file.updatedAt }}</td>
+            <td>
+              <div class="row">
+                <button @click="downloadFile(file.name)" :disabled="loading">Download</button>
+                <button class="delete" @click="deleteFile(file.name)" :disabled="loading">Delete</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else>No files uploaded yet.</p>
+    </div>
+
+    <div class="message" v-if="message">{{ message }}</div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script>
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          files: [],
+          selectedFile: null,
+          loading: false,
+          message: '',
+          maxFileSizeMb: 150,
+          password: 'crezu_files_2026',
+        };
+      },
+      mounted() {
+        this.loadFiles();
+      },
+      methods: {
+        setMessage(message) {
+          this.message = message;
+        },
+        formatBytes(bytes) {
+          if (!bytes) return '0 B';
+          const units = ['B', 'KB', 'MB', 'GB'];
+          const i = Math.floor(Math.log(bytes) / Math.log(1024));
+          return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${units[i]}`;
+        },
+        onFileSelected(event) {
+          const file = event.target.files[0];
+          this.selectedFile = file || null;
+        },
+        async loadFiles() {
+          this.loading = true;
+          try {
+            const response = await fetch('/api/files/list', {
+              headers: {
+                'x-file-password': this.password,
+              },
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+              throw new Error(payload.message || 'Failed to load files');
+            }
+
+            this.files = payload.files || [];
+            this.maxFileSizeMb = Math.round((payload.maxFileSizeBytes || 157286400) / (1024 * 1024));
+          } catch (error) {
+            this.setMessage(`Error: ${error.message}`);
+          } finally {
+            this.loading = false;
+          }
+        },
+        async uploadFile() {
+          if (!this.selectedFile) {
+            this.setMessage('Please select a file first');
+            return;
+          }
+
+          if (this.selectedFile.size > this.maxFileSizeMb * 1024 * 1024) {
+            this.setMessage(`File is too large. Maximum allowed is ${this.maxFileSizeMb} MB.`);
+            return;
+          }
+
+          this.loading = true;
+          try {
+            const formData = new FormData();
+            formData.append('file', this.selectedFile);
+
+            const response = await fetch('/api/files/upload', {
+              method: 'POST',
+              headers: {
+                'x-file-password': this.password,
+              },
+              body: formData,
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+              throw new Error(payload.message || 'Upload failed');
+            }
+
+            this.setMessage(`Uploaded: ${payload.fileName}`);
+            this.selectedFile = null;
+            await this.loadFiles();
+          } catch (error) {
+            this.setMessage(`Error: ${error.message}`);
+          } finally {
+            this.loading = false;
+          }
+        },
+        async downloadFile(fileName) {
+          this.loading = true;
+          try {
+            const response = await fetch(`/api/files/download/${encodeURIComponent(fileName)}`, {
+              headers: {
+                'x-file-password': this.password,
+              },
+            });
+
+            if (!response.ok) {
+              const payload = await response.json();
+              throw new Error(payload.message || 'Download failed');
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            link.click();
+            URL.revokeObjectURL(url);
+            this.setMessage(`Downloaded: ${fileName}`);
+          } catch (error) {
+            this.setMessage(`Error: ${error.message}`);
+          } finally {
+            this.loading = false;
+          }
+        },
+        async deleteFile(fileName) {
+          if (!confirm(`Delete file ${fileName}?`)) {
+            return;
+          }
+
+          this.loading = true;
+          try {
+            const response = await fetch(`/api/files/${encodeURIComponent(fileName)}`, {
+              method: 'DELETE',
+              headers: {
+                'x-file-password': this.password,
+              },
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+              throw new Error(payload.message || 'Delete failed');
+            }
+
+            this.setMessage(`Deleted: ${fileName}`);
+            await this.loadFiles();
+          } catch (error) {
+            this.setMessage(`Error: ${error.message}`);
+          } finally {
+            this.loading = false;
+          }
+        },
+      },
+    }).mount('#app');
+  </script>
+</body>
+</html>
