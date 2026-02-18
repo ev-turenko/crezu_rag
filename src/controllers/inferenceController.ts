@@ -530,8 +530,13 @@ export async function processRequest(req: Request, res: Response) {
 
         console.log("STEP 9 - Request received");
 
+        let summaryFormat = req.query.summary_format ?? 'html';
+        if (summaryFormat !== 'html' && summaryFormat !== 'markdown') {
+            summaryFormat = 'html';
+        }
+
         if (chatIntent.intent === ChatIntent.FINANCIAL_ADVICE) {
-            const adviceSummary = await AIModel.summarizeChat(chatWithId, lang, 'markdown');
+            const adviceSummary = await AIModel.summarizeChat(chatWithId, lang, summaryFormat as 'html' | 'markdown');
             if (adviceSummary) {
                 await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
                     role: ChatRole.System,
@@ -552,6 +557,8 @@ export async function processRequest(req: Request, res: Response) {
                 rolling_summary: adviceSummary.rolling_summary,
                 last_request: adviceSummary.last_request
             } : getLatestMemory(chatWithId));
+
+
 
             const adviceResponse = await getResponse({
                 messages: [
@@ -584,7 +591,7 @@ export async function processRequest(req: Request, res: Response) {
                 role: ChatRole.Assistant,
                 data: [
                     {
-                        type: ContentDataType.Html,
+                        type: summaryFormat === 'markdown' ? ContentDataType.Markdown : ContentDataType.Html,
                         content: adviceResponse
                     }
                 ]
@@ -594,17 +601,17 @@ export async function processRequest(req: Request, res: Response) {
                 chat_id: chatWithId.chat_id,
                 answer: [
                     {
-                        type: ContentDataType.Html,
+                        type: summaryFormat === 'markdown' ? ContentDataType.Markdown : ContentDataType.Html,
                         content: adviceResponse
                     }
                 ]
             });
         }
 
-        let summaryFormat = req.query.summary_format ?? 'html';
-        if (summaryFormat !== 'html' && summaryFormat !== 'markdown') {
-            summaryFormat = 'html';
-        }
+        // let summaryFormat = req.query.summary_format ?? 'html';
+        // if (summaryFormat !== 'html' && summaryFormat !== 'markdown') {
+        //     summaryFormat = 'html';
+        // }
 
         const chatSummary = await AIModel.summarizeChat(chatWithId, lang, summaryFormat as 'html' | 'markdown');
 
@@ -646,7 +653,7 @@ export async function processRequest(req: Request, res: Response) {
                 role: ChatRole.Assistant,
                 data: [
                     {
-                        type: ContentDataType.Html,
+                        type: summaryFormat === 'markdown' ? ContentDataType.Markdown : ContentDataType.Html,
                         content: chatSummary.motivation
                     }
                 ]
