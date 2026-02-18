@@ -177,7 +177,7 @@ export function checkSafety(): any {
 
                 return res.status(200).json({
                     success: true,
-                    chat_id: req.body.params.chat_id,
+                    chat_id: chatWithId?.chat_id,
                     message: unsafeMessage,
                     answer: [
                         {
@@ -197,7 +197,7 @@ export function checkSafety(): any {
 
                 return res.status(200).json({
                     success: true,
-                    chat_id: req.body.params.chat_id,
+                    chat_id: chatWithId?.chat_id,
                     answer: [
                         {
                             type: ContentDataType.Markdown,
