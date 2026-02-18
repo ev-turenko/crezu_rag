@@ -14,6 +14,7 @@ import configRoutes from './routes/configRoutes.js';
 import countriesRoutes from './routes/countriesRoutes.js';
 import viewChatRoutes from './routes/viewChatRoutes.js';
 import testRoutes from './routes/testRoutes.js';
+import geoipRoutes from './routes/geoipRoutes.js';
 
 
 dotenv.config();
@@ -48,6 +49,7 @@ app.use('/api/config', configRoutes)
 app.use('/api/countries', countriesRoutes);
 app.use('/api/view', viewChatRoutes);
 app.use('/api/test', testRoutes);
+app.use('/api/geoip', geoipRoutes);
 
 const getLocalIpAddress = () => {
   const interfaces = os.networkInterfaces();
