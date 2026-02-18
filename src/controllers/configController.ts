@@ -36,7 +36,7 @@ export function getConfig() {
             feedDisclaimer: "AI generated suggestions. Consult with a professional before making decisions.",
             supportedLanguages: ['en', 'es', 'pl'],
             regScreens: ['auth1', 'auth2', 'auth3', 'auth4', 'auth5'],
-            regScreensPolicy: "enforce", // enforce | optional | disabled
+            regScreensPolicy: "optional", // enforce | optional | disabled
             feedEndpoint: 'https://ai.finmatcher.com/api/offer',
             inferenceEndpoint: 'https://ai.finmatcher.com/api/inference',
             authEndpoint: getRelevantAuthEndpoint(countryCode ? countryCode : 'es'),
