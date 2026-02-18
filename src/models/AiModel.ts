@@ -31,6 +31,7 @@ export interface ChatProperties {
     country: number | string,
     provider: number | string,
     client_id: string,
+    is_guest_chat?: boolean,
   }
 }
 
@@ -45,6 +46,7 @@ export interface ChatDbRecord {
   chat_id: string;
   messages: ChatMessage[];
   is_terminated_by_system: boolean;
+  is_guest_chat?: boolean;
   is_public?: boolean;
   reported_messages: number[] | null;
   created: string;
@@ -65,6 +67,7 @@ export class AIModel {
       country_id: parseInt(`${payload.params.country}`),
       provider_id: parseInt(`${payload.params.provider}`),
       client_id: payload.params.client_id,
+      is_guest_chat: payload.params.is_guest_chat === true,
       reported_messages: []
     });
 

@@ -75,6 +75,7 @@ export interface InferenceBody {
     expflow?: string | null;
     chat_id?: string | null;
     client_id?: string | null;
+    is_guest_chat?: boolean;
   };
 }
 

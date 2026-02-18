@@ -69,7 +69,7 @@ export function getChatsByClientId() {
             const chats = await req.pbSuperAdmin!
                 .collection('chats')
                 .getFullList({
-                    filter: `client_id="${client?.client_id}"`,
+                    filter: `client_id="${client?.client_id}" && is_guest_chat=false`,
                 });
             return res.json({
                 data: chats.map((chat: any) => {

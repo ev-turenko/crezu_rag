@@ -364,6 +364,8 @@ export async function getHistory(req: Request, res: Response) {
 
 export async function processRequest(req: InferenceRequest, res: Response) {
     const body: ChatProperties = req.body;
+    const guestQueryValue = Array.isArray(req.query?.is_guest) ? req.query.is_guest[0] : req.query?.is_guest;
+    const isGuestChat = typeof guestQueryValue === 'string' && ['true', 'yes'].includes(guestQueryValue.trim().toLowerCase());
     const countries = [
         {
             code: 'mx',
@@ -428,7 +430,15 @@ export async function processRequest(req: InferenceRequest, res: Response) {
 
         console.log("STEP 1 - Request received:", body.message);
 
-        if (!body.params.chat_id) chatWithId = await AIModel.initChat(body, `${ip}`);
+        if (!body.params.chat_id) {
+            chatWithId = await AIModel.initChat({
+                ...body,
+                params: {
+                    ...body.params,
+                    is_guest_chat: isGuestChat
+                }
+            }, `${ip}`);
+        }
         else chatWithId = await AIModel.getChatById(body.params.chat_id);
 
         console.log("STEP 2 - Request received");

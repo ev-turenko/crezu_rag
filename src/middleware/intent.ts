@@ -83,6 +83,8 @@ export function checkSafety(): any {
             content: msg.content
         }));
         const body: InferenceBody = req.body;
+        const guestQueryValue = Array.isArray(req.query?.is_guest) ? req.query.is_guest[0] : req.query?.is_guest;
+        const isGuestChat = typeof guestQueryValue === 'string' && ['true', 'yes'].includes(guestQueryValue.trim().toLowerCase());
         const ip = req.headers['x-forwarded-for'] || req.ip || null;
 
         let chatWithId: ChatDbRecord | null = null;
@@ -114,7 +116,15 @@ export function checkSafety(): any {
         try {
             console.log(body.params)
 
-            if (!body.params.chat_id) chatWithId = await AIModel.initChat(body, `${ip}`);
+            if (!body.params.chat_id) {
+                chatWithId = await AIModel.initChat({
+                    ...body,
+                    params: {
+                        ...body.params,
+                        is_guest_chat: isGuestChat
+                    }
+                }, `${ip}`);
+            }
             if (body.params.chat_id) chatWithId = await AIModel.getChatById(body.params.chat_id) as ChatDbRecord;
             if (chatWithId?.chat_id) {
                 body.params.chat_id = chatWithId.chat_id;
