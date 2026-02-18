@@ -175,6 +175,18 @@ export function checkSafety(): any {
                     translations.unsafeChatMessage
                 );
 
+                if (chatWithId?.chat_id) {
+                    await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
+                        role: ChatRole.Assistant,
+                        data: [
+                            {
+                                type: ContentDataType.Markdown,
+                                content: unsafeMessage
+                            }
+                        ]
+                    });
+                }
+
                 return res.status(200).json({
                     success: true,
                     chat_id: chatWithId?.chat_id,
@@ -194,6 +206,18 @@ export function checkSafety(): any {
                     countries,
                     translations.onlyFinanceMessage
                 );
+
+                if (chatWithId?.chat_id) {
+                    await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
+                        role: ChatRole.Assistant,
+                        data: [
+                            {
+                                type: ContentDataType.Markdown,
+                                content: onlyFinanceMessage
+                            }
+                        ]
+                    });
+                }
 
                 return res.status(200).json({
                     success: true,
