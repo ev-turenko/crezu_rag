@@ -1,6 +1,22 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
+const feedDisclaimerByLang: Record<'en' | 'es' | 'pl', string> = {
+    en: 'AI generated suggestions. Consult with a professional before making decisions.',
+    es: 'Sugerencias generadas por IA. Consulte con un profesional antes de tomar decisiones.',
+    pl: 'Sugestie wygenerowane przez AI. Przed podjęciem decyzji skonsultuj się ze specjalistą.',
+};
+
+function normalizeConfigLang(rawLang: string | undefined): 'en' | 'es' | 'pl' {
+    if (!rawLang) return 'en';
+
+    const lang = rawLang.toLowerCase();
+
+    if (lang.startsWith('es')) return 'es';
+    if (lang.startsWith('pl')) return 'pl';
+    return 'en';
+}
+
 
 function getRelevantAuthEndpoint(countryCode: string): string {
     if(countryCode.toLowerCase() === 'mx') {
@@ -19,7 +35,7 @@ export function getConfig() {
         const platform = req.query.platform as string | undefined;
         const lang = req.query.lang as string | undefined;
         
-        void lang
+        const normalizedLang = normalizeConfigLang(lang);
         void platform
         void appVersion
         void appName
@@ -34,7 +50,7 @@ export function getConfig() {
             version: appBuildNumber,
             finalScreen: 'offers', // chat | offers
             offersScreenPolicy: 'with_offers', // with offers | empty where empty means that initially no offers will be shown to the user before initial requests
-            feedDisclaimer: "AI generated suggestions. Consult with a professional before making decisions.",
+            feedDisclaimer: feedDisclaimerByLang[normalizedLang],
             supportedLanguages: ['en', 'es', 'pl'],
             regScreens: ['auth1', 'auth2', 'auth3', 'auth4', 'auth5'],
             regScreensPolicy: "optional", // enforce | optional | disabled
