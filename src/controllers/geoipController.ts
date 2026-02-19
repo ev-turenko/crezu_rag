@@ -1,184 +1,121 @@
-import type { Request, Response } from 'express';
-import axios from 'axios';
-import net from 'node:net';
+import { Request, Response } from 'express';
 
-const GEOIP_ENDPOINT = 'https://geoip.loanfinder24.com/geoip/';
-const EXCLUDED_IPS = new Set(['38.102.84.108']);
+const GEOIP_UPSTREAM_BASE = new URL('https://geoip.loanfinder24.com/geoip/');
+const ROUTE_PREFIX = '/api/geoip';
 
-function normalizeIp(value: string): string {
-    let ip = value.trim().replace(/^"|"$/g, '');
+const HOP_BY_HOP_HEADERS = new Set([
+	'connection',
+	'keep-alive',
+	'proxy-authenticate',
+	'proxy-authorization',
+	'te',
+	'trailer',
+	'transfer-encoding',
+	'upgrade'
+]);
 
-    if (ip.startsWith('::ffff:')) {
-        ip = ip.substring(7);
-    }
+function buildUpstreamUrl(req: Request): URL {
+	const [pathname, query = ''] = req.originalUrl.split('?');
+	const remainder = pathname.startsWith(ROUTE_PREFIX)
+		? pathname.slice(ROUTE_PREFIX.length)
+		: pathname;
+	const normalizedRemainder = remainder.replace(/^\/+/, '');
+	const url = new URL(normalizedRemainder, GEOIP_UPSTREAM_BASE);
 
-    if (ip.startsWith('[') && ip.includes(']')) {
-        ip = ip.slice(1, ip.indexOf(']'));
-    }
+	if (query) {
+		url.search = query;
+	}
 
-    if (ip.includes('.') && ip.includes(':') && ip.indexOf(':') === ip.lastIndexOf(':')) {
-        ip = ip.substring(0, ip.lastIndexOf(':'));
-    }
-
-    if (ip.includes('%')) {
-        ip = ip.substring(0, ip.indexOf('%'));
-    }
-
-    return ip;
+	return url;
 }
 
-function isPrivateOrLocalIp(ip: string): boolean {
-    const version = net.isIP(ip);
+function buildForwardHeaders(req: Request): Headers {
+	const headers = new Headers();
 
-    if (version === 4) {
-        const [first, second] = ip.split('.').map(Number);
+	for (const [key, rawValue] of Object.entries(req.headers)) {
+		if (!rawValue) continue;
 
-        if (first === 10 || first === 127 || first === 0) {
-            return true;
-        }
+		const lowerKey = key.toLowerCase();
+		if (HOP_BY_HOP_HEADERS.has(lowerKey) || lowerKey === 'host' || lowerKey === 'content-length') {
+			continue;
+		}
 
-        if (first === 169 && second === 254) {
-            return true;
-        }
+		if (Array.isArray(rawValue)) {
+			headers.set(key, rawValue.join(','));
+			continue;
+		}
 
-        if (first === 172 && second >= 16 && second <= 31) {
-            return true;
-        }
+		headers.set(key, rawValue);
+	}
 
-        if (first === 192 && second === 168) {
-            return true;
-        }
+	const existingForwardedFor = headers.get('x-forwarded-for');
+	const remoteAddress = req.socket.remoteAddress;
+	if (remoteAddress) {
+		headers.set(
+			'x-forwarded-for',
+			existingForwardedFor ? `${existingForwardedFor}, ${remoteAddress}` : remoteAddress
+		);
+	}
 
-        if (first === 100 && second >= 64 && second <= 127) {
-            return true;
-        }
-
-        if (first === 198 && (second === 18 || second === 19)) {
-            return true;
-        }
-
-        return false;
-    }
-
-    if (version === 6) {
-        const normalized = ip.toLowerCase();
-
-        if (normalized === '::1' || normalized === '::') {
-            return true;
-        }
-
-        if (normalized.startsWith('fc') || normalized.startsWith('fd')) {
-            return true;
-        }
-
-        if (normalized.startsWith('fe8') || normalized.startsWith('fe9') || normalized.startsWith('fea') || normalized.startsWith('feb')) {
-            return true;
-        }
-
-        return false;
-    }
-
-    return true;
+	return headers;
 }
 
-function isPublicIp(ip: string): boolean {
-    return net.isIP(ip) !== 0 && !isPrivateOrLocalIp(ip);
+function buildForwardBody(req: Request, headers: Headers): BodyInit | undefined {
+	const method = req.method.toUpperCase();
+	if (method === 'GET' || method === 'HEAD') {
+		return undefined;
+	}
+
+	const body = req.body;
+	if (body === undefined || body === null) {
+		return undefined;
+	}
+
+	if (typeof body === 'string') {
+		return body;
+	}
+
+	if (Buffer.isBuffer(body) || body instanceof Uint8Array) {
+		const bytes = Uint8Array.from(body);
+		return new Blob([bytes]);
+	}
+
+	if (!headers.has('content-type')) {
+		headers.set('content-type', 'application/json');
+	}
+
+	return JSON.stringify(body);
 }
 
-function isExcludedIp(ip: string): boolean {
-    return EXCLUDED_IPS.has(ip);
+export async function geoipProxy(req: Request, res: Response) {
+	try {
+		const url = buildUpstreamUrl(req);
+		const headers = buildForwardHeaders(req);
+		const body = buildForwardBody(req, headers);
+
+		const upstreamResponse = await fetch(url, {
+			method: req.method,
+			headers,
+			body,
+			redirect: 'manual'
+		});
+
+		res.status(upstreamResponse.status);
+
+		upstreamResponse.headers.forEach((value, key) => {
+			if (HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
+				return;
+			}
+			res.setHeader(key, value);
+		});
+
+		const payload = Buffer.from(await upstreamResponse.arrayBuffer());
+		res.send(payload);
+	} catch (error) {
+		console.error('GeoIP proxy request failed:', error);
+		res.status(502).json({
+			success: false,
+			error: 'Bad Gateway'
+		});
+	}
 }
-
-function getFirstForwardedIp(forwardedForHeader: string | string[] | undefined): string {
-    if (!forwardedForHeader) {
-        return '';
-    }
-
-    const rawValue = Array.isArray(forwardedForHeader) ? forwardedForHeader[0] : forwardedForHeader;
-
-    return normalizeIp((rawValue || '').split(',')[0] || '');
-}
-
-function buildForwardUrl(req: Request): string {
-    const queryIndex = req.originalUrl.indexOf('?');
-    const queryString = queryIndex >= 0 ? req.originalUrl.substring(queryIndex) : '';
-    const forwardPath = req.path === '/' ? '' : req.path.replace(/^\//, '');
-
-    return `${GEOIP_ENDPOINT}${forwardPath}${queryString}`;
-}
-
-function getRequestIp(req: Request): string {
-    const forwardedIp = getFirstForwardedIp(req.headers['x-forwarded-for']);
-
-    if (forwardedIp) {
-        return forwardedIp;
-    }
-
-    const directIp = normalizeIp(req.ip || req.socket.remoteAddress || '');
-
-    return isPublicIp(directIp) && !isExcludedIp(directIp) ? directIp : '';
-}
-
-function buildForwardHeaders(req: Request): Record<string, string> {
-    const headers: Record<string, string> = {};
-    const excludedHeaders = new Set(['host', 'content-length', 'x-forwarded-for', 'x-real-ip', 'x-forwarded-proto', 'forwarded']);
-
-    for (const [key, value] of Object.entries(req.headers)) {
-        if (excludedHeaders.has(key.toLowerCase())) {
-            continue;
-        }
-
-        if (Array.isArray(value)) {
-            headers[key] = value.join(',');
-        } else if (typeof value === 'string') {
-            headers[key] = value;
-        }
-    }
-
-    const requestIp = getRequestIp(req);
-
-    if (requestIp) {
-        headers['x-forwarded-for'] = requestIp;
-    }
-
-    if (requestIp) {
-        headers['x-real-ip'] = requestIp;
-    }
-
-    headers['x-forwarded-proto'] = req.protocol;
-
-    return headers;
-}
-
-export const geoipProxy = async (req: Request, res: Response) => {
-    try {
-
-        console.log("HEADERS")
-        console.log(req.headers)
-        console.log("HEADERS END")
-        const response = await axios.request({
-            method: req.method,
-            url: buildForwardUrl(req),
-            headers: buildForwardHeaders(req),
-            data: req.body,
-            validateStatus: () => true,
-            responseType: 'arraybuffer'
-        });
-
-        const disallowedHeaders = new Set(['transfer-encoding', 'content-length', 'connection']);
-
-        for (const [key, value] of Object.entries(response.headers)) {
-            if (disallowedHeaders.has(key.toLowerCase()) || value === undefined) {
-                continue;
-            }
-            res.setHeader(key, value as string);
-        }
-
-        return res.status(response.status).send(response.data);
-    } catch (error) {
-        return res.status(502).json({
-            message: 'Failed to forward request to GeoIP service',
-            error: (error as Error).message
-        });
-    }
-};
