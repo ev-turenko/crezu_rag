@@ -58,8 +58,7 @@ export function getConfig() {
             inferenceEndpoint: 'https://ai.finmatcher.com/api/inference', 
             authEndpoint: getRelevantAuthEndpoint(countryCode ? countryCode : 'es'), // endpoint for auth navigation
             dataEndpoint: 'https://data.cashium.pro/api/v1/data', // sends collected user data to this endpoint
-            geoDataEndpoint: 'https://ai.finmatcher.com/api/geoip/', // sends user location data
-            // geoDataEndpoint: 'https://geoip.loanfinder24.com/geoip/', // sends user location data
+            geoDataEndpoint: 'https://geoip.loanfinder24.com/geoip/', // sends user location data
         })
     }
 }

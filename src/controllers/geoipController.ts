@@ -48,15 +48,6 @@ function buildForwardHeaders(req: Request): Headers {
 		headers.set(key, rawValue);
 	}
 
-	const existingForwardedFor = headers.get('x-forwarded-for');
-	const remoteAddress = req.socket.remoteAddress;
-	if (remoteAddress) {
-		headers.set(
-			'x-forwarded-for',
-			existingForwardedFor ? `${existingForwardedFor}, ${remoteAddress}` : remoteAddress
-		);
-	}
-
 	return headers;
 }
 
