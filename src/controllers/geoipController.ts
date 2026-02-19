@@ -3,6 +3,7 @@ import axios from 'axios';
 import net from 'node:net';
 
 const GEOIP_ENDPOINT = 'https://geoip.loanfinder24.com/geoip/';
+const EXCLUDED_IPS = new Set(['38.102.84.108']);
 
 function normalizeIp(value: string): string {
     let ip = value.trim().replace(/^"|"$/g, '');
@@ -84,6 +85,10 @@ function isPublicIp(ip: string): boolean {
     return net.isIP(ip) !== 0 && !isPrivateOrLocalIp(ip);
 }
 
+function isExcludedIp(ip: string): boolean {
+    return EXCLUDED_IPS.has(ip);
+}
+
 function getFirstPublicForwardedIp(forwardedForHeader: string | undefined): string {
     if (!forwardedForHeader) {
         return '';
@@ -94,7 +99,7 @@ function getFirstPublicForwardedIp(forwardedForHeader: string | undefined): stri
         .map((part) => normalizeIp(part))
         .filter(Boolean);
 
-    return forwardedIps.find((ip) => isPublicIp(ip)) || '';
+    return forwardedIps.find((ip) => isPublicIp(ip) && !isExcludedIp(ip)) || '';
 }
 
 function buildForwardUrl(req: Request): string {
@@ -114,7 +119,7 @@ function getRequestIp(req: Request): string {
 
     const directIp = normalizeIp(req.ip || req.socket.remoteAddress || '');
 
-    return isPublicIp(directIp) ? directIp : '';
+    return isPublicIp(directIp) && !isExcludedIp(directIp) ? directIp : '';
 }
 
 function buildForwardHeaders(req: Request): Record<string, string> {
