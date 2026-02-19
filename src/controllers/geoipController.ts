@@ -141,10 +141,6 @@ function buildForwardHeaders(req: Request): Record<string, string> {
     const requestIp = getRequestIp(req);
 
     if (requestIp) {
-        headers['x-forwarded-for'] = requestIp;
-    }
-
-    if (requestIp) {
         headers['x-real-ip'] = requestIp;
     }
 
