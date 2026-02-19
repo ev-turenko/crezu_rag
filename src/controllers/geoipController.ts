@@ -144,9 +144,9 @@ function buildForwardHeaders(req: Request): Record<string, string> {
         headers['x-forwarded-for'] = requestIp;
     }
 
-    if (requestIp) {
-        headers['x-real-ip'] = requestIp;
-    }
+    // if (requestIp) {
+    //     headers['x-real-ip'] = requestIp;
+    // }
 
     headers['x-forwarded-proto'] = req.protocol;
 
