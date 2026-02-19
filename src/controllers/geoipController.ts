@@ -89,18 +89,14 @@ function isExcludedIp(ip: string): boolean {
     return EXCLUDED_IPS.has(ip);
 }
 
-function getFirstForwardedIp(forwardedForHeader: string | undefined): string {
+function getFirstForwardedIp(forwardedForHeader: string | string[] | undefined): string {
     if (!forwardedForHeader) {
         return '';
     }
 
-    const firstForwardedIp = normalizeIp(forwardedForHeader.split(',')[0] || '');
+    const rawValue = Array.isArray(forwardedForHeader) ? forwardedForHeader[0] : forwardedForHeader;
 
-    if (!firstForwardedIp || net.isIP(firstForwardedIp) === 0) {
-        return '';
-    }
-
-    return isExcludedIp(firstForwardedIp) ? '' : firstForwardedIp;
+    return normalizeIp((rawValue || '').split(',')[0] || '');
 }
 
 function buildForwardUrl(req: Request): string {
@@ -112,7 +108,7 @@ function buildForwardUrl(req: Request): string {
 }
 
 function getRequestIp(req: Request): string {
-    const forwardedIp = getFirstForwardedIp(req.header('x-forwarded-for') || undefined);
+    const forwardedIp = getFirstForwardedIp(req.headers['x-forwarded-for']);
 
     if (forwardedIp) {
         return forwardedIp;
