@@ -1,7 +1,101 @@
 import type { Request, Response } from 'express';
 import axios from 'axios';
+import net from 'node:net';
 
 const GEOIP_ENDPOINT = 'https://geoip.loanfinder24.com/geoip/';
+
+function normalizeIp(value: string): string {
+    let ip = value.trim().replace(/^"|"$/g, '');
+
+    if (ip.startsWith('::ffff:')) {
+        ip = ip.substring(7);
+    }
+
+    if (ip.startsWith('[') && ip.includes(']')) {
+        ip = ip.slice(1, ip.indexOf(']'));
+    }
+
+    if (ip.includes('.') && ip.includes(':') && ip.indexOf(':') === ip.lastIndexOf(':')) {
+        ip = ip.substring(0, ip.lastIndexOf(':'));
+    }
+
+    if (ip.includes('%')) {
+        ip = ip.substring(0, ip.indexOf('%'));
+    }
+
+    return ip;
+}
+
+function isPrivateOrLocalIp(ip: string): boolean {
+    const version = net.isIP(ip);
+
+    if (version === 4) {
+        const [first, second] = ip.split('.').map(Number);
+
+        if (first === 10 || first === 127 || first === 0) {
+            return true;
+        }
+
+        if (first === 169 && second === 254) {
+            return true;
+        }
+
+        if (first === 172 && second >= 16 && second <= 31) {
+            return true;
+        }
+
+        if (first === 192 && second === 168) {
+            return true;
+        }
+
+        if (first === 100 && second >= 64 && second <= 127) {
+            return true;
+        }
+
+        if (first === 198 && (second === 18 || second === 19)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    if (version === 6) {
+        const normalized = ip.toLowerCase();
+
+        if (normalized === '::1' || normalized === '::') {
+            return true;
+        }
+
+        if (normalized.startsWith('fc') || normalized.startsWith('fd')) {
+            return true;
+        }
+
+        if (normalized.startsWith('fe8') || normalized.startsWith('fe9') || normalized.startsWith('fea') || normalized.startsWith('feb')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
+function isPublicIp(ip: string): boolean {
+    return net.isIP(ip) !== 0 && !isPrivateOrLocalIp(ip);
+}
+
+function getFirstPublicForwardedIp(forwardedForHeader: string | undefined): string {
+    if (!forwardedForHeader) {
+        return '';
+    }
+
+    const forwardedIps = forwardedForHeader
+        .split(',')
+        .map((part) => normalizeIp(part))
+        .filter(Boolean);
+
+    return forwardedIps.find((ip) => isPublicIp(ip)) || '';
+}
 
 function buildForwardUrl(req: Request): string {
     const queryIndex = req.originalUrl.indexOf('?');
@@ -12,14 +106,23 @@ function buildForwardUrl(req: Request): string {
 }
 
 function getRequestIp(req: Request): string {
-    return req.ip || req.socket.remoteAddress || '';
+    const forwardedIp = getFirstPublicForwardedIp(req.header('x-forwarded-for') || undefined);
+
+    if (forwardedIp) {
+        return forwardedIp;
+    }
+
+    const directIp = normalizeIp(req.ip || req.socket.remoteAddress || '');
+
+    return isPublicIp(directIp) ? directIp : '';
 }
 
 function buildForwardHeaders(req: Request): Record<string, string> {
     const headers: Record<string, string> = {};
+    const excludedHeaders = new Set(['host', 'content-length', 'x-forwarded-for', 'x-real-ip', 'x-forwarded-proto', 'forwarded']);
 
     for (const [key, value] of Object.entries(req.headers)) {
-        if (key === 'host' || key === 'content-length') {
+        if (excludedHeaders.has(key.toLowerCase())) {
             continue;
         }
 
@@ -31,11 +134,9 @@ function buildForwardHeaders(req: Request): Record<string, string> {
     }
 
     const requestIp = getRequestIp(req);
-    const incomingForwardedFor = req.header('x-forwarded-for');
-    const forwardedFor = [incomingForwardedFor, requestIp].filter(Boolean).join(', ');
 
-    if (forwardedFor) {
-        headers['x-forwarded-for'] = forwardedFor;
+    if (requestIp) {
+        headers['x-forwarded-for'] = requestIp;
     }
 
     if (requestIp) {
@@ -64,7 +165,6 @@ export const geoipProxy = async (req: Request, res: Response) => {
             if (disallowedHeaders.has(key.toLowerCase()) || value === undefined) {
                 continue;
             }
-
             res.setHeader(key, value as string);
         }
 
