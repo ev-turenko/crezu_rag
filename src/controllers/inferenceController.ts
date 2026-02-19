@@ -68,7 +68,7 @@ async function extractRequestedOfferIds(options: { latestMessage: string; offers
                 content: `You extract user-requested offer IDs for comparison. The user message is in ${options.lang}. Only select offers explicitly requested or clearly referenced by name/brand/link. If the user did not request specific offers for comparison, return an empty array. Use only the provided offer list. Respond strictly with JSON.`
             },
             {
-                role: ChatRole.Dev,
+                role: ChatRole.System,
                 content: `User message: ${options.latestMessage}\n\nOffer list (max 200): ${JSON.stringify(compactOffers)}`
             }
         ]
@@ -114,7 +114,7 @@ async function buildComparisonText(options: { offerA: OriginalOfferData; offerB:
                 content: `You compare two financial offers. Reply in ${options.lang}. Use a strict, mobile-friendly two-column label format with fixed labels Offer A and Offer B. Each line must follow: "Label: <Offer A> | <Offer B>". No tables, no extra text, no bullets outside the line. Include the following labels in order: Offer A Name, Offer B Name, Fees/Rate, Eligibility, Benefits, Pros, Cons, Summary. For Pros and Cons, use short semicolon-separated phrases. Keep lines concise.`
             },
             {
-                role: ChatRole.User,
+                role: ChatRole.System,
                 content: `User intent: ${options.userIntent}\n\nMemory context:\n${options.memoryContext || 'N/A'}\n\nOffer A:\n${offerAText}\n\nOffer B:\n${offerBText}`
             }
         ],

@@ -126,6 +126,18 @@ export function checkSafety(): any {
                 }, `${ip}`);
             }
             if (body.params.chat_id) chatWithId = await AIModel.getChatById(body.params.chat_id) as ChatDbRecord;
+            // Provided chat_id was not found — create a fresh chat instead
+            if (body.params.chat_id && !chatWithId) {
+                console.log(`chat_id "${body.params.chat_id}" not found, creating new chat`);
+                chatWithId = await AIModel.initChat({
+                    ...body,
+                    params: {
+                        ...body.params,
+                        chat_id: null,
+                        is_guest_chat: isGuestChat
+                    }
+                }, `${ip}`);
+            }
             if (chatWithId?.chat_id) {
                 body.params.chat_id = chatWithId.chat_id;
                 req.system = req.system || {};
