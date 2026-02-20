@@ -71,6 +71,9 @@ export function getChatsByClientId() {
                 .getFullList({
                     filter: `client_id="${client?.client_id}" && is_guest_chat=false`,
                 });
+
+            console.log("USER (" + client?.client_id + ") CHATS:", chats)
+
             return res.json({
                 data: chats.map((chat: any) => {
                     return {
