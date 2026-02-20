@@ -52,7 +52,7 @@ export function getConfig() {
             offersScreenPolicy: 'with_offers', // with offers | empty where empty means that initially no offers will be shown to the user before initial requests
             feedDisclaimer: feedDisclaimerByLang[normalizedLang],
             supportedLanguages: ['en', 'es', 'pl'],
-            regScreens: ['auth1', 'auth2', 'auth3', 'auth4', 'auth5'],
+            regScreens: ['auth1', 'auth2', 'auth3', 'auth4', 'auth5'], // auth1 | auth2 | auth3 | auth4 | auth5
             regScreensPolicy: "optional", // enforce | optional | disabled
             feedEndpoint: 'https://ai.finmatcher.com/api/offer',
             inferenceEndpoint: 'https://ai.finmatcher.com/api/inference', 
