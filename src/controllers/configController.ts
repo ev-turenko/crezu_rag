@@ -26,6 +26,33 @@ function getRelevantAuthEndpoint(countryCode: string): string {
     }
 }
 
+
+function getTermsLink(countryCode: string): string {
+    if(countryCode.toLowerCase() === 'mx') {
+        return 'https://finmart.mx/terminos-y-condiciones/';
+    }
+    if(countryCode.toLowerCase() === 'es') {
+        return 'https://finmatcher.com/es/terminos-y-condiciones/';
+    }
+    if(countryCode.toLowerCase() === 'pl') {
+        return 'https://finmatcher.com/pl/terms-and-conditions/';
+    }
+    return 'https://finmatcher.com/es/terminos-y-condiciones/';
+}
+
+function getPrivacyLink(countryCode: string): string {
+    if(countryCode.toLowerCase() === 'mx') {
+        return 'https://finmart.mx/politica-de-privacidad/';
+    }
+    if(countryCode.toLowerCase() === 'es') {
+        return 'https://finmatcher.com/es/politica-de-privacidad/';
+    }
+    if(countryCode.toLowerCase() === 'pl') {
+        return 'https://finmatcher.com/pl/polityka-prywatnosci/';
+    }
+    return 'https://finmatcher.com/es/politica-de-privacidad/';
+}
+
 export function getConfig() {
     return async (req: Request, res: Response) => {
         const countryCode = req.query.country_code as string | undefined;
@@ -42,7 +69,6 @@ export function getConfig() {
 
         let client_id = req.query.client_id as string | undefined;
         if(!client_id) {
-            // generate v4 uuid
             client_id = uuidv4();
         }
         return res.json({
@@ -61,6 +87,8 @@ export function getConfig() {
             geoDataEndpoint: 'https://geoip.loanfinder24.com/geoip/', // sends user location data
             profileEndpoint: 'https://finmatcher.com/api/auth/profile', // endpoint to get user profile, uses x-api-key header with uuid
             clientIdEndpoint: 'https://ai.finmatcher.com/api/client-id', // endpoint to resolve client_id by uuid, uses x-api-key header with uuid
+            termsLink: getTermsLink(countryCode ? countryCode : 'es'),
+            privacyLink: getPrivacyLink(countryCode ? countryCode : 'es'),
         })
     }
 }
