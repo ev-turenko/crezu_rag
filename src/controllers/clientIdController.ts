@@ -62,6 +62,8 @@ export function getClientIdByCookieUuid() {
             }
           );
 
+        console.log("CLIENT", client)
+
         return res.status(200).json({
           success: true,
           client_id: client.client_id || '',
@@ -73,6 +75,8 @@ export function getClientIdByCookieUuid() {
           password: 'defaultpassword12345678!',
           passwordConfirm: 'defaultpassword12345678!',
         });
+
+        console.log("FALLING BACK TO CREATED CLIENT", createdClient)
 
         return res.status(200).json({
           success: true,
