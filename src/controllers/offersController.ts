@@ -43,10 +43,13 @@ export class OffersController {
 
                 const response = await fetch(url.toString(), {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify({
                         country_code: `${country_code}`.toLowerCase(),
                         offer_type: "fast_loan",
-                        sorting: [{ field: 'popular', order: 'desc' }],
+                        sorting: { field: 'popular', order: 'desc' },
                         bank_ids: [],
                         benefits: [],
                         categories: [],
@@ -54,9 +57,10 @@ export class OffersController {
                     }),
                 });
 
-                if (response.status !== 200) {
-                    return res.status(200).json({ total: 0, items: [], page: 1, size: 30 });
-                }
+                // if (response.status !== 200) {
+                //     console.error('Error fetching offers:', response.status);
+                //     return res.status(200).json({ total: 0, items: [], page: 1, size: 30 });
+                // }
 
                 const data: OffersResponse = await response.json();
                 return res.status(200).json(data);
