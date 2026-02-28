@@ -41,7 +41,12 @@ export class OffersController {
                 const url = new URL('https://finmatcher.com/api/offer');
                 url.search = params.toString();
 
-                const response = await fetch(url.toString());
+                const response = await fetch(url.toString(), {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        sorting: [{ field: 'popular', order: 'desc' }],
+                    }),
+                });
 
                 if (response.status !== 200) {
                     return res.status(200).json({ total: 0, items: [], page: 1, size: 30 });
