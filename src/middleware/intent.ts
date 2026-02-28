@@ -116,7 +116,6 @@ export function checkSafety(): any {
 
         try {
             console.log(body.params)
-            console.log("MODE INTENT:", mode, 'incognito' === mode)
 
             if (!body.params.chat_id) {
                 chatWithId = await AIModel.initChat({
@@ -125,7 +124,7 @@ export function checkSafety(): any {
                         ...body.params,
                         is_guest_chat: isGuestChat
                     }
-                }, `${ip}`);
+                }, `${ip}`, mode === 'incognito');
             }
             if (body.params.chat_id) chatWithId = await AIModel.getChatById(body.params.chat_id) as ChatDbRecord;
             // Provided chat_id was not found — create a fresh chat instead
