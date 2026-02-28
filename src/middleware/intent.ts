@@ -116,7 +116,7 @@ export function checkSafety(): any {
 
         try {
             console.log(body.params)
-            console.log("MODE INTENT:", mode)
+            console.log("MODE INTENT:", mode, 'incognito' === mode)
 
             if (!body.params.chat_id) {
                 chatWithId = await AIModel.initChat({
