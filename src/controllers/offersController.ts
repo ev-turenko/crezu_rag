@@ -44,6 +44,8 @@ export class OffersController {
                 const response = await fetch(url.toString(), {
                     method: 'POST',
                     body: JSON.stringify({
+                        country_code: `${country_code}`.toLowerCase(),
+                        offer_type: "fast_loan",
                         sorting: [{ field: 'popular', order: 'desc' }],
                     }),
                 });
