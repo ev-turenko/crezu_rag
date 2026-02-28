@@ -302,7 +302,8 @@ export async function fetchOffersByIds(offerIds: number[] | string[], countryCod
         headers: offer.headers,
         name: offer.name,
         url: offer.url,
-        avatar: offer.avatar
+        avatar: offer.avatar,
+        button_text: null
       }
     });
 
