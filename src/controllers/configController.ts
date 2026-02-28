@@ -74,7 +74,7 @@ export function getConfig() {
         return res.json({
             client_id: client_id,
             version: appBuildNumber,
-            finalScreen: 'offers', // chat | offers
+            finalScreen: 'chat', // chat | offers
             offersScreenPolicy: 'with_offers', // with offers | empty where empty means that initially no offers will be shown to the user before initial requests
             feedDisclaimer: feedDisclaimerByLang[normalizedLang],
             supportedLanguages: ['en', 'es', 'pl'],
