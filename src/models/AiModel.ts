@@ -56,11 +56,12 @@ export interface ChatDbRecord {
 
 export class AIModel {
 
-  public static async initChat(payload: InferenceBody, ip: string | null): Promise<ChatDbRecord> {
+  public static async initChat(payload: InferenceBody, ip: string | null, isIncognito: boolean = false): Promise<ChatDbRecord> {
     console.log('initChat', payload);
     const pb = new PocketBase('https://pb.cashium.pro/');
     pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
     const record = await pb.collection(PbCollections.CHATS).create({
+      is_incognito: isIncognito,
       chat_id: uuidv4(),
       ip: ip,
       messages: [],
