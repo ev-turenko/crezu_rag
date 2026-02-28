@@ -47,6 +47,10 @@ export class OffersController {
                         country_code: `${country_code}`.toLowerCase(),
                         offer_type: "fast_loan",
                         sorting: [{ field: 'popular', order: 'desc' }],
+                        bank_ids: [],
+                        benefits: [],
+                        categories: [],
+                        filters: [],
                     }),
                 });
 
