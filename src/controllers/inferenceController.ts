@@ -15,6 +15,12 @@ import z from 'zod';
 import { InferenceRequest } from '../types/types.js';
 
 const INTERNAL_MEMORY_TYPE = 'internal_memory';
+const INFINITE_HISTORY_FIRST_LOAD_LIMIT = 30;
+const INFINITE_HISTORY_MIN_LIMIT = 20;
+const INFINITE_HISTORY_MAX_LIMIT = Math.max(
+    INFINITE_HISTORY_MIN_LIMIT,
+    Math.min(Number.parseInt(process.env.INFINITE_HISTORY_MAX_LIMIT || '30', 10) || 30, 30)
+);
 
 function getLatestMemory(chat: ChatDbRecord): { preferences: Record<string, string>, rolling_summary: string, last_request: string } | null {
     const memoryMessage = [...chat.messages].reverse().find(msg =>
@@ -362,8 +368,74 @@ export async function getHistory(req: Request, res: Response) {
     }
 }
 
+// MARK: REFACTOR!
+export async function getHistoryInfinite(req: Request, res: Response) {
+    const chatId = req.body?.params?.chat_id;
+    const rawOffset = req.body?.offset ?? req.body?.params?.offset ?? 0;
+    const rawLimit = req.body?.limit ?? req.body?.params?.limit;
+
+    const parsedOffset = Number.parseInt(String(rawOffset), 10);
+    const offset = Number.isNaN(parsedOffset) ? 0 : Math.max(parsedOffset, 0);
+
+    const hasCustomLimit = rawLimit !== undefined && rawLimit !== null && `${rawLimit}`.trim() !== '';
+    const parsedLimit = hasCustomLimit ? Number.parseInt(String(rawLimit), 10) : Number.NaN;
+
+    const limit = offset === 0 && !hasCustomLimit
+        ? INFINITE_HISTORY_FIRST_LOAD_LIMIT
+        : Number.isNaN(parsedLimit)
+            ? INFINITE_HISTORY_MAX_LIMIT
+            : Math.min(Math.max(parsedLimit, INFINITE_HISTORY_MIN_LIMIT), INFINITE_HISTORY_MAX_LIMIT);
+
+    try {
+        if (!chatId) {
+            return res.status(400).json({
+                success: false,
+                error: 'chat_id is required'
+            });
+        }
+
+        const chat = await AIModel.getChatById(chatId);
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                error: 'Chat not found'
+            });
+        }
+
+        const totalMessages = chat.messages.length;
+        const endExclusive = Math.max(totalMessages - offset, 0);
+        const startInclusive = Math.max(endExclusive - limit, 0);
+        const pagedMessages = chat.messages.slice(startInclusive, endExclusive);
+
+        return res.status(200).json({
+            success: true,
+            chat_id: chat.chat_id,
+            is_terminated_by_system: chat.is_terminated_by_system,
+            messages: pagedMessages.map(msg => ({
+                from: msg.role as ChatRole,
+                data: msg.data,
+                created: msg.created_at
+            })),
+            pagination: {
+                offset,
+                limit,
+                next_offset: offset + pagedMessages.length,
+                total_messages: totalMessages,
+                has_more: startInclusive > 0
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching paginated chat history:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+}
+
 export async function processRequest(req: InferenceRequest, res: Response) {
     const body: ChatProperties = req.body;
+    const mode: string | undefined = req.query.mode as string | undefined;
     const guestQueryValue = Array.isArray(req.query?.is_guest) ? req.query.is_guest[0] : req.query?.is_guest;
     const isGuestChat = typeof guestQueryValue === 'string' && ['true', 'yes'].includes(guestQueryValue.trim().toLowerCase());
     const countries = [
@@ -437,7 +509,7 @@ export async function processRequest(req: InferenceRequest, res: Response) {
                     ...body.params,
                     is_guest_chat: isGuestChat
                 }
-            }, `${ip}`);
+            }, `${ip}`, mode === 'incognito');
         }
         else chatWithId = await AIModel.getChatById(body.params.chat_id);
 
