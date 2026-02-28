@@ -83,6 +83,7 @@ export function checkSafety(): any {
             content: msg.content
         }));
         const body: InferenceBody = req.body;
+        const mode: string | undefined = req.query.mode as string | undefined;
         const guestQueryValue = Array.isArray(req.query?.is_guest) ? req.query.is_guest[0] : req.query?.is_guest;
         const isGuestChat = typeof guestQueryValue === 'string' && ['true', 'yes'].includes(guestQueryValue.trim().toLowerCase());
         const ip = req.headers['x-forwarded-for'] || req.ip || null;
@@ -136,7 +137,7 @@ export function checkSafety(): any {
                         chat_id: null,
                         is_guest_chat: isGuestChat
                     }
-                }, `${ip}`);
+                }, `${ip}`, mode === 'incognito');
             }
             if (chatWithId?.chat_id) {
                 body.params.chat_id = chatWithId.chat_id;
