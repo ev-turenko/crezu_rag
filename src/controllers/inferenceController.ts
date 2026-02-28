@@ -502,6 +502,8 @@ export async function processRequest(req: InferenceRequest, res: Response) {
 
         console.log("STEP 1 - Request received:", body.message);
 
+        console.log("MODE", mode);
+
         if (!body.params.chat_id) {
             chatWithId = await AIModel.initChat({
                 ...body,
