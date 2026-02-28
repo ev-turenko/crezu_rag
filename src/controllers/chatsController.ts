@@ -69,7 +69,7 @@ export function getChatsByClientId() {
             const chats = await req.pbSuperAdmin!
                 .collection('chats')
                 .getFullList({
-                    filter: `client_id="${client?.client_id}" && is_guest_chat=false`,
+                    filter: `client_id="${client?.client_id}" && is_guest_chat=false && is_incognito=false`,
                 });
 
             console.log("USER (" + client?.client_id + ") CHATS:", chats)
