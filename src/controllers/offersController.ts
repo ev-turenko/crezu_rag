@@ -38,8 +38,8 @@ export class OffersController {
             appendParam('size', size);
 
             try {
-                const url = new URL('https://finmatcher.com/api/offer');
-                url.search = params.toString();
+                const url = new URL('https://api.finmatcher.com/api/offer/search?page=1&size=9000');
+                // url.search = params.toString();
 
                 const response = await fetch(url.toString(), {
                     method: 'POST',
