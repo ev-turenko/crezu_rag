@@ -55,6 +55,8 @@
       display: grid;
       grid-template-rows: auto 1fr auto;
       min-height: 0;
+      grid-column: 1;
+      grid-row: 1;
     }
 
     .chat-header {
@@ -359,6 +361,234 @@
       cursor: not-allowed;
     }
 
+    /* ---- Debug panel ---- */
+    #app.debug-open {
+      grid-template-columns: minmax(0, 1fr) 380px;
+    }
+
+    .debug-panel {
+      display: none;
+      border-left: 1px solid var(--border);
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+      overflow: hidden;
+      grid-column: 2;
+      grid-row: 1;
+      min-height: 0;
+    }
+
+    #app.debug-open .debug-panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .debug-tabs {
+      display: flex;
+      border-bottom: 1px solid #1e293b;
+      flex-shrink: 0;
+    }
+
+    .debug-tab {
+      padding: 0.55rem 0.9rem;
+      cursor: pointer;
+      color: #64748b;
+      font-size: 0.74rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border-bottom: 2px solid transparent;
+      user-select: none;
+    }
+
+    .debug-tab.active {
+      color: #818cf8;
+      border-bottom-color: #818cf8;
+    }
+
+    .debug-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.6rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    /* Tools tab */
+    .tool-card {
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+      overflow: hidden;
+    }
+
+    .tool-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.6rem;
+      cursor: pointer;
+      background: #1e293b;
+      user-select: none;
+    }
+
+    .tool-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .tool-status-dot.queued   { background: #475569; }
+    .tool-status-dot.running  { background: #f59e0b; animation: pulse-dot 0.9s infinite ease-in-out; }
+    .tool-status-dot.done     { background: #22c55e; }
+    .tool-status-dot.error    { background: #ef4444; }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 0.4; transform: scale(0.85); }
+      50%       { opacity: 1;   transform: scale(1.1); }
+    }
+
+    .tool-name {
+      font-weight: 700;
+      color: #e2e8f0;
+      flex: 1;
+      font-size: 0.75rem;
+    }
+
+    .tool-status-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .tool-status-label.queued  { color: #475569; }
+    .tool-status-label.running { color: #f59e0b; }
+    .tool-status-label.done    { color: #22c55e; }
+    .tool-status-label.error   { color: #ef4444; }
+
+    .tool-ts {
+      font-size: 0.65rem;
+      color: #475569;
+      margin-left: auto;
+    }
+
+    .tool-body {
+      padding: 0.5rem 0.65rem;
+      background: #0f172a;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .tool-section-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #475569;
+      margin-bottom: 0.2rem;
+    }
+
+    .tool-json {
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-size: 0.72rem;
+      line-height: 1.5;
+      color: #94a3b8;
+      margin: 0 0 0.55rem;
+    }
+
+    .tool-error-text {
+      color: #f87171;
+      font-size: 0.72rem;
+      white-space: pre-wrap;
+    }
+
+    /* SSE log tab */
+    .sse-entry {
+      display: grid;
+      grid-template-columns: auto auto 1fr;
+      gap: 0.3rem 0.5rem;
+      align-items: baseline;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 0.3rem;
+    }
+
+    .sse-ts {
+      color: #475569;
+      font-size: 0.66rem;
+      white-space: nowrap;
+    }
+
+    .sse-event-name {
+      font-weight: 700;
+      font-size: 0.7rem;
+      white-space: nowrap;
+    }
+
+    .sse-event-name.tool-usage        { color: #818cf8; }
+    .sse-event-name.thinking-step     { color: #f59e0b; }
+    .sse-event-name.message           { color: #34d399; }
+    .sse-event-name.message-complete  { color: #60a5fa; }
+    .sse-event-name.done              { color: #a78bfa; }
+    .sse-event-name.error             { color: #f87171; }
+    .sse-event-name.unknown           { color: #94a3b8; }
+
+    .sse-data {
+      color: #94a3b8;
+      font-size: 0.7rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      grid-column: 1 / -1;
+    }
+
+    .debug-clear {
+      padding: 0.3rem 0.65rem;
+      background: #1e293b;
+      border: none;
+      border-radius: 6px;
+      color: #64748b;
+      font-size: 0.7rem;
+      cursor: pointer;
+      align-self: flex-start;
+      font-family: inherit;
+      flex-shrink: 0;
+    }
+
+    .debug-clear:hover { color: #e2e8f0; }
+
+    .debug-toggle-btn {
+      padding: 0.3rem 0.55rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .debug-toggle-btn:hover { background: var(--surface-alt); color: var(--text); }
+    .debug-toggle-btn.active { color: var(--text); border-color: #94a3b8; }
+
+    .running-tool-hint {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .debug-empty {
+      color: #334155;
+      font-size: 0.75rem;
+      text-align: center;
+      margin-top: 1.5rem;
+    }
+
     @media (max-width: 980px) {
       body {
         padding: 0;
@@ -370,6 +600,17 @@
         border-radius: 0;
         border: none;
         box-shadow: none;
+      }
+
+      #app.debug-open {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: 1fr 320px;
+      }
+
+      .debug-panel {
+        grid-row: 2;
+        border-left: none;
+        border-top: 1px solid #1e293b;
       }
 
       .controls {
@@ -385,9 +626,15 @@
 <body>
   <div id="app">
     <section class="chat-shell">
-      <header class="chat-header">
-        <h1 class="chat-title">Crezu AI Assistant</h1>
-        <p class="chat-subtitle">Live streaming replies from <em>POST /api/ai/message/stream</em></p>
+      <header class="chat-header" style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;">
+        <div>
+          <h1 class="chat-title">Crezu AI Assistant</h1>
+          <p class="chat-subtitle">Live streaming replies from <em>POST /api/ai/message/stream</em></p>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span v-if="runningToolName" class="running-tool-hint">{{ runningToolName }}…</span>
+          <button class="debug-toggle-btn" :class="{ active: showDebug }" @click="toggleDebugPanel">debug</button>
+        </div>
       </header>
 
       <main class="chat-body">
@@ -472,6 +719,64 @@
         </div>
       </div>
     </section>
+
+    <!-- ===================== DEBUG PANEL ===================== -->
+    <aside class="debug-panel">
+      <div class="debug-tabs">
+        <div class="debug-tab" :class="{ active: debugTab === 'tools' }" @click="debugTab = 'tools'">Tools</div>
+        <div class="debug-tab" :class="{ active: debugTab === 'log' }" @click="debugTab = 'log'">SSE Log <span v-if="sseLog.length" style="color:#475569;font-weight:400;">({{ sseLog.length }})</span></div>
+      </div>
+
+      <!-- TOOLS TAB -->
+      <div class="debug-content" v-show="debugTab === 'tools'">
+        <div v-if="toolUsage.length === 0" class="debug-empty">No tools received yet.</div>
+        <div
+          v-for="(tool, idx) in toolUsage"
+          :key="tool.name + idx"
+          class="tool-card"
+        >
+          <div class="tool-header" @click="toggleTool(tool.name)">
+            <div class="tool-status-dot" :class="tool.status"></div>
+            <span class="tool-name">{{ tool.name }}</span>
+            <span class="tool-status-label" :class="tool.status">{{ tool.status }}</span>
+            <span class="tool-ts">{{ fmtTs(tool.updatedAt) }}</span>
+          </div>
+          <div class="tool-body" v-if="expandedTools.has(tool.name)">
+            <div v-if="tool.description">
+              <div class="tool-section-label">Description</div>
+              <pre class="tool-json">{{ tool.description }}</pre>
+            </div>
+            <div v-if="tool.status === 'done' && tool.result !== undefined">
+              <div class="tool-section-label">Result</div>
+              <pre class="tool-json">{{ prettyJson(tool.result) }}</pre>
+            </div>
+            <div v-if="tool.status === 'error'">
+              <div class="tool-section-label">Error</div>
+              <pre class="tool-error-text">{{ tool.error }}</pre>
+            </div>
+            <div v-if="tool.status === 'queued' || tool.status === 'running'">
+              <div class="tool-section-label">Status</div>
+              <pre class="tool-json">Waiting for result…</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SSE LOG TAB -->
+      <div class="debug-content" v-show="debugTab === 'log'" ref="sseLogEl">
+        <button class="debug-clear" @click="clearLog">Clear</button>
+        <div v-if="sseLog.length === 0" class="debug-empty">No events yet.</div>
+        <div
+          v-for="(entry, i) in sseLog"
+          :key="i"
+          class="sse-entry"
+        >
+          <span class="sse-ts">{{ entry.ts }}</span>
+          <span class="sse-event-name" :class="sseClass(entry.event)">{{ entry.event }}</span>
+          <pre class="sse-data">{{ entry.summary }}</pre>
+        </div>
+      </div>
+    </aside>
   </div>
   <script>
     const { createApp } = Vue;
@@ -487,10 +792,25 @@
           thinkingLabel: '',
           controller: null,
           isStreaming: false,
-          VueVersion: Vue.version
+          VueVersion: Vue.version,
+          // --- debug ---
+          showDebug: false,
+          debugTab: 'tools',
+          toolUsage: [],       // latest ToolUsageRecord[] from tool-usage events
+          sseLog: [],          // raw SSE event log
+          expandedTools: new Set(), // tool names currently expanded
         };
       },
       methods: {
+        toggleDebugPanel() {
+          this.showDebug = !this.showDebug;
+        },
+        syncDebugLayout() {
+          const appRoot = document.getElementById('app');
+          if (appRoot) {
+            appRoot.classList.toggle('debug-open', this.showDebug);
+          }
+        },
         buildPayload(currentMessage) {
           const trimmed = currentMessage.trim();
           const messages = this.chatMessages.map(msg => ({
@@ -522,6 +842,9 @@
           this.pendingStructuredData = [];
           this.thinkingLabel = '';
           this.chatId = null;
+          this.toolUsage = [];
+          this.sseLog = [];
+          this.expandedTools = new Set();
         },
         scrollToBottom() {
           this.$nextTick(() => {
@@ -613,54 +936,74 @@
             }
           }
           if (!data) return;
-          try {
-            const parsed = JSON.parse(data);
-            if (event === 'thinking-step' && parsed.label) {
-              this.thinkingLabel = parsed.label;
-              return;
-            }
-            if (event === 'message') {
-              this.streamingDraft += parsed.content ?? data;
-              this.scrollToBottom();
-              return;
-            }
-            if (event === 'message-complete') {
-              const finalContent = parsed.message ?? parsed.content ?? this.streamingDraft;
-              const finalData = Array.isArray(parsed.answer) ? parsed.answer : (Array.isArray(parsed.data) ? parsed.data : []);
-              this.chatMessages.push({
-                role: 'assistant',
-                content: finalContent,
-                data: finalData
-              });
-              this.pendingStructuredData = [];
-              this.streamingDraft = '';
-              this.thinkingLabel = '';
-              this.scrollToBottom();
-              return;
-            }
-            if (event === 'done') {
-              if (typeof parsed.chat_id === 'string' && parsed.chat_id.trim()) {
-                this.chatId = parsed.chat_id;
-              }
 
-              const doneData = Array.isArray(parsed.answer) ? parsed.answer : (Array.isArray(parsed.data) ? parsed.data : []);
-              if (doneData.length > 0 && this.pendingStructuredData.length === 0 && this.streamingDraft) {
-                this.pendingStructuredData = doneData;
+          // --- always log to SSE log ---
+          let parsed = null;
+          try { parsed = JSON.parse(data); } catch { /* keep null */ }
+          this.logSseEvent(event, parsed, data);
+
+          // --- handle tool-usage event ---
+          if (event === 'tool-usage') {
+            if (parsed && Array.isArray(parsed.tools)) {
+              this.toolUsage = parsed.tools;
+              // auto-expand running/error tools
+              for (const t of parsed.tools) {
+                if (t.status === 'running' || t.status === 'error') {
+                  this.expandedTools = new Set([...this.expandedTools, t.name]);
+                }
               }
-              return;
             }
-            if (event === 'error') {
-              const errorMessage = parsed.message || 'Streaming interrupted';
-              this.chatMessages.push({ role: 'assistant', content: `Error: ${errorMessage}`, data: [] });
-              this.streamingDraft = '';
-              this.pendingStructuredData = [];
-              this.scrollToBottom();
-            }
-          } catch (error) {
+            return;
+          }
+
+          if (!parsed) {
             if (event === 'message') {
               this.streamingDraft += data;
               this.scrollToBottom();
             }
+            return;
+          }
+
+          if (event === 'thinking-step' && parsed.label) {
+            this.thinkingLabel = parsed.label;
+            return;
+          }
+          if (event === 'message') {
+            this.streamingDraft += parsed.content ?? data;
+            this.scrollToBottom();
+            return;
+          }
+          if (event === 'message-complete') {
+            const finalContent = parsed.message ?? parsed.content ?? this.streamingDraft;
+            const finalData = Array.isArray(parsed.answer) ? parsed.answer : (Array.isArray(parsed.data) ? parsed.data : []);
+            this.chatMessages.push({
+              role: 'assistant',
+              content: finalContent,
+              data: finalData
+            });
+            this.pendingStructuredData = [];
+            this.streamingDraft = '';
+            this.thinkingLabel = '';
+            this.scrollToBottom();
+            return;
+          }
+          if (event === 'done') {
+            if (typeof parsed.chat_id === 'string' && parsed.chat_id.trim()) {
+              this.chatId = parsed.chat_id;
+            }
+
+            const doneData = Array.isArray(parsed.answer) ? parsed.answer : (Array.isArray(parsed.data) ? parsed.data : []);
+            if (doneData.length > 0 && this.pendingStructuredData.length === 0 && this.streamingDraft) {
+              this.pendingStructuredData = doneData;
+            }
+            return;
+          }
+          if (event === 'error') {
+            const errorMessage = parsed.message || 'Streaming interrupted';
+            this.chatMessages.push({ role: 'assistant', content: `Error: ${errorMessage}`, data: [] });
+            this.streamingDraft = '';
+            this.pendingStructuredData = [];
+            this.scrollToBottom();
           }
         },
         renderMarkdown(content) {
@@ -675,6 +1018,69 @@
           } catch {
             return '-';
           }
+        },
+        // --- debug helpers ---
+        logSseEvent(event, parsed, rawData) {
+          const ts = new Date().toISOString().slice(11, 23); // HH:mm:ss.ms
+          let summary;
+          if (event === 'tool-usage' && parsed && Array.isArray(parsed.tools)) {
+            summary = parsed.tools.map(t => `${t.name}: ${t.status}`).join('\n');
+          } else if (event === 'thinking-step' && parsed) {
+            summary = parsed.label ?? rawData;
+          } else if (event === 'message' && parsed) {
+            const chunk = parsed.content ?? '';
+            summary = chunk.length > 80 ? chunk.slice(0, 80) + '…' : chunk;
+          } else if (event === 'message-complete' && parsed) {
+            const msg = parsed.message ?? '';
+            summary = `chat_id=${parsed.chat_id ?? 'null'} | ${msg.length} chars | ${Array.isArray(parsed.answer) ? parsed.answer.length : 0} data items`;
+          } else if (event === 'done' && parsed) {
+            summary = `chat_id=${parsed.chat_id ?? 'null'} | answer items: ${Array.isArray(parsed.answer) ? parsed.answer.length : 0}`;
+          } else if (event === 'error' && parsed) {
+            summary = parsed.message ?? rawData;
+          } else {
+            summary = typeof parsed === 'object' ? JSON.stringify(parsed).slice(0, 120) : rawData.slice(0, 120);
+          }
+          this.sseLog.push({ ts, event, summary });
+          this.$nextTick(() => {
+            if (this.debugTab === 'log' && this.$refs.sseLogEl) {
+              this.$refs.sseLogEl.scrollTop = this.$refs.sseLogEl.scrollHeight;
+            }
+          });
+        },
+        toggleTool(name) {
+          const s = new Set(this.expandedTools);
+          if (s.has(name)) { s.delete(name); } else { s.add(name); }
+          this.expandedTools = s;
+        },
+        clearLog() {
+          this.sseLog = [];
+        },
+        prettyJson(val) {
+          try {
+            if (typeof val === 'string') return val;
+            return JSON.stringify(val, null, 2);
+          } catch { return String(val); }
+        },
+        fmtTs(iso) {
+          try { return new Date(iso).toISOString().slice(11, 23); } catch { return iso; }
+        },
+        sseClass(event) {
+          const known = ['tool-usage', 'thinking-step', 'message', 'message-complete', 'done', 'error'];
+          return known.includes(event) ? event : 'unknown';
+        }
+      },
+      watch: {
+        showDebug() {
+          this.syncDebugLayout();
+        }
+      },
+      mounted() {
+        this.syncDebugLayout();
+      },
+      computed: {
+        runningToolName() {
+          const t = this.toolUsage.find(t => t.status === 'running');
+          return t ? t.name : null;
         }
       }
     }).mount('#app');
