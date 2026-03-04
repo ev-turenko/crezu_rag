@@ -285,13 +285,10 @@ function buildAssistantData(options: {
         }
     ];
 
-    const details = options.toolOutputs.fetch_offer_details;
     const topOffers = options.toolOutputs.fetch_top_offers;
     const relevantOffers = options.toolOutputs.fetch_relevant_offers;
 
-    const offerDetails = Array.isArray(details)
-        ? details
-        : Array.isArray(relevantOffers)
+    const offerDetails = Array.isArray(relevantOffers)
             ? relevantOffers
             : Array.isArray(topOffers)
                 ? topOffers
