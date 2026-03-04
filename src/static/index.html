@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Streaming Chat Demo</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <style>
+    :root {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: #0f172a;
+      background: #f1f5f9;
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --surface-alt: #f8fafc;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --brand: #4f46e5;
+      --brand-2: #7c3aed;
+      --assistant: #f8fafc;
+      --user: #4f46e5;
+      --user-text: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      background: radial-gradient(circle at top, #e2e8f0 0%, var(--bg) 45%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    #app {
+      width: min(100%, 1180px);
+      height: min(92dvh, 860px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    .chat-shell {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 0;
+    }
+
+    .chat-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(90deg, rgba(79, 70, 229, 0.08), rgba(124, 58, 237, 0.06));
+    }
+
+    .chat-title {
+      margin-top: 0;
+      margin-bottom: 0.2rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .chat-subtitle {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .chat-body {
+      padding: 1.1rem 1.25rem;
+      overflow-y: auto;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+    }
+
+    .empty-chat {
+      margin: auto;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.95rem;
+      max-width: 380px;
+      line-height: 1.45;
+    }
+
+    .message-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      max-width: 86%;
+    }
+
+    .message-row.user {
+      margin-left: auto;
+      align-items: flex-end;
+    }
+
+    .message-row.assistant {
+      margin-right: auto;
+      align-items: flex-start;
+    }
+
+    .message-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .bubble {
+      border-radius: 16px;
+      padding: 0.72rem 0.9rem;
+      line-height: 1.5;
+      font-size: 0.95rem;
+      border: 1px solid transparent;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .bubble.user {
+      background: linear-gradient(135deg, var(--user), var(--brand-2));
+      color: var(--user-text);
+      border-bottom-right-radius: 6px;
+    }
+
+    .bubble.assistant {
+      background: var(--assistant);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 6px;
+    }
+
+    .typing {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .typing span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #94a3b8;
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+
+    .typing span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes pulse {
+      0%,
+      80%,
+      100% {
+        transform: scale(0.8);
+        opacity: 0.35;
+      }
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .result-block {
+      width: 100%;
+      margin-top: 0.45rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.7rem;
+      background: #ffffff;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+    }
+
+    .result-type {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      margin-bottom: 0.35rem;
+    }
+
+    .result-markdown {
+      line-height: 1.55;
+      font-size: 0.92rem;
+    }
+
+    .md-content,
+    .result-markdown {
+      overflow-wrap: break-word;
+    }
+
+    .md-content p,
+    .result-markdown p { margin: 0 0 0.55em; }
+    .md-content p:last-child,
+    .result-markdown p:last-child { margin-bottom: 0; }
+
+    .md-content h1, .result-markdown h1,
+    .md-content h2, .result-markdown h2,
+    .md-content h3, .result-markdown h3,
+    .md-content h4, .result-markdown h4 {
+      margin: 0.75em 0 0.35em;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+    .md-content h1, .result-markdown h1 { font-size: 1.2em; }
+    .md-content h2, .result-markdown h2 { font-size: 1.1em; }
+    .md-content h3, .result-markdown h3 { font-size: 1em; }
+
+    .md-content ul, .result-markdown ul,
+    .md-content ol,  .result-markdown ol  {
+      margin: 0.35em 0 0.55em;
+      padding-left: 1.35em;
+    }
+    .md-content li, .result-markdown li  { margin-bottom: 0.2em; }
+
+    .md-content a, .result-markdown a {
+      color: var(--brand);
+      text-decoration: underline;
+    }
+
+    .md-content strong, .result-markdown strong { font-weight: 700; }
+    .md-content em,     .result-markdown em     { font-style: italic; }
+
+    .md-content code, .result-markdown code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85em;
+      background: rgba(15, 23, 42, 0.07);
+      border-radius: 4px;
+      padding: 0.1em 0.35em;
+    }
+
+    .md-content pre, .result-markdown pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 0.75em 1em;
+      overflow-x: auto;
+      font-size: 0.82em;
+      margin: 0.5em 0;
+    }
+    .md-content pre code, .result-markdown pre code {
+      background: none;
+      padding: 0;
+    }
+
+    .md-content blockquote, .result-markdown blockquote {
+      border-left: 3px solid var(--brand);
+      margin: 0.5em 0;
+      padding: 0.2em 0.75em;
+      color: var(--muted);
+    }
+
+    .bubble.assistant .md-content a { color: var(--brand); }
+
+    .offers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0.55rem;
+    }
+
+    .offer-card {
+      padding: 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      display: grid;
+      gap: 0.3rem;
+    }
+
+    .offer-card a {
+      color: var(--brand);
+      font-weight: 600;
+      font-size: 0.86rem;
+      text-decoration: none;
+    }
+
+    .offer-card a:hover {
+      text-decoration: underline;
+    }
+
+    .composer {
+      border-top: 1px solid var(--border);
+      padding: 0.9rem 1.25rem 1rem;
+      background: #ffffff;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto auto;
+      gap: 0.55rem;
+      align-items: center;
+    }
+
+    .controls input,
+    .controls button {
+      font-size: 1rem;
+      padding: 0.72rem 0.95rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      transition: all 0.18s ease;
+    }
+
+    .controls input {
+      width: 100%;
+      background: var(--surface-alt);
+      color: var(--text);
+    }
+
+    .controls input:focus {
+      outline: none;
+      border-color: #818cf8;
+      box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
+    }
+
+    .controls button {
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .controls button:first-of-type {
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: white;
+    }
+
+    .controls button:last-of-type {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+
+    .controls button:nth-of-type(2) {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+
+    .controls button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 980px) {
+      body {
+        padding: 0;
+      }
+
+      #app {
+        height: 100dvh;
+        max-width: 100%;
+        border-radius: 0;
+        border: none;
+        box-shadow: none;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .message-row {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <section class="chat-shell">
+      <header class="chat-header">
+        <h1 class="chat-title">Crezu AI Assistant</h1>
+        <p class="chat-subtitle">Live streaming replies from <em>POST /api/ai/message/stream</em></p>
+      </header>
+
+      <main class="chat-body">
+        <div
+          class="empty-chat"
+          v-if="chatMessages.length === 0 && !streamingDraft"
+        >
+          Start a conversation about loans, credit cards, or financing. Responses stream in real time and offer cards appear below the answer.
+        </div>
+
+        <article
+          v-for="(msg, idx) in chatMessages"
+          :key="`msg-${idx}`"
+          class="message-row"
+          :class="msg.role"
+        >
+          <span class="message-label">{{ msg.role === 'user' ? 'You' : 'Assistant' }}</span>
+          <div v-if="msg.role === 'user'" class="bubble user">{{ msg.content }}</div>
+          <div v-else class="bubble assistant md-content" v-html="renderMarkdown(msg.content)"></div>
+
+          <template v-if="msg.role === 'assistant' && Array.isArray(msg.data)">
+            <div
+              v-for="(item, index) in msg.data.filter(i => i.type === 'app_offers')"
+              :key="`offers-${idx}-${index}`"
+              class="result-block"
+            >
+              <div v-if="!Array.isArray(item.content) || item.content.length === 0">No offers available</div>
+              <div v-else class="offers-grid">
+                <div v-for="offer in item.content" :key="offer.id ?? offer.offer_id" class="offer-card">
+                  <div><strong>{{ offer.name ?? offer.title ?? `Offer #${offer.id ?? offer.offer_id ?? '-'}` }}</strong></div>
+                  <div v-if="offer.bank?.name || offer.bank" style="font-size: 0.82rem; color: #475569;">Bank: {{ offer.bank?.name ?? offer.bank }}</div>
+                  <a v-if="offer.url" :href="offer.url" target="_blank" rel="noopener noreferrer">Open offer</a>
+                </div>
+              </div>
+            </div>
+          </template>
+        </article>
+
+        <article class="message-row assistant" v-if="streamingDraft">
+          <span class="message-label">Assistant</span>
+          <div class="bubble assistant">
+            {{ streamingDraft }}
+            <span class="typing" v-if="isStreaming">
+              <span></span><span></span><span></span>
+            </span>
+          </div>
+        </article>
+
+        <article class="message-row assistant" v-else-if="isStreaming">
+          <span class="message-label">Assistant</span>
+          <div class="bubble assistant">
+            {{ thinkingLabel || 'Thinking' }}
+            <span class="typing">
+              <span></span><span></span><span></span>
+            </span>
+          </div>
+        </article>
+
+        <template v-if="pendingStructuredData.length > 0">
+          <div
+            v-for="(item, index) in pendingStructuredData.filter(i => i.type === 'app_offers')"
+            :key="`pending-offers-${index}`"
+            class="result-block"
+          >
+            <div v-if="!Array.isArray(item.content) || item.content.length === 0">No offers available</div>
+            <div v-else class="offers-grid">
+              <div v-for="offer in item.content" :key="offer.id ?? offer.offer_id" class="offer-card">
+                <div><strong>{{ offer.name ?? offer.title ?? `Offer #${offer.id ?? offer.offer_id ?? '-'}` }}</strong></div>
+                <div v-if="offer.bank?.name || offer.bank" style="font-size: 0.82rem; color: #475569;">Bank: {{ offer.bank?.name ?? offer.bank }}</div>
+                <a v-if="offer.url" :href="offer.url" target="_blank" rel="noopener noreferrer">Open offer</a>
+              </div>
+            </div>
+          </div>
+        </template>
+
+      </main>
+
+      <div class="composer">
+        <div class="controls">
+          <input v-model="message" placeholder="Describe your financial need" :disabled="isStreaming" />
+          <button @click="startStream" :disabled="!message.trim() || isStreaming">Send</button>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          message: 'I need the best personal loan',
+          chatMessages: [],
+          streamingDraft: '',
+          pendingStructuredData: [],
+          chatId: null,
+          thinkingLabel: '',
+          controller: null,
+          isStreaming: false,
+          VueVersion: Vue.version
+        };
+      },
+      methods: {
+        buildPayload(currentMessage) {
+          const trimmed = currentMessage.trim();
+          const messages = this.chatMessages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }));
+
+          const params = {
+            country: 2,
+            provider: 123,
+            client_id: 'sample-client-1'
+          };
+
+          if (this.chatId) {
+            params.chat_id = this.chatId;
+          }
+
+          return {
+            message: trimmed,
+            messages,
+            source: 'app',
+            content_types: ['markdown', 'app_offers'],
+            params
+          };
+        },
+        resetConversation() {
+          this.chatMessages = [];
+          this.streamingDraft = '';
+          this.pendingStructuredData = [];
+          this.thinkingLabel = '';
+          this.chatId = null;
+        },
+        scrollToBottom() {
+          this.$nextTick(() => {
+            const el = this.$el?.querySelector('.chat-body');
+            if (el) {
+              el.scrollTop = el.scrollHeight;
+            }
+          });
+        },
+        async startStream() {
+          if (this.isStreaming) {
+            return;
+          }
+          const trimmedMessage = this.message.trim();
+          if (!trimmedMessage) {
+            return;
+          }
+
+          this.chatMessages.push({ role: 'user', content: trimmedMessage });
+
+          this.streamingDraft = '';
+          this.pendingStructuredData = [];
+          this.thinkingLabel = '';
+          this.isStreaming = true;
+          this.scrollToBottom();
+
+          const payload = this.buildPayload(trimmedMessage);
+          this.message = '';
+          const abortCtrl = new AbortController();
+          this.controller = abortCtrl;
+          let reader;
+          try {
+            const response = await fetch('/api/ai/message/stream', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+              signal: abortCtrl.signal
+            });
+            if (!response.body) {
+              throw new Error('Streaming not supported by the server.');
+            }
+            reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                break;
+              }
+              buffer += decoder.decode(value, { stream: true });
+              const blocks = buffer.split('\n\n');
+              buffer = blocks.pop() ?? '';
+              for (const block of blocks) {
+                this.handleSseBlock(block);
+              }
+            }
+          } catch (error) {
+            if (error?.name !== 'AbortError') {
+              this.chatMessages.push({
+                role: 'assistant',
+                content: `Error: ${error.message ?? error}`,
+                data: []
+              });
+            }
+          } finally {
+            if (reader) {
+              await reader.cancel();
+            }
+            this.isStreaming = false;
+            this.controller = null;
+            this.scrollToBottom();
+          }
+        },
+        stopStream() {
+          if (this.controller) {
+            this.controller.abort();
+          }
+        },
+        handleSseBlock(block) {
+          const lines = block.split('\n');
+          let event = 'message';
+          let data = '';
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            if (line.startsWith('event:')) {
+              event = line.replace('event:', '').trim();
+            } else if (line.startsWith('data:')) {
+              data += line.replace('data:', '').trim();
+            }
+          }
+          if (!data) return;
+          try {
+            const parsed = JSON.parse(data);
+            if (event === 'thinking-step' && parsed.label) {
+              this.thinkingLabel = parsed.label;
+              return;
+            }
+            if (event === 'message') {
+              this.streamingDraft += parsed.content ?? data;
+              this.scrollToBottom();
+              return;
+            }
+            if (event === 'message-complete') {
+              const finalContent = parsed.message ?? parsed.content ?? this.streamingDraft;
+              const finalData = Array.isArray(parsed.answer) ? parsed.answer : (Array.isArray(parsed.data) ? parsed.data : []);
+              this.chatMessages.push({
+                role: 'assistant',
+                content: finalContent,
+                data: finalData
+              });
+              this.pendingStructuredData = [];
+              this.streamingDraft = '';
+              this.thinkingLabel = '';
+              this.scrollToBottom();
+              return;
+            }
+            if (event === 'done') {
+              if (typeof parsed.chat_id === 'string' && parsed.chat_id.trim()) {
+                this.chatId = parsed.chat_id;
+              }
+
+              const doneData = Array.isArray(parsed.answer) ? parsed.answer : (Array.isArray(parsed.data) ? parsed.data : []);
+              if (doneData.length > 0 && this.pendingStructuredData.length === 0 && this.streamingDraft) {
+                this.pendingStructuredData = doneData;
+              }
+              return;
+            }
+            if (event === 'error') {
+              const errorMessage = parsed.message || 'Streaming interrupted';
+              this.chatMessages.push({ role: 'assistant', content: `Error: ${errorMessage}`, data: [] });
+              this.streamingDraft = '';
+              this.pendingStructuredData = [];
+              this.scrollToBottom();
+            }
+          } catch (error) {
+            if (event === 'message') {
+              this.streamingDraft += data;
+              this.scrollToBottom();
+            }
+          }
+        },
+        renderMarkdown(content) {
+          if (!content) return '';
+          const raw = marked.parse(content);
+          return typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(raw) : raw;
+        },
+        formatTime(value) {
+          try {
+            const date = new Date(value);
+            return date.toLocaleTimeString();
+          } catch {
+            return '-';
+          }
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
