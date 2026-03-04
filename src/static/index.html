@@ -1019,9 +1019,27 @@
             return '-';
           }
         },
+        formatLocalTimestamp(value) {
+          try {
+            const date = value instanceof Date ? value : new Date(value);
+            if (Number.isNaN(date.getTime())) {
+              return '-';
+            }
+            const base = date.toLocaleTimeString([], {
+              hour12: false,
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            });
+            const ms = String(date.getMilliseconds()).padStart(3, '0');
+            return `${base}.${ms}`;
+          } catch {
+            return '-';
+          }
+        },
         // --- debug helpers ---
         logSseEvent(event, parsed, rawData) {
-          const ts = new Date().toISOString().slice(11, 23); // HH:mm:ss.ms
+          const ts = this.formatLocalTimestamp(new Date());
           let summary;
           if (event === 'tool-usage' && parsed && Array.isArray(parsed.tools)) {
             summary = parsed.tools.map(t => `${t.name}: ${t.status}`).join('\n');
@@ -1062,7 +1080,7 @@
           } catch { return String(val); }
         },
         fmtTs(iso) {
-          try { return new Date(iso).toISOString().slice(11, 23); } catch { return iso; }
+          return this.formatLocalTimestamp(iso);
         },
         sseClass(event) {
           const known = ['tool-usage', 'thinking-step', 'message', 'message-complete', 'done', 'error'];
