@@ -666,6 +666,7 @@ type ThinkingStepTemplates = {
     checkingResults: string;
     comparingResults: string;
     findingBest: string;
+    browsingSources: string;
 };
 
 const THINKING_STEPS_BY_LANG: Record<string, ThinkingStepTemplates> = {
@@ -676,6 +677,7 @@ const THINKING_STEPS_BY_LANG: Record<string, ThinkingStepTemplates> = {
         checkingResults:   'Verificando resultados relevantes...',
         comparingResults:  'Comparando opciones...',
         findingBest:       'Encontrando la mejor solución...',
+        browsingSources:   'Navegando por las fuentes...',
     },
     // Polish
     pl: {
@@ -684,23 +686,10 @@ const THINKING_STEPS_BY_LANG: Record<string, ThinkingStepTemplates> = {
         checkingResults:   'Weryfikuję trafne wyniki...',
         comparingResults:  'Porównuję opcje...',
         findingBest:       'Szukam najlepszego rozwiązania...',
+        browsingSources:   'Przeglądam zródła...',
     },
-    // Portuguese – Brazil
-    pt: {
-        searchingData:     'Buscando dados...',
-        checkingSource:    (n) => `Verificando fonte ${n}...`,
-        checkingResults:   'Verificando resultados relevantes...',
-        comparingResults:  'Comparando opções...',
-        findingBest:       'Encontrando a melhor solução...',
-    },
-    // French
-    fr: {
-        searchingData:     'Recherche de données...',
-        checkingSource:    (n) => `Vérification de la source ${n}...`,
-        checkingResults:   'Vérification des résultats pertinents...',
-        comparingResults:  'Comparaison des options...',
-        findingBest:       'Recherche de la meilleure solution...',
-    },
+
+
     // German
     de: {
         searchingData:     'Daten werden gesucht...',
@@ -708,15 +697,9 @@ const THINKING_STEPS_BY_LANG: Record<string, ThinkingStepTemplates> = {
         checkingResults:   'Relevante Ergebnisse werden geprüft...',
         comparingResults:  'Optionen werden verglichen...',
         findingBest:       'Beste Lösung wird gesucht...',
+        browsingSources:   'Quellen werden durchsucht...',
     },
-    // Italian
-    it: {
-        searchingData:     'Ricerca dati in corso...',
-        checkingSource:    (n) => `Controllo fonte ${n}...`,
-        checkingResults:   'Verifica risultati pertinenti...',
-        comparingResults:  'Confronto opzioni...',
-        findingBest:       'Ricerca della soluzione migliore...',
-    },
+
     // English (default)
     en: {
         searchingData:     'Searching data...',
@@ -724,6 +707,7 @@ const THINKING_STEPS_BY_LANG: Record<string, ThinkingStepTemplates> = {
         checkingResults:   'Checking relevant search results...',
         comparingResults:  'Comparing results...',
         findingBest:       'Finding the best solution...',
+        browsingSources:   'Browsing sources...',
     },
 };
 
@@ -1093,13 +1077,16 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
     }
 
     sendEvent('message-complete', {
-        content: aggregated,
-        data: assistantData
+        success: true,
+        chat_id: chatId,
+        message: aggregated,
+        answer: assistantData
     });
     sendEvent('done', {
         success: true,
         chat_id: chatId,
-        data: assistantData
+        message: aggregated,
+        answer: assistantData
     });
     res.end();
 }

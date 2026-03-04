@@ -299,3 +299,235 @@ export function checkSafety(): any {
         }
     }
 }
+
+/**
+ * Streaming-compatible variant of checkSafety.
+ * Performs identical intent classification but, when a message is blocked
+ * (DANGER / OTHER), responds with SSE events instead of plain JSON so that
+ * the client – which already expects a text/event-stream – receives a
+ * well-formed terminal sequence:  message-complete → done → connection close.
+ * Validation errors (missing country, empty message) still return JSON 4xx
+ * because the stream has not been opened yet.
+ */
+export function checkSafetyStream(): any {
+    return async (req: InferenceRequest, res: Response, next: NextFunction) => {
+        const rawMessages = req.body?.messages ? JSON.parse(JSON.stringify(req.body.messages)) || [] : [];
+        let messages: ChatCompletionMessageParam[] = rawMessages.map((msg: any) => ({
+            role: msg.role as ChatCompletionMessageParam['role'],
+            content: msg.content
+        }));
+        const body: InferenceBody = req.body;
+        const mode: string | undefined = req.query.mode as string | undefined;
+        const guestQueryValue = Array.isArray(req.query?.is_guest) ? req.query.is_guest[0] : req.query?.is_guest;
+        const isGuestChat = typeof guestQueryValue === 'string' && ['true', 'yes'].includes(guestQueryValue.trim().toLowerCase());
+        const ip = req.headers['x-forwarded-for'] || req.ip || null;
+
+        let chatWithId: ChatDbRecord | null = null;
+
+        if (!body?.params?.country) {
+            return res.status(400).json({
+                success: false,
+                message: resolveTranslation(
+                    undefined,
+                    countries,
+                    translations.emptyCountryCodeMessage
+                )
+            });
+        }
+
+        messages.push({ role: 'user', content: req.body.message });
+
+        if (req.body.message.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: resolveTranslation(
+                    body.params.country,
+                    countries,
+                    translations.emptyMessage
+                )
+            });
+        }
+
+        /** Open an SSE stream and send terminal events, then end the response. */
+        const sendSseBlock = (chatId: string | undefined, message: string, answer: unknown[]) => {
+            const payload = { success: true, chat_id: chatId, message, answer };
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache, no-transform');
+            res.setHeader('Connection', 'keep-alive');
+            (res as any).flushHeaders?.();
+            res.write(`event: message-complete\n`);
+            res.write(`data: ${JSON.stringify(payload)}\n\n`);
+            res.write(`event: done\n`);
+            res.write(`data: ${JSON.stringify(payload)}\n\n`);
+            res.end();
+        };
+
+        try {
+            console.log(body.params);
+
+            if (!body.params.chat_id) {
+                chatWithId = await AIModel.initChat({
+                    ...body,
+                    params: {
+                        ...body.params,
+                        is_guest_chat: isGuestChat
+                    }
+                }, `${ip}`, mode === 'incognito');
+            }
+            if (body.params.chat_id) chatWithId = await AIModel.getChatById(body.params.chat_id) as ChatDbRecord;
+            if (body.params.chat_id && !chatWithId) {
+                console.log(`chat_id "${body.params.chat_id}" not found, creating new chat`);
+                chatWithId = await AIModel.initChat({
+                    ...body,
+                    params: {
+                        ...body.params,
+                        chat_id: null,
+                        is_guest_chat: isGuestChat
+                    }
+                }, `${ip}`, mode === 'incognito');
+            }
+            if (chatWithId?.chat_id) {
+                body.params.chat_id = chatWithId.chat_id;
+                req.system = req.system || {};
+                req.system.middleware_chat_id = chatWithId.chat_id;
+            }
+            console.log('Chat with ID:', chatWithId?.chat_id);
+
+            if (messages.length === 0 && chatWithId?.messages?.length) {
+                messages = chatWithId.messages
+                    .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+                    .map(msg => {
+                        const content = msg.data?.[0]?.content;
+                        const safeContent = typeof content === 'string' ? content : JSON.stringify(content);
+                        return {
+                            role: msg.role as ChatCompletionMessageParam['role'],
+                            content: safeContent
+                        } as ChatCompletionMessageParam;
+                    }) as ChatCompletionMessageParam[];
+            }
+
+            const contextText = buildChatContext(chatWithId);
+
+            const contextMessages: ChatCompletionMessageParam[] = contextText
+                ? [{ role: 'system', content: `Use the following context only if it helps classify the latest user message.\n${contextText}` }]
+                : [];
+
+            const [_savedMessageRecord, intentCheckResponse] = await Promise.all([
+                AIModel.saveMessageToChat(chatWithId!.chat_id, false, {
+                    role: ChatRole.User,
+                    data: [
+                        {
+                            content: body.message
+                        }
+                    ]
+                }),
+                getResponse({
+                    messages: [
+                        {
+                            role: 'system',
+                            content: `You are a multilingual text safety manager and intent classifier. Check the provided text and tell to which category it belongs based on provided schema. Loans are always LEGAL!`
+                        },
+                        ...contextMessages,
+                        ...messages
+                    ],
+                    schema: intentSchema,
+                    aiProvider: LLMProvider.DEEPSEEK,
+                    model: DeepSeekModels.CHAT,
+                    jsonSchemaName: 'safety_check',
+                    maxTokens: 100
+                })
+            ]);
+
+            req.system = req.system || {};
+            req.system.user_message_saved = true;
+
+            console.log('Check point 1');
+            console.log('Intent check response:', intentCheckResponse);
+            const intentResult = JSON.parse(intentCheckResponse || '{}') as z.infer<typeof intentSchema>;
+            console.log('Check point 2');
+
+            if (['DANGER'].includes(intentResult.message_objective)) {
+                const unsafeMessage = resolveTranslation(
+                    body.params.country,
+                    countries,
+                    translations.unsafeChatMessage
+                );
+
+                if (chatWithId?.chat_id) {
+                    await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
+                        role: ChatRole.Assistant,
+                        data: [
+                            {
+                                type: ContentDataType.Markdown,
+                                content: unsafeMessage
+                            }
+                        ]
+                    });
+                }
+
+                return sendSseBlock(chatWithId?.chat_id, unsafeMessage, [
+                    { type: ContentDataType.Markdown, content: unsafeMessage }
+                ]);
+            }
+
+            if (['OTHER'].includes(intentResult.message_objective)) {
+                const onlyFinanceMessage = resolveTranslation(
+                    body.params.country,
+                    countries,
+                    translations.onlyFinanceMessage
+                );
+
+                if (chatWithId?.chat_id) {
+                    await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
+                        role: ChatRole.Assistant,
+                        data: [
+                            {
+                                type: ContentDataType.Markdown,
+                                content: onlyFinanceMessage
+                            }
+                        ]
+                    });
+                }
+
+                return sendSseBlock(chatWithId?.chat_id, onlyFinanceMessage, [
+                    { type: ContentDataType.Markdown, content: onlyFinanceMessage }
+                ]);
+            }
+
+            const summaryResponse = await getResponse({
+                messages: [
+                    {
+                        role: 'system',
+                        content: `You are a summarization guru. Summarize the provided the provided conversation in a concise manner, that would be helpful for a specialized LLM model or human expert.`
+                    },
+                    ...(contextText ? [{ role: 'system', content: `Context for summarization (use if relevant):\n${contextText}` } as ChatCompletionMessageParam] : []),
+                    ...messages
+                ],
+                schema: summarySchema,
+                aiProvider: LLMProvider.DEEPSEEK,
+                model: DeepSeekModels.CHAT,
+                jsonSchemaName: 'safety_check',
+                maxTokens: 100
+            });
+
+            const summaryResult = JSON.parse(summaryResponse || '{}') as z.infer<typeof summarySchema>;
+
+            req.system = req.system || {};
+            req.system.summaries = summaryResult;
+
+            next();
+
+        } catch (error) {
+            const serverErrorMessage = resolveTranslation(
+                body.params.country,
+                countries,
+                translations.serverErrorMessage
+            );
+            return res.status(500).json({
+                success: false,
+                message: `1: ${serverErrorMessage}`,
+                error: (error as Error).message
+            });
+        }
+    }
+}
