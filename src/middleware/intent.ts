@@ -446,6 +446,8 @@ export function checkSafetyStream(): any {
             const intentResult = JSON.parse(intentCheckResponse || '{}') as z.infer<typeof intentSchema>;
             console.log('Check point 2');
 
+            console.log('Intent result:', intentResult);
+
             if (['DANGER'].includes(intentResult.message_objective)) {
                 const unsafeMessage = resolveTranslation(
                     body.params.country,
@@ -498,7 +500,7 @@ export function checkSafetyStream(): any {
                 messages: [
                     {
                         role: 'system',
-                        content: `You are a summarization guru. Summarize the provided the provided conversation in a concise manner, that would be helpful for a specialized LLM model or human expert.`
+                        content: `You are a summarization guru. Summarize the provided the provided conversation in a concise manner, that would be helpful for a specialized LLM model or human expert. If the user asks something unrelated to finance, don't include that in the summary at all. Focus on financial aspects only.`
                     },
                     ...(contextText ? [{ role: 'system', content: `Context for summarization (use if relevant):\n${contextText}` } as ChatCompletionMessageParam] : []),
                     ...messages
@@ -511,6 +513,8 @@ export function checkSafetyStream(): any {
             });
 
             const summaryResult = JSON.parse(summaryResponse || '{}') as z.infer<typeof summarySchema>;
+
+            console.log('Summary result:', summaryResult);
 
             req.system = req.system || {};
             req.system.summaries = summaryResult;

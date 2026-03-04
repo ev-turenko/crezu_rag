@@ -416,6 +416,18 @@
       gap: 0.5rem;
     }
 
+    .debug-meta {
+      padding: 0.4rem 0.75rem;
+      border-bottom: 1px solid #1e293b;
+      color: #64748b;
+      font-size: 0.68rem;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+    }
+
     /* Tools tab */
     .tool-card {
       border-radius: 8px;
@@ -534,6 +546,7 @@
     .sse-event-name.message-complete  { color: #60a5fa; }
     .sse-event-name.done              { color: #a78bfa; }
     .sse-event-name.error             { color: #f87171; }
+    .sse-event-name.request-sent      { color: #fbbf24; }
     .sse-event-name.unknown           { color: #94a3b8; }
 
     .sse-data {
@@ -726,6 +739,7 @@
         <div class="debug-tab" :class="{ active: debugTab === 'tools' }" @click="debugTab = 'tools'">Tools</div>
         <div class="debug-tab" :class="{ active: debugTab === 'log' }" @click="debugTab = 'log'">SSE Log <span v-if="sseLog.length" style="color:#475569;font-weight:400;">({{ sseLog.length }})</span></div>
       </div>
+      <div class="debug-meta" v-if="requestSentAt">Request sent: {{ formatLocalTimestamp(requestSentAt) }}</div>
 
       <!-- TOOLS TAB -->
       <div class="debug-content" v-show="debugTab === 'tools'">
@@ -799,6 +813,7 @@
           toolUsage: [],       // latest ToolUsageRecord[] from tool-usage events
           sseLog: [],          // raw SSE event log
           expandedTools: new Set(), // tool names currently expanded
+          requestSentAt: null,
         };
       },
       methods: {
@@ -845,6 +860,7 @@
           this.toolUsage = [];
           this.sseLog = [];
           this.expandedTools = new Set();
+          this.requestSentAt = null;
         },
         scrollToBottom() {
           this.$nextTick(() => {
@@ -869,6 +885,12 @@
           this.pendingStructuredData = [];
           this.thinkingLabel = '';
           this.isStreaming = true;
+          this.requestSentAt = new Date().toISOString();
+          this.logSseEvent('request-sent', {
+            endpoint: '/api/ai/message/stream',
+            message: trimmedMessage,
+            sent_at: this.requestSentAt
+          }, trimmedMessage);
           this.scrollToBottom();
 
           const payload = this.buildPayload(trimmedMessage);
@@ -1043,6 +1065,9 @@
           let summary;
           if (event === 'tool-usage' && parsed && Array.isArray(parsed.tools)) {
             summary = parsed.tools.map(t => `${t.name}: ${t.status}`).join('\n');
+          } else if (event === 'request-sent' && parsed) {
+            const preview = (parsed.message ?? '').slice(0, 60);
+            summary = `POST ${parsed.endpoint ?? '/api/ai/message/stream'} | ${preview}${(parsed.message ?? '').length > 60 ? '…' : ''}`;
           } else if (event === 'thinking-step' && parsed) {
             summary = parsed.label ?? rawData;
           } else if (event === 'message' && parsed) {
@@ -1083,7 +1108,7 @@
           return this.formatLocalTimestamp(iso);
         },
         sseClass(event) {
-          const known = ['tool-usage', 'thinking-step', 'message', 'message-complete', 'done', 'error'];
+          const known = ['tool-usage', 'request-sent', 'thinking-step', 'message', 'message-complete', 'done', 'error'];
           return known.includes(event) ? event : 'unknown';
         }
       },
