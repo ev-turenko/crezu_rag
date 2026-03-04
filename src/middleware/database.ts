@@ -106,7 +106,7 @@ export function getUserEntry() {
           }
         }
       } else {
-        
+        console.log("EMPTY 1")
       }
     } else {
       req.userProfile = {
