@@ -1,9 +1,10 @@
 import { Response } from 'express';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import { ChatRole, ContentDataType, DeepInfraModels, LLMProvider } from '../enums/enums.js';
-import { fetchOffersByIds, getSortedffersAndCategories, countries } from '../utils/common.js';
+import { fetchOffersByIds, getResponse, getSortedffersAndCategories, normalizeOfferForLLM, OriginalOfferData, countries } from '../utils/common.js';
 import { AIModel, getAiProvider } from '../models/AiModel.js';
 import { InferenceRequest } from '../types/types.js';
+import z from 'zod';
 
 type ToolStatus = 'queued' | 'running' | 'done' | 'error';
 type AllowedMessageRole = 'system' | 'assistant' | 'user';
@@ -14,7 +15,50 @@ type StreamToolDefinition = {
     args?: Record<string, unknown>;
 };
 
-type StreamToolHandler = (args: Record<string, unknown>, context: { body: Record<string, unknown> }) => Promise<unknown>;
+/** Hydrated offer returned by fetchOffersByIds */
+type FetchedOffer = {
+    id: number;
+    name: string;
+    url: string;
+    avatar?: string;
+    headers: unknown[];
+    button_text: null;
+};
+
+/** Offer ranked/selected by the reasoning tool */
+type RankedOffer = {
+    offer: FetchedOffer;
+};
+
+/**
+ * Pipeline state shared across tools in a single request.
+ * Each tool can read from and write to this object, enabling
+ * data to flow automatically from one stage to the next.
+ */
+type PipelineState = {
+    /** Raw offers loaded from the finmatcher API, sorted by RPC */
+    rawOffers: OriginalOfferData[];
+    /** Resolved country code for the current request */
+    countryCode: string;
+    /** Full offer details after AI relevance filtering + top-RPC merge */
+    combinedOfferDetails: FetchedOffer[];
+    /** Offers selected and ranked by the reasoning tool */
+    reasonedOffers: RankedOffer[];
+    /** Final app_offers array produced by format_app_offers */
+    formattedAppOffers: FetchedOffer[];
+};
+
+/**
+ * Extended context passed to every tool handler.
+ * `pipeline` allows tools to share intermediate results
+ * without needing to re-fetch data.
+ */
+type StreamToolContext = {
+    body: Record<string, unknown>;
+    pipeline: PipelineState;
+};
+
+type StreamToolHandler = (args: Record<string, unknown>, context: StreamToolContext) => Promise<unknown>;
 
 type AssistantDataItem = {
     type: string;
@@ -29,6 +73,10 @@ interface ToolUsageRecord {
     error?: string;
     updatedAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function normalizeOfferType(value: unknown): string | null {
     if (typeof value !== 'string') {
@@ -47,56 +95,276 @@ function toNumericIds(ids: unknown): number[] {
         .filter((id): id is number => !Number.isNaN(id));
 }
 
-async function fetchRelevantOffersForStream(args: Record<string, unknown>, context: { body: Record<string, unknown> }) {
+function createEmptyPipeline(): PipelineState {
+    return {
+        rawOffers: [],
+        countryCode: 'mx',
+        combinedOfferDetails: [],
+        reasonedOffers: [],
+        formattedAppOffers: [],
+    };
+}
+
+// ---------------------------------------------------------------------------
+// Reasoning helper – selects & explains the best N offers via LLM
+// ---------------------------------------------------------------------------
+
+const reasoningSchema = z.object({
+    ranked_ids: z.array(z.number()).describe('Ranked offer IDs from most to least relevant, up to the requested limit'),
+    markdown_explanation: z.string().describe('Markdown explanation of why these offers are the best choice for the user'),
+});
+
+async function reasonBestOffersWithAI(
+    offers: FetchedOffer[],
+    rawOffers: OriginalOfferData[],
+    userIntent: string,
+    limit: number,
+    includeLinks: boolean
+): Promise<{ markdown: string; rankedOffers: RankedOffer[] }> {
+    if (offers.length === 0) {
+        return { markdown: '', rankedOffers: [] };
+    }
+
+    const offerSummaries = offers.map(o => {
+        const raw = rawOffers.find(r => r.id === o.id);
+        return {
+            id: o.id,
+            name: o.name,
+            url: o.url,
+            summary: raw ? normalizeOfferForLLM(raw) : JSON.stringify(o),
+        };
+    });
+
+    const linkInstruction = includeLinks
+        ? 'Include a markdown hyperlink for each offer using the format [Offer Name](url).'
+        : 'Do NOT include any links or URLs in the explanation.';
+
+    const messages: ChatCompletionMessageParam[] = [
+        {
+            role: ChatRole.System,
+            content: `You are a financial product analyst. Given the user's intent and a list of financial offers, select the top ${limit} most relevant offers and explain concisely in markdown why they are the best choices. ${linkInstruction} Respond with valid JSON only.`
+        },
+        {
+            role: ChatRole.User,
+            content: `User intent: ${userIntent || 'find the best financial product'}\n\nAvailable offers:\n${offerSummaries.map(o => `### ID: ${o.id} | ${o.name}\nURL: ${o.url}\n${o.summary}`).join('\n\n---\n\n')}\n\nSelect the top ${limit} offers and explain your reasoning.`
+        }
+    ];
+
+    try {
+        const raw = await getResponse({
+            messages,
+            schema: reasoningSchema,
+            aiProvider: LLMProvider.DEEPINFRA,
+            model: DeepInfraModels.LLAMA4_MAVERICK_17B,
+            temperature: 0.2,
+            maxTokens: 2000,
+            jsonSchemaName: 'reasoning_result',
+        });
+
+        const parsed = JSON.parse(raw) as { ranked_ids: number[]; markdown_explanation: string };
+        const rankedIds: number[] = (parsed.ranked_ids ?? []).slice(0, limit);
+
+        const rankedOffers: RankedOffer[] = rankedIds
+            .map(id => offers.find(o => o.id === id))
+            .filter((o): o is FetchedOffer => Boolean(o))
+            .map(offer => ({ offer }));
+
+        return {
+            markdown: parsed.markdown_explanation ?? '',
+            rankedOffers,
+        };
+    } catch {
+        // Graceful degradation: return simple list without AI reasoning
+        const fallbackOffers = offers.slice(0, limit);
+        const markdown = fallbackOffers
+            .map(o => (includeLinks ? `- **[${o.name}](${o.url})**` : `- **${o.name}**`))
+            .join('\n');
+        return {
+            markdown,
+            rankedOffers: fallbackOffers.map(offer => ({ offer })),
+        };
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Built-in tool handlers
+// ---------------------------------------------------------------------------
+
+/**
+ * TOOL 1 – Retrieval
+ * Fetches up to `limit` (default 50) offers with the highest RPC for a given country.
+ * Populates pipeline.rawOffers for downstream tools.
+ */
+async function toolFetchTopRpcOffers(args: Record<string, unknown>, context: StreamToolContext): Promise<unknown> {
     const code = resolveCountryCode(args.country ?? getNested(context.body, 'params.country'));
-    const limit = clampNumber(args.limit, 1, 10, 3);
+    const limit = clampNumber(args.limit, 1, 200, 50);
+
     const { offers } = await getSortedffersAndCategories(code);
+    const top = offers.slice(0, limit);
+
+    context.pipeline.rawOffers = offers; // keep full list available for relevance filtering
+    context.pipeline.countryCode = code;
+
+    return {
+        count: top.length,
+        offers: top.map(o => ({ id: o.id, name: o.name, rpc: o.rpc ?? 0, type: o.offer_type?.type ?? '' })),
+    };
+}
+
+/**
+ * TOOL 2 – General Intelligence
+ * Uses AIModel.getRelevantOffersV2 to score offers against the user's intent,
+ * then merges the relevant IDs with the top-RPC offers from Tool 1.
+ * Fetches full offer details via fetchOffersByIds.
+ * Populates pipeline.combinedOfferDetails.
+ */
+async function toolFetchRelevantOffers(args: Record<string, unknown>, context: StreamToolContext): Promise<unknown> {
+    const code = context.pipeline.countryCode || resolveCountryCode(args.country ?? getNested(context.body, 'params.country'));
+
+    // Re-use raw offers already loaded by tool 1, or fetch them now
+    let rawOffers = context.pipeline.rawOffers;
+    if (rawOffers.length === 0) {
+        const result = await getSortedffersAndCategories(code);
+        rawOffers = result.offers;
+        context.pipeline.rawOffers = rawOffers;
+        context.pipeline.countryCode = code;
+    }
 
     const userIntentSummary =
         (typeof args.user_intent_summary === 'string' && args.user_intent_summary.trim()) ||
-        (typeof context.body.message === 'string' && context.body.message.trim()) ||
+        (typeof context.body.message === 'string' && (context.body.message as string).trim()) ||
         '';
 
     if (!userIntentSummary) {
-        return [];
+        // No intent – fall back to top-20 by RPC
+        const top20 = rawOffers.slice(0, 20);
+        const details = await fetchOffersByIds(top20.map(o => o.id), code);
+        context.pipeline.combinedOfferDetails = details as FetchedOffer[];
+        return details;
     }
 
-    const explicitType = normalizeOfferType(args.type ?? args.offer_type ?? args.intent_type);
-    const availableTypes = Array.from(new Set(
-        offers
-            .map(offer => normalizeOfferType(offer.offer_type?.type))
-            .filter((type): type is string => Boolean(type))
-    ));
+    const explicitType = normalizeOfferType(args.type ?? args.offer_type);
+    const availableTypes = explicitType
+        ? [explicitType]
+        : Array.from(new Set(rawOffers.map(o => normalizeOfferType(o.offer_type?.type)).filter(Boolean))) as string[];
 
-    const candidateTypes = explicitType ? [explicitType] : availableTypes;
-    if (candidateTypes.length === 0) {
-        return [];
-    }
-
-    const idToRpc = new Map<number, number>();
-    offers.forEach(offer => {
-        idToRpc.set(offer.id, offer.rpc ?? 0);
-    });
+    const idToRpc = new Map<number, number>(rawOffers.map(o => [o.id, o.rpc ?? 0]));
 
     const relevantByType = await Promise.all(
-        candidateTypes.map(type => AIModel.getRelevantOffersV2(offers, userIntentSummary, type))
+        availableTypes.map(type => AIModel.getRelevantOffersV2(rawOffers, userIntentSummary, type))
     );
 
-    const mergedIds = Array.from(new Set(relevantByType.flatMap(result => toNumericIds(result))));
-    const rankedIds = mergedIds
+    const relevantIds = new Set(relevantByType.flatMap(r => toNumericIds(r)));
+
+    // Merge: AI-relevant IDs + top-20 by RPC (deduped, re-ranked by RPC)
+    const topRpcIds = rawOffers.slice(0, 20).map(o => o.id);
+    const combinedIds = Array.from(new Set([...relevantIds, ...topRpcIds]))
         .sort((a, b) => (idToRpc.get(b) ?? 0) - (idToRpc.get(a) ?? 0))
-        .slice(0, limit);
+        .slice(0, 30);
 
-    if (rankedIds.length === 0) {
-        return [];
-    }
-
-    return fetchOffersByIds(rankedIds, code);
+    const details = await fetchOffersByIds(combinedIds, code);
+    context.pipeline.combinedOfferDetails = details as FetchedOffer[];
+    return details;
 }
 
+/**
+ * TOOL 3 – Reasoning
+ * Uses an LLM to select the most relevant `limit` (default 5) offers and
+ * produce a markdown explanation of why they are the best choice.
+ * Args:
+ *   - limit: number (1–20, default 5)
+ *   - include_links: boolean (default true) – whether to embed hyperlinks in markdown
+ *   - user_intent_summary: string (optional override)
+ * Populates pipeline.reasonedOffers.
+ */
+async function toolReasonBestOffers(args: Record<string, unknown>, context: StreamToolContext): Promise<unknown> {
+    const limit = clampNumber(args.limit, 1, 20, 5);
+    const includeLinks = args.include_links !== false;
+
+    const offers = context.pipeline.combinedOfferDetails;
+    if (offers.length === 0) {
+        return { markdown: '', offers: [] };
+    }
+
+    const userIntent =
+        (typeof args.user_intent_summary === 'string' && args.user_intent_summary.trim()) ||
+        (typeof context.body.message === 'string' && (context.body.message as string).trim()) ||
+        '';
+
+    const { markdown, rankedOffers } = await reasonBestOffersWithAI(
+        offers,
+        context.pipeline.rawOffers,
+        userIntent,
+        limit,
+        includeLinks
+    );
+
+    context.pipeline.reasonedOffers = rankedOffers;
+
+    return {
+        markdown,
+        offers: rankedOffers.map(r => r.offer),
+    };
+}
+
+/**
+ * TOOL 4 – Format App Offers
+ * Shapes the final offer list into the app_offers response format.
+ * Prefers reasoned offers from Tool 3, falls back to combinedOfferDetails.
+ * Args:
+ *   - limit: number (1–50, default 10)
+ * Populates pipeline.formattedAppOffers.
+ */
+async function toolFormatAppOffers(args: Record<string, unknown>, context: StreamToolContext): Promise<unknown> {
+    const limit = clampNumber(args.limit, 1, 50, 10);
+
+    const source = context.pipeline.reasonedOffers.length > 0
+        ? context.pipeline.reasonedOffers.map(r => r.offer)
+        : context.pipeline.combinedOfferDetails;
+
+    const formatted: FetchedOffer[] = source.slice(0, limit).map(o => ({
+        id: o.id,
+        name: o.name,
+        url: o.url,
+        avatar: o.avatar,
+        headers: o.headers,
+        button_text: null,
+    }));
+
+    context.pipeline.formattedAppOffers = formatted;
+    return formatted;
+}
+
+// ---------------------------------------------------------------------------
+// Tool registry – add new tools here
+// ---------------------------------------------------------------------------
+
 const streamToolHandlers: Record<string, StreamToolHandler> = {
-    fetch_top_offers: async (args, context) => fetchRelevantOffersForStream(args, context),
-    fetch_relevant_offers: async (args, context) => fetchRelevantOffersForStream(args, context),
+    /**
+     * Retrieves up to `limit` offers with the highest RPC (revenue per click).
+     * Should always be the first tool in the pipeline.
+     */
+    fetch_top_rpc_offers: toolFetchTopRpcOffers,
+
+    /**
+     * Finds offers most relevant to the user's intent using AI scoring,
+     * then merges them with the top-RPC set for a balanced candidate list.
+     */
+    fetch_relevant_offers: toolFetchRelevantOffers,
+
+    /**
+     * Uses an LLM to pick the best N offers and produce a markdown explanation.
+     * Set include_links=false to omit hyperlinks from the markdown output.
+     */
+    reason_best_offers: toolReasonBestOffers,
+
+    /**
+     * Formats the final ranked offers into the app_offers array for the frontend.
+     */
+    format_app_offers: toolFormatAppOffers,
+
+    // Legacy aliases kept for backward compatibility
+    fetch_top_offers: toolFetchRelevantOffers,
 };
 
 export function registerStreamTool(name: string, handler: StreamToolHandler): void {
@@ -272,34 +540,106 @@ function parseRequestedContentTypes(body: Record<string, unknown>): Set<string> 
     );
 }
 
+/**
+ * After the LLM finishes streaming, scan the combined text (LLM reply +
+ * reasoning markdown) to find which offers from the candidate pool were
+ * actually mentioned – by name, URL, or numeric ID.
+ * Returns them in first-mention order so the card list matches the narrative.
+ * Falls back to `fallback` when no meaningful matches are found.
+ */
+function extractMentionedOffers(
+    text: string,
+    candidates: FetchedOffer[],
+    fallback: FetchedOffer[]
+): FetchedOffer[] {
+    if (!text || candidates.length === 0) {
+        return fallback;
+    }
+
+    const lower = text.toLowerCase();
+
+    type Scored = { offer: FetchedOffer; firstIndex: number };
+    const matched: Scored[] = [];
+
+    for (const offer of candidates) {
+        // Exact name match (case-insensitive)
+        const nameIdx = lower.indexOf(offer.name.toLowerCase());
+        // URL match (partial – the domain / path is enough)
+        const urlIdx = offer.url ? lower.indexOf(offer.url.toLowerCase().replace(/^https?:\/\//, '')) : -1;
+        // ID mentioned as plain number, e.g. "ID: 123" or just "123"
+        const idPattern = new RegExp(`\\b${offer.id}\\b`);
+        const idIdx = idPattern.test(text) ? text.search(idPattern) : -1;
+
+        const firstIndex = [nameIdx, urlIdx, idIdx].filter(i => i !== -1).reduce((min, i) => Math.min(min, i), Infinity);
+
+        if (firstIndex !== Infinity) {
+            matched.push({ offer, firstIndex });
+        }
+    }
+
+    if (matched.length === 0) {
+        return fallback;
+    }
+
+    return matched
+        .sort((a, b) => a.firstIndex - b.firstIndex)
+        .map(s => s.offer);
+}
+
 function buildAssistantData(options: {
     aggregatedText: string;
     toolOutputs: Record<string, unknown>;
+    pipeline: PipelineState;
     requestedContentTypes: Set<string>;
     source: string;
 }): AssistantDataItem[] {
+    // Merge LLM stream text with the markdown explanation from reason_best_offers
+    const reasoningOutput = options.toolOutputs.reason_best_offers;
+    const reasoningMarkdown =
+        reasoningOutput && typeof reasoningOutput === 'object' && !Array.isArray(reasoningOutput)
+            ? String((reasoningOutput as Record<string, unknown>).markdown ?? '')
+            : '';
+
+    const fullMarkdown = [options.aggregatedText, reasoningMarkdown].filter(Boolean).join('\n\n');
+
     const result: AssistantDataItem[] = [
         {
             type: ContentDataType.Markdown,
-            content: options.aggregatedText
+            content: fullMarkdown
         }
     ];
 
-    const topOffers = options.toolOutputs.fetch_top_offers;
-    const relevantOffers = options.toolOutputs.fetch_relevant_offers;
-
-    const offerDetails = Array.isArray(relevantOffers)
-            ? relevantOffers
-            : Array.isArray(topOffers)
-                ? topOffers
-                : [];
     const wantsAppOffers = options.source === 'app' || options.requestedContentTypes.has(ContentDataType.AppOffers);
 
-    if (wantsAppOffers && offerDetails.length > 0) {
-        result.push({
-            type: ContentDataType.AppOffers,
-            content: offerDetails
-        });
+    if (wantsAppOffers) {
+        // Candidate pool = everything the pipeline fetched (broadest set)
+        const candidatePool: FetchedOffer[] =
+            options.pipeline.combinedOfferDetails.length > 0
+                ? options.pipeline.combinedOfferDetails
+                : (options.pipeline.formattedAppOffers.length > 0 ? options.pipeline.formattedAppOffers : []);
+
+        // Fallback priority: format_app_offers → reasoned → combined → legacy outputs
+        const legacyOutput =
+            options.toolOutputs.fetch_relevant_offers ??
+            options.toolOutputs.fetch_top_offers ??
+            options.toolOutputs.fetch_top_rpc_offers;
+
+        const fallback: FetchedOffer[] = (
+            Array.isArray(options.toolOutputs.format_app_offers) ? options.toolOutputs.format_app_offers :
+            options.pipeline.formattedAppOffers.length > 0 ? options.pipeline.formattedAppOffers :
+            Array.isArray(legacyOutput) ? legacyOutput :
+            []
+        ) as FetchedOffer[];
+
+        // Derive app_offers from what the LLM actually mentioned in its text
+        const offerDetails = extractMentionedOffers(fullMarkdown, candidatePool, fallback);
+
+        if (offerDetails.length > 0) {
+            result.push({
+                type: ContentDataType.AppOffers,
+                content: offerDetails
+            });
+        }
     }
 
     return result;
@@ -316,18 +656,173 @@ async function saveAssistantMessage(chatId: string | null, data: AssistantDataIt
     });
 }
 
+// ---------------------------------------------------------------------------
+// Cosmetic "thinking" steps – streamed while real tools execute
+// ---------------------------------------------------------------------------
+
+type ThinkingStepTemplates = {
+    searchingData: string;
+    checkingSource: (n: number) => string;
+    checkingResults: string;
+    comparingResults: string;
+    findingBest: string;
+};
+
+const THINKING_STEPS_BY_LANG: Record<string, ThinkingStepTemplates> = {
+    // Spanish – Mexico / Spain / Latin America
+    es: {
+        searchingData:     'Buscando datos...',
+        checkingSource:    (n) => `Revisando fuente ${n}...`,
+        checkingResults:   'Verificando resultados relevantes...',
+        comparingResults:  'Comparando opciones...',
+        findingBest:       'Encontrando la mejor solución...',
+    },
+    // Polish
+    pl: {
+        searchingData:     'Wyszukuję dane...',
+        checkingSource:    (n) => `Sprawdzam źródło ${n}...`,
+        checkingResults:   'Weryfikuję trafne wyniki...',
+        comparingResults:  'Porównuję opcje...',
+        findingBest:       'Szukam najlepszego rozwiązania...',
+    },
+    // Portuguese – Brazil
+    pt: {
+        searchingData:     'Buscando dados...',
+        checkingSource:    (n) => `Verificando fonte ${n}...`,
+        checkingResults:   'Verificando resultados relevantes...',
+        comparingResults:  'Comparando opções...',
+        findingBest:       'Encontrando a melhor solução...',
+    },
+    // French
+    fr: {
+        searchingData:     'Recherche de données...',
+        checkingSource:    (n) => `Vérification de la source ${n}...`,
+        checkingResults:   'Vérification des résultats pertinents...',
+        comparingResults:  'Comparaison des options...',
+        findingBest:       'Recherche de la meilleure solution...',
+    },
+    // German
+    de: {
+        searchingData:     'Daten werden gesucht...',
+        checkingSource:    (n) => `Quelle ${n} wird geprüft...`,
+        checkingResults:   'Relevante Ergebnisse werden geprüft...',
+        comparingResults:  'Optionen werden verglichen...',
+        findingBest:       'Beste Lösung wird gesucht...',
+    },
+    // Italian
+    it: {
+        searchingData:     'Ricerca dati in corso...',
+        checkingSource:    (n) => `Controllo fonte ${n}...`,
+        checkingResults:   'Verifica risultati pertinenti...',
+        comparingResults:  'Confronto opzioni...',
+        findingBest:       'Ricerca della soluzione migliore...',
+    },
+    // English (default)
+    en: {
+        searchingData:     'Searching data...',
+        checkingSource:    (n) => `Checking source ${n}...`,
+        checkingResults:   'Checking relevant search results...',
+        comparingResults:  'Comparing results...',
+        findingBest:       'Finding the best solution...',
+    },
+};
+
+/** Map country codes to language keys */
+const COUNTRY_TO_LANG: Record<string, string> = {
+    mx: 'es', es: 'es', ar: 'es', co: 'es', cl: 'es', pe: 'es', ve: 'es',
+    uy: 'es', py: 'es', bo: 'es', ec: 'es', cr: 'es', gt: 'es', hn: 'es',
+    sv: 'es', ni: 'es', pa: 'es', do: 'es', cu: 'es', pr: 'es',
+    pl: 'pl',
+    br: 'pt', pt: 'pt',
+    fr: 'fr', be: 'fr',
+    de: 'de', at: 'de', ch: 'de',
+    it: 'it',
+};
+
+function getThinkingSteps(countryCode: string): ThinkingStepTemplates {
+    const lang = COUNTRY_TO_LANG[countryCode.toLowerCase()] ?? 'en';
+    return THINKING_STEPS_BY_LANG[lang] ?? THINKING_STEPS_BY_LANG.en;
+}
+
+function randomInt(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Streams randomised cosmetic thinking-step events while a real tool runs.
+ * Returns a stop function – call it as soon as the real tool resolves.
+ */
+function startThinkingTicker(
+    steps: ThinkingStepTemplates,
+    sendThinkingStep: (label: string) => void,
+): () => void {
+    let stopped = false;
+
+    const buildStepSequence = (): string[] => {
+        const totalSources = randomInt(3, 10);
+        const seq: string[] = [steps.searchingData];
+
+        for (let i = 1; i <= totalSources; i++) {
+            seq.push(steps.checkingSource(i));
+        }
+
+        seq.push(steps.checkingResults);
+        seq.push(steps.comparingResults);
+        seq.push(steps.findingBest);
+        return seq;
+    };
+
+    (async () => {
+        const sequence = buildStepSequence();
+        for (const label of sequence) {
+            if (stopped) break;
+            sendThinkingStep(label);
+            // Random delay 180–520 ms between steps for a natural feel
+            await sleep(randomInt(180, 520));
+        }
+
+        // If the real tool is still running after one full sequence, loop with filler steps
+        while (!stopped) {
+            const filler = [
+                steps.checkingSource(randomInt(1, 10)),
+                steps.comparingResults,
+                steps.findingBest,
+            ];
+            for (const label of filler) {
+                if (stopped) break;
+                sendThinkingStep(label);
+                await sleep(randomInt(250, 600));
+            }
+        }
+    })();
+
+    return () => { stopped = true; };
+}
+
 async function executeTools({
   toolsRequested,
   body,
   sendToolUsage,
+  sendThinkingStep,
   isClientAborted,
 }: {
   toolsRequested: StreamToolDefinition[];
   body: Record<string, unknown>;
   sendToolUsage: (tools: ToolUsageRecord[]) => void;
+  sendThinkingStep: (label: string) => void;
   isClientAborted: () => boolean;
-}): Promise<Record<string, unknown>> {
-  if (toolsRequested.length === 0) return {};
+}): Promise<{ outputs: Record<string, unknown>; pipeline: PipelineState }> {
+  if (toolsRequested.length === 0) return { outputs: {}, pipeline: createEmptyPipeline() };
+
+  // Resolve country for localized thinking steps
+  const params = toRecord(body.params);
+  const rawCountry = params.country ?? body.country ?? '';
+  const countryCode = resolveCountryCode(rawCountry);
+  const thinkingSteps = getThinkingSteps(countryCode);
 
   const usage: ToolUsageRecord[] = toolsRequested.map(t => ({
     name: t.name,
@@ -339,6 +834,7 @@ async function executeTools({
   sendToolUsage(usage);
 
   const outputs: Record<string, unknown> = {};
+  const pipeline = createEmptyPipeline();
 
   for (let i = 0; i < toolsRequested.length; i++) {
     if (isClientAborted()) break;
@@ -348,11 +844,14 @@ async function executeTools({
     usage[i] = { ...usage[i], status: 'running', updatedAt: new Date().toISOString() };
     sendToolUsage(usage);
 
+    // Start cosmetic thinking ticker for this tool stage
+    const stopTicker = startThinkingTicker(thinkingSteps, sendThinkingStep);
+
     try {
       const handler = streamToolHandlers[tool.name];
       if (!handler) throw new Error(`No handler for tool: ${tool.name}`);
 
-      const result = await handler(tool.args ?? {}, { body });
+      const result = await handler(tool.args ?? {}, { body, pipeline });
       outputs[tool.name] = result;
 
       usage[i] = { ...usage[i], status: 'done', result, updatedAt: new Date().toISOString() };
@@ -363,14 +862,103 @@ async function executeTools({
         error: err instanceof Error ? err.message : String(err),
         updatedAt: new Date().toISOString(),
       };
+    } finally {
+      stopTicker();
     }
 
     sendToolUsage(usage);
   }
 
-  return outputs;
+  return { outputs, pipeline };
 }
 
+
+// ---------------------------------------------------------------------------
+// Finance keyword auto-detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Keywords that trigger the full offer-recommendation pipeline automatically.
+ * Add more topic buckets as needed.
+ */
+const FINANCE_TOPIC_KEYWORDS: string[] = [
+    // Loans
+    'loan', 'loans', 'borrow', 'lending', 'microloan', 'microcredit',
+    'préstamo', 'préstamos', 'crédito', 'créditos',
+    'pożyczka', 'pożyczki', 'chwilówka',
+    // Bank cards
+    'credit card', 'debit card', 'bank card', 'tarjeta', 'karta kredytowa',
+    'karta debetowa',
+    // Bank accounts
+    'bank account', 'savings account', 'checking account', 'cuenta bancaria',
+    'konto bankowe', 'oszczędnościowe',
+    // Generic finance
+    'finance', 'financial', 'interest rate', 'mortgage', 'refinanc',
+];
+
+/**
+ * Returns true when the message likely contains a request for financial products.
+ */
+function isFinanceRequest(message: string): boolean {
+    const lower = message.toLowerCase();
+    return FINANCE_TOPIC_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+/**
+ * Builds the default tool pipeline definition for finance requests.
+ * Args are populated from the body so each tool has the context it needs.
+ */
+function buildDefaultFinancePipeline(body: Record<string, unknown>): StreamToolDefinition[] {
+    const message = typeof body.message === 'string' ? body.message : '';
+    const params = toRecord(body.params);
+    const country = params.country ?? body.country;
+
+    return [
+        {
+            name: 'fetch_top_rpc_offers',
+            description: 'Retrieve top offers by revenue per click',
+            args: { country, limit: 50 },
+        },
+        {
+            name: 'fetch_relevant_offers',
+            description: 'Filter offers relevant to the user intent via AI',
+            args: { country, user_intent_summary: message },
+        },
+        {
+            name: 'reason_best_offers',
+            description: 'Select and explain the best offers in markdown',
+            args: { user_intent_summary: message, limit: 5, include_links: true },
+        },
+        {
+            name: 'format_app_offers',
+            description: 'Format final offers for the app_offers response',
+            args: { limit: 10 },
+        },
+    ];
+}
+
+// ---------------------------------------------------------------------------
+// Financial assistant system prompt
+// ---------------------------------------------------------------------------
+
+const FINANCIAL_ASSISTANT_SYSTEM_PROMPT = `You are a knowledgeable financial advisor assistant. Your primary role is to help users find the best financial products — loans, credit cards, debit cards, and bank accounts.
+
+TOOL USAGE POLICY:
+- When the user asks about **loans** (personal loans, payday loans, microloans, quick cash): use tools in this order → fetch_top_rpc_offers → fetch_relevant_offers → reason_best_offers → format_app_offers
+- When the user asks about **credit cards** or **bank cards**: use the same tool pipeline
+- When the user asks about **bank accounts** or **savings accounts**: use the same tool pipeline
+
+TOOL PIPELINE SUMMARY:
+1. fetch_top_rpc_offers  – retrieves top offers sorted by revenue-per-click (best partner offers first)
+2. fetch_relevant_offers – narrows the list using AI relevance scoring against the user's intent
+3. reason_best_offers    – selects the top N offers and produces a markdown explanation
+4. format_app_offers     – packages the final list for the UI
+
+RESPONSE GUIDELINES:
+- If reason_best_offers produced a markdown explanation, reference or expand on it in your answer
+- Highlight the key benefits of each recommended product
+- Be concise, friendly, and helpful
+- Always recommend verified products from the tool outputs; do not invent offers`;
 
 export async function streamAssistantResponse(req: InferenceRequest, res: Response) {
     const body = toRecord(req.body);
@@ -381,7 +969,12 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
         return res.status(400).json({ success: false, error: 'message or messages are required' });
     }
 
-    const toolsRequested = parseTools(body.tools);
+    // Auto-detect finance topics and inject the default pipeline when not already provided
+    let toolsRequested = parseTools(body.tools);
+    if (toolsRequested.length === 0) {
+        toolsRequested = buildDefaultFinancePipeline(body);
+    }
+
     const requestedContentTypes = parseRequestedContentTypes(body);
 
     res.setHeader('Content-Type', 'text/event-stream');
@@ -402,10 +995,11 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
         res.write(`data: ${JSON.stringify(payload)}\n\n`);
     };
 
-    const toolOutputs = await executeTools({
+    const { outputs: toolOutputs, pipeline } = await executeTools({
         toolsRequested,
         body,
         sendToolUsage: (tools) => sendEvent('tool-usage', { tools }),
+        sendThinkingStep: (label) => sendEvent('thinking-step', { label }),
         isClientAborted: () => clientAborted
     });
 
@@ -418,15 +1012,23 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
     const baseMessages: ChatCompletionMessageParam[] = [
         {
             role: ChatRole.System,
-            content: 'You are a streaming-focused assistant. Send partial answers as soon as they are available.'
+            content: FINANCIAL_ASSISTANT_SYSTEM_PROMPT
         }
     ];
 
     const toolEntries = Object.entries(toolOutputs);
     if (toolEntries.length > 0) {
+        // Provide tool outputs as context; reason_best_offers markdown gets special treatment
+        const toolContextLines = toolEntries.map(([name, output]) => {
+            if (name === 'reason_best_offers' && output && typeof output === 'object' && 'markdown' in output) {
+                return `${name} (reasoning):\n${(output as Record<string, unknown>).markdown}`;
+            }
+            return `${name}:\n${safeStringify(output)}`;
+        });
+
         baseMessages.push({
             role: ChatRole.System,
-            content: 'Tool outputs:\n' + toolEntries.map(([name, output]) => `${name}: ${safeStringify(output)}`).join('\n\n')
+            content: 'Tool outputs for this request:\n\n' + toolContextLines.join('\n\n---\n\n')
         });
     }
 
@@ -475,6 +1077,7 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
     const assistantData = buildAssistantData({
         aggregatedText: aggregated,
         toolOutputs,
+        pipeline,
         requestedContentTypes,
         source
     });
