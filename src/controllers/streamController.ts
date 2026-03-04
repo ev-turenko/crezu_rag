@@ -939,11 +939,11 @@ TOOL PIPELINE SUMMARY:
 4. format_app_offers     – packages the final list for the UI
 
 RESPONSE GUIDELINES:
+- If the user includes some non-financial request, just ignore the non-financial part and focus on providing the best financial recommendations you can based on the tools' outputs and your knowledge.
 - If reason_best_offers produced a markdown explanation, reference or expand on it in your answer
 - Highlight the key benefits of each recommended product
 - Be concise, friendly, and helpful
 - Always recommend verified products from the tool outputs; do not invent offers
-- If the user includes some non-financial request, just ignore the non-financial part and focus on providing the best financial recommendations you can based on the tools' outputs and your knowledge.
 `;
 
 export async function streamAssistantResponse(req: InferenceRequest, res: Response) {
