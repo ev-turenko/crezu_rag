@@ -311,7 +311,7 @@ export function checkSafety(): any {
  */
 export function checkSafetyStream(): any {
     return async (req: InferenceRequest, res: Response, next: NextFunction) => {
-        const rawMessages = req.body?.messages ? JSON.parse(JSON.stringify(req.body.messages)) || [] : [];
+        const rawMessages = Array.isArray(req.body?.messages) ? req.body.messages : [];
         let messages: ChatCompletionMessageParam[] = rawMessages.map((msg: any) => ({
             role: msg.role as ChatCompletionMessageParam['role'],
             content: msg.content
@@ -566,28 +566,6 @@ export function checkSafetyStream(): any {
                 ], checkSafetyDebug);
             }
 
-            const summaryResponse = await measureStep('summary_generation', async () => getResponse({
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are a summarization guru. Summarize the provided the provided conversation in a concise manner, that would be helpful for a specialized LLM model or human expert. If the user asks something unrelated to finance, don't include that in the summary at all. Focus on financial aspects only.`
-                    },
-                    ...(contextText ? [{ role: 'system', content: `Context for summarization (use if relevant):\n${contextText}` } as ChatCompletionMessageParam] : []),
-                    ...messages
-                ],
-                schema: summarySchema,
-                aiProvider: LLMProvider.DEEPSEEK,
-                model: DeepSeekModels.CHAT,
-                jsonSchemaName: 'safety_check',
-                maxTokens: 100
-            }));
-
-            const summaryResult = JSON.parse(summaryResponse || '{}') as z.infer<typeof summarySchema>;
-
-            console.log('Summary result:', summaryResult);
-
-            req.system = req.system || {};
-            req.system.summaries = summaryResult;
             finalizeDebugPayload({
                 blocked: false,
                 block_reason: null
