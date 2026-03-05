@@ -227,6 +227,29 @@ interface NormalizedOffer {
   headers: { [key: string]: string };
 }
 
+const OFFER_PID_BY_COUNTRY: Record<string, string> = {
+  mx: '4797',
+  es: '6739',
+  pl: '6742',
+  ro: '6741',
+  se: '7878',
+};
+
+function withCountryPid(urlValue: string, countryCode: string): string {
+  const pid = OFFER_PID_BY_COUNTRY[countryCode.toLowerCase()];
+  if (!pid || !urlValue) {
+    return urlValue;
+  }
+
+  try {
+    const parsedUrl = new URL(urlValue);
+    parsedUrl.searchParams.set('pid', pid);
+    return parsedUrl.toString();
+  } catch {
+    return urlValue;
+  }
+}
+
 export function normalizeOfferForLLM(originalData: OriginalOfferData): string {
   const normalized: NormalizedOffer = {
     id: originalData.id,
@@ -301,7 +324,7 @@ export async function fetchOffersByIds(offerIds: number[] | string[], countryCod
         id: offer.id,
         headers: offer.headers,
         name: offer.name,
-        url: offer.url,
+        url: withCountryPid(offer.url, countryCode),
         avatar: offer.avatar,
         button_text: null
       }
