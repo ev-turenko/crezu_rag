@@ -428,6 +428,10 @@
       flex-shrink: 0;
     }
 
+    .debug-meta.secondary {
+      color: #94a3b8;
+    }
+
     /* Tools tab */
     .tool-card {
       border-radius: 8px;
@@ -487,6 +491,12 @@
       margin-left: auto;
     }
 
+    .tool-duration {
+      font-size: 0.66rem;
+      color: #38bdf8;
+      white-space: nowrap;
+    }
+
     .tool-body {
       padding: 0.5rem 0.65rem;
       background: #0f172a;
@@ -518,6 +528,81 @@
       white-space: pre-wrap;
     }
 
+    .timeline-card {
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+      background: #111827;
+      padding: 0.55rem 0.65rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .timeline-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      letter-spacing: 0.01em;
+    }
+
+    .timeline-track {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: #1e293b;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .timeline-segment {
+      height: 100%;
+      flex-shrink: 0;
+    }
+
+    .timeline-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.28rem;
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 0.45rem;
+      align-items: center;
+    }
+
+    .timeline-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: #94a3b8;
+      font-size: 0.69rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .timeline-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .timeline-duration {
+      color: #e2e8f0;
+      font-size: 0.68rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .timeline-pct {
+      color: #64748b;
+      font-size: 0.66rem;
+      white-space: nowrap;
+    }
+
     /* SSE log tab */
     .sse-entry {
       display: grid;
@@ -547,6 +632,7 @@
     .sse-event-name.done              { color: #a78bfa; }
     .sse-event-name.error             { color: #f87171; }
     .sse-event-name.request-sent      { color: #fbbf24; }
+    .sse-event-name.check-safety-debug { color: #22d3ee; }
     .sse-event-name.unknown           { color: #94a3b8; }
 
     .sse-data {
@@ -740,9 +826,38 @@
         <div class="debug-tab" :class="{ active: debugTab === 'log' }" @click="debugTab = 'log'">SSE Log <span v-if="sseLog.length" style="color:#475569;font-weight:400;">({{ sseLog.length }})</span></div>
       </div>
       <div class="debug-meta" v-if="requestSentAt">Request sent: {{ formatLocalTimestamp(requestSentAt) }}</div>
+      <div class="debug-meta secondary" v-if="requestDurationSummary">{{ requestDurationSummary }}</div>
+      <div class="debug-meta secondary" v-if="checkSafetySummary">{{ checkSafetySummary }}</div>
+      <div class="debug-meta secondary" v-if="slowestToolSummary">Slowest tool: {{ slowestToolSummary }}</div>
 
       <!-- TOOLS TAB -->
       <div class="debug-content" v-show="debugTab === 'tools'">
+        <div v-if="requestTimeline" class="timeline-card">
+          <div class="timeline-title">End-to-end request: {{ formatDuration(requestTimeline.totalMs) }}</div>
+          <div class="timeline-track">
+            <span
+              v-for="(stage, stageIndex) in requestTimeline.stages"
+              :key="`timeline-segment-${stage.key}-${stageIndex}`"
+              class="timeline-segment"
+              :style="{ width: `${stage.percent}%`, backgroundColor: stage.color }"
+            ></span>
+          </div>
+          <div class="timeline-list">
+            <div
+              v-for="(stage, stageIndex) in requestTimeline.stages"
+              :key="`timeline-row-${stage.key}-${stageIndex}`"
+              class="timeline-row"
+            >
+              <span class="timeline-name" :title="stage.label">
+                <span class="timeline-dot" :style="{ backgroundColor: stage.color }"></span>
+                {{ stage.label }}
+              </span>
+              <span class="timeline-duration">{{ formatDuration(stage.durationMs) }}</span>
+              <span class="timeline-pct">{{ stage.percent.toFixed(1) }}%</span>
+            </div>
+          </div>
+        </div>
+
         <div v-if="toolUsage.length === 0" class="debug-empty">No tools received yet.</div>
         <div
           v-for="(tool, idx) in toolUsage"
@@ -753,9 +868,14 @@
             <div class="tool-status-dot" :class="tool.status"></div>
             <span class="tool-name">{{ tool.name }}</span>
             <span class="tool-status-label" :class="tool.status">{{ tool.status }}</span>
+            <span class="tool-duration" v-if="toolDuration(tool.name)">{{ toolDuration(tool.name) }}</span>
             <span class="tool-ts">{{ fmtTs(tool.updatedAt) }}</span>
           </div>
           <div class="tool-body" v-if="expandedTools.has(tool.name)">
+            <div v-if="toolDuration(tool.name)">
+              <div class="tool-section-label">Duration</div>
+              <pre class="tool-json">{{ toolDuration(tool.name) }}</pre>
+            </div>
             <div v-if="tool.description">
               <div class="tool-section-label">Description</div>
               <pre class="tool-json">{{ tool.description }}</pre>
@@ -811,9 +931,12 @@
           showDebug: false,
           debugTab: 'tools',
           toolUsage: [],       // latest ToolUsageRecord[] from tool-usage events
+          toolTimings: {},     // timing map by tool name
+          checkSafetyDebug: null,
           sseLog: [],          // raw SSE event log
           expandedTools: new Set(), // tool names currently expanded
           requestSentAt: null,
+          requestFinishedAt: null,
         };
       },
       methods: {
@@ -858,9 +981,12 @@
           this.thinkingLabel = '';
           this.chatId = null;
           this.toolUsage = [];
+          this.toolTimings = {};
+          this.checkSafetyDebug = null;
           this.sseLog = [];
           this.expandedTools = new Set();
           this.requestSentAt = null;
+          this.requestFinishedAt = null;
         },
         scrollToBottom() {
           this.$nextTick(() => {
@@ -884,8 +1010,11 @@
           this.streamingDraft = '';
           this.pendingStructuredData = [];
           this.thinkingLabel = '';
+          this.toolTimings = {};
+          this.checkSafetyDebug = null;
           this.isStreaming = true;
           this.requestSentAt = new Date().toISOString();
+          this.requestFinishedAt = null;
           this.logSseEvent('request-sent', {
             endpoint: '/api/ai/message/stream',
             message: trimmedMessage,
@@ -935,6 +1064,9 @@
             if (reader) {
               await reader.cancel();
             }
+            if (!this.requestFinishedAt && this.requestSentAt) {
+              this.requestFinishedAt = new Date().toISOString();
+            }
             this.isStreaming = false;
             this.controller = null;
             this.scrollToBottom();
@@ -959,15 +1091,14 @@
           }
           if (!data) return;
 
-          // --- always log to SSE log ---
           let parsed = null;
           try { parsed = JSON.parse(data); } catch { /* keep null */ }
-          this.logSseEvent(event, parsed, data);
 
           // --- handle tool-usage event ---
           if (event === 'tool-usage') {
             if (parsed && Array.isArray(parsed.tools)) {
               this.toolUsage = parsed.tools;
+              this.updateToolTimings(parsed.tools);
               // auto-expand running/error tools
               for (const t of parsed.tools) {
                 if (t.status === 'running' || t.status === 'error') {
@@ -975,8 +1106,17 @@
                 }
               }
             }
+            this.logSseEvent(event, parsed, data);
             return;
           }
+
+          if (event === 'check-safety-debug' && parsed && typeof parsed === 'object') {
+            this.checkSafetyDebug = parsed;
+            this.logSseEvent(event, parsed, data);
+            return;
+          }
+
+          this.logSseEvent(event, parsed, data);
 
           if (!parsed) {
             if (event === 'message') {
@@ -996,6 +1136,9 @@
             return;
           }
           if (event === 'message-complete') {
+            if (parsed.check_safety_debug && typeof parsed.check_safety_debug === 'object') {
+              this.checkSafetyDebug = parsed.check_safety_debug;
+            }
             const finalContent = parsed.message ?? parsed.content ?? this.streamingDraft;
             const finalData = Array.isArray(parsed.answer) ? parsed.answer : (Array.isArray(parsed.data) ? parsed.data : []);
             this.chatMessages.push({
@@ -1010,6 +1153,9 @@
             return;
           }
           if (event === 'done') {
+            if (!this.requestFinishedAt) {
+              this.requestFinishedAt = new Date().toISOString();
+            }
             if (typeof parsed.chat_id === 'string' && parsed.chat_id.trim()) {
               this.chatId = parsed.chat_id;
             }
@@ -1021,6 +1167,9 @@
             return;
           }
           if (event === 'error') {
+            if (!this.requestFinishedAt) {
+              this.requestFinishedAt = new Date().toISOString();
+            }
             const errorMessage = parsed.message || 'Streaming interrupted';
             this.chatMessages.push({ role: 'assistant', content: `Error: ${errorMessage}`, data: [] });
             this.streamingDraft = '';
@@ -1059,15 +1208,95 @@
             return '-';
           }
         },
+        formatDuration(ms) {
+          if (typeof ms !== 'number' || Number.isNaN(ms) || ms < 0) {
+            return '-';
+          }
+          if (ms < 1000) {
+            return `${ms}ms`;
+          }
+          return `${(ms / 1000).toFixed(2)}s`;
+        },
+        toTimestampMs(value) {
+          if (!value) {
+            return null;
+          }
+          const parsed = value instanceof Date ? value.getTime() : new Date(value).getTime();
+          return Number.isNaN(parsed) ? null : parsed;
+        },
+        updateToolTimings(tools) {
+          const next = { ...this.toolTimings };
+          for (const tool of tools) {
+            if (!tool || typeof tool.name !== 'string' || !tool.name.trim()) {
+              continue;
+            }
+
+            const existing = next[tool.name] ? { ...next[tool.name] } : {};
+            const updatedAt = typeof tool.updatedAt === 'string' ? tool.updatedAt : new Date().toISOString();
+
+            if (tool.status === 'running' && !existing.startedAt) {
+              existing.startedAt = updatedAt;
+            }
+
+            if (tool.status === 'done' || tool.status === 'error') {
+              if (!existing.startedAt) {
+                existing.startedAt = updatedAt;
+              }
+              existing.finishedAt = updatedAt;
+
+              const startedAtMs = new Date(existing.startedAt).getTime();
+              const finishedAtMs = new Date(existing.finishedAt).getTime();
+              if (!Number.isNaN(startedAtMs) && !Number.isNaN(finishedAtMs) && finishedAtMs >= startedAtMs) {
+                existing.durationMs = finishedAtMs - startedAtMs;
+              }
+            }
+
+            existing.status = tool.status;
+            next[tool.name] = existing;
+          }
+
+          this.toolTimings = next;
+        },
+        toolDuration(toolName) {
+          const durationMs = this.toolTimings?.[toolName]?.durationMs;
+          if (typeof durationMs !== 'number') {
+            return null;
+          }
+          return this.formatDuration(durationMs);
+        },
+        getLongestStep(steps) {
+          if (!Array.isArray(steps) || steps.length === 0) {
+            return null;
+          }
+          return steps.reduce((slowest, step) => {
+            const currentDuration = typeof step?.duration_ms === 'number' ? step.duration_ms : -1;
+            const slowestDuration = typeof slowest?.duration_ms === 'number' ? slowest.duration_ms : -1;
+            return currentDuration > slowestDuration ? step : slowest;
+          }, null);
+        },
         // --- debug helpers ---
         logSseEvent(event, parsed, rawData) {
           const ts = this.formatLocalTimestamp(new Date());
           let summary;
           if (event === 'tool-usage' && parsed && Array.isArray(parsed.tools)) {
-            summary = parsed.tools.map(t => `${t.name}: ${t.status}`).join('\n');
+            summary = parsed.tools.map(t => {
+              const duration = this.toolDuration(t.name);
+              return `${t.name}: ${t.status}${duration ? ` (${duration})` : ''}`;
+            }).join('\n');
           } else if (event === 'request-sent' && parsed) {
             const preview = (parsed.message ?? '').slice(0, 60);
             summary = `POST ${parsed.endpoint ?? '/api/ai/message/stream'} | ${preview}${(parsed.message ?? '').length > 60 ? '…' : ''}`;
+          } else if (event === 'check-safety-debug' && parsed) {
+            const total = this.formatDuration(parsed.total_duration_ms);
+            const blockedLabel = parsed.blocked ? `blocked: ${parsed.block_reason ?? 'yes'}` : 'passed';
+            const longestStep = this.getLongestStep(parsed.steps);
+            const longestLine = longestStep
+              ? `${longestStep.name} (${this.formatDuration(longestStep.duration_ms)})`
+              : 'n/a';
+            const stepLines = Array.isArray(parsed.steps)
+              ? parsed.steps.map(step => `- ${step.name}: ${this.formatDuration(step.duration_ms)} [${step.status}]`).join('\n')
+              : '';
+            summary = `total=${total} | ${blockedLabel} | longest=${longestLine}${stepLines ? `\n${stepLines}` : ''}`;
           } else if (event === 'thinking-step' && parsed) {
             summary = parsed.label ?? rawData;
           } else if (event === 'message' && parsed) {
@@ -1075,9 +1304,11 @@
             summary = chunk.length > 80 ? chunk.slice(0, 80) + '…' : chunk;
           } else if (event === 'message-complete' && parsed) {
             const msg = parsed.message ?? '';
-            summary = `chat_id=${parsed.chat_id ?? 'null'} | ${msg.length} chars | ${Array.isArray(parsed.answer) ? parsed.answer.length : 0} data items`;
+            const safetyDuration = parsed.check_safety_debug?.total_duration_ms;
+            summary = `chat_id=${parsed.chat_id ?? 'null'} | ${msg.length} chars | ${Array.isArray(parsed.answer) ? parsed.answer.length : 0} data items${typeof safetyDuration === 'number' ? ` | safety=${this.formatDuration(safetyDuration)}` : ''}`;
           } else if (event === 'done' && parsed) {
-            summary = `chat_id=${parsed.chat_id ?? 'null'} | answer items: ${Array.isArray(parsed.answer) ? parsed.answer.length : 0}`;
+            const safetyDuration = parsed.check_safety_debug?.total_duration_ms;
+            summary = `chat_id=${parsed.chat_id ?? 'null'} | answer items: ${Array.isArray(parsed.answer) ? parsed.answer.length : 0}${typeof safetyDuration === 'number' ? ` | safety=${this.formatDuration(safetyDuration)}` : ''}`;
           } else if (event === 'error' && parsed) {
             summary = parsed.message ?? rawData;
           } else {
@@ -1108,7 +1339,7 @@
           return this.formatLocalTimestamp(iso);
         },
         sseClass(event) {
-          const known = ['tool-usage', 'request-sent', 'thinking-step', 'message', 'message-complete', 'done', 'error'];
+          const known = ['tool-usage', 'request-sent', 'check-safety-debug', 'thinking-step', 'message', 'message-complete', 'done', 'error'];
           return known.includes(event) ? event : 'unknown';
         }
       },
@@ -1124,6 +1355,119 @@
         runningToolName() {
           const t = this.toolUsage.find(t => t.status === 'running');
           return t ? t.name : null;
+        },
+        requestTotalDurationMs() {
+          const startMs = this.toTimestampMs(this.requestSentAt);
+          const endMs = this.toTimestampMs(this.requestFinishedAt);
+          if (startMs === null || endMs === null || endMs < startMs) {
+            return null;
+          }
+          return endMs - startMs;
+        },
+        requestDurationSummary() {
+          if (!this.requestSentAt) {
+            return null;
+          }
+
+          if (!this.requestFinishedAt) {
+            return 'Request in progress…';
+          }
+
+          const totalMs = this.requestTotalDurationMs;
+          if (typeof totalMs !== 'number') {
+            return null;
+          }
+
+          return `Request total: ${this.formatDuration(totalMs)} (${this.formatLocalTimestamp(this.requestSentAt)} → ${this.formatLocalTimestamp(this.requestFinishedAt)})`;
+        },
+        requestTimeline() {
+          const totalMs = this.requestTotalDurationMs;
+          if (typeof totalMs !== 'number') {
+            return null;
+          }
+
+          const stages = [];
+          if (this.checkSafetyDebug && typeof this.checkSafetyDebug.total_duration_ms === 'number') {
+            stages.push({
+              key: 'checkSafetyStream',
+              label: 'checkSafetyStream',
+              durationMs: Math.max(this.checkSafetyDebug.total_duration_ms, 0),
+            });
+          }
+
+          for (const tool of this.toolUsage) {
+            const toolName = typeof tool?.name === 'string' ? tool.name.trim() : '';
+            if (!toolName) {
+              continue;
+            }
+            const toolDurationMs = this.toolTimings?.[toolName]?.durationMs;
+            if (typeof toolDurationMs !== 'number' || toolDurationMs < 0) {
+              continue;
+            }
+            stages.push({
+              key: `tool-${toolName}`,
+              label: toolName,
+              durationMs: toolDurationMs,
+            });
+          }
+
+          const knownDurationMs = stages.reduce((sum, stage) => sum + stage.durationMs, 0);
+
+          if (totalMs > knownDurationMs) {
+            stages.push({
+              key: 'assistant-response',
+              label: 'assistant_response',
+              durationMs: totalMs - knownDurationMs,
+            });
+          }
+
+          if (stages.length === 0) {
+            stages.push({
+              key: 'request-total',
+              label: 'request_total',
+              durationMs: totalMs,
+            });
+          }
+
+          const denominator = Math.max(totalMs, knownDurationMs, 1);
+          const palette = ['#22d3ee', '#818cf8', '#f59e0b', '#34d399', '#a78bfa', '#60a5fa', '#f87171', '#fbbf24'];
+
+          return {
+            totalMs,
+            stages: stages.map((stage, index) => ({
+              ...stage,
+              percent: (stage.durationMs / denominator) * 100,
+              color: palette[index % palette.length],
+            })),
+          };
+        },
+        slowestToolSummary() {
+          const entries = Object.entries(this.toolTimings)
+            .filter(([, value]) => typeof value.durationMs === 'number');
+          if (entries.length === 0) {
+            return null;
+          }
+
+          const [name, info] = entries.reduce((slowest, current) => {
+            return current[1].durationMs > slowest[1].durationMs ? current : slowest;
+          });
+
+          return `${name} (${this.formatDuration(info.durationMs)})`;
+        },
+        checkSafetySummary() {
+          if (!this.checkSafetyDebug || typeof this.checkSafetyDebug.total_duration_ms !== 'number') {
+            return null;
+          }
+
+          const longestStep = this.getLongestStep(this.checkSafetyDebug.steps);
+          const blockedText = this.checkSafetyDebug.blocked
+            ? ` | blocked: ${this.checkSafetyDebug.block_reason ?? 'yes'}`
+            : '';
+          const longestText = longestStep
+            ? ` | longest: ${longestStep.name} (${this.formatDuration(longestStep.duration_ms)})`
+            : '';
+
+          return `checkSafetyStream: ${this.formatDuration(this.checkSafetyDebug.total_duration_ms)}${blockedText}${longestText}`;
         }
       }
     }).mount('#app');

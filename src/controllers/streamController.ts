@@ -981,6 +981,10 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
         res.write(`data: ${JSON.stringify(payload)}\n\n`);
     };
 
+    if (req.system?.check_safety_stream) {
+        sendEvent('check-safety-debug', req.system.check_safety_stream);
+    }
+
     const { outputs: toolOutputs, pipeline } = await executeTools({
         toolsRequested,
         body,
@@ -1071,6 +1075,7 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
     const params = toRecord(body.params);
     const chatIdFromBody = typeof params.chat_id === 'string' ? params.chat_id : null;
     const chatId = chatIdFromBody || req.system?.middleware_chat_id || null;
+    const checkSafetyDebug = req.system?.check_safety_stream ?? null;
 
     try {
         await saveAssistantMessage(chatId, assistantData);
@@ -1082,13 +1087,15 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
         success: true,
         chat_id: chatId,
         message: aggregated,
-        answer: assistantData
+        answer: assistantData,
+        check_safety_debug: checkSafetyDebug
     });
     sendEvent('done', {
         success: true,
         chat_id: chatId,
         message: aggregated,
-        answer: assistantData
+        answer: assistantData,
+        check_safety_debug: checkSafetyDebug
     });
     res.end();
 }

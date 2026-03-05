@@ -98,6 +98,7 @@ export interface InferenceRequest extends Request {
       general_summary?: string | null;
       last_intent_summary?: string | null;
     };
+    check_safety_stream?: CheckSafetyStreamDebug;
   };
 }
 
@@ -108,4 +109,21 @@ export interface ChatSummary {
   preferences: Record<string, string>;
   rolling_summary: string;
   last_request: string;
+}
+
+export interface CheckSafetyStreamDebugStep {
+  name: string;
+  duration_ms: number;
+  status: 'ok' | 'error';
+  error?: string;
+}
+
+export interface CheckSafetyStreamDebug {
+  started_at: string;
+  finished_at: string;
+  total_duration_ms: number;
+  blocked: boolean;
+  block_reason?: string | null;
+  intent_objective?: string | null;
+  steps: CheckSafetyStreamDebugStep[];
 }

@@ -5,8 +5,8 @@ import { countries, getResponse, resolveTranslation } from '../utils/common.js';
 import { ChatRole, ContentDataType, DeepSeekModels, LLMProvider } from '../enums/enums.js';
 import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
 import { translations } from '../utils/translations.js';
-import { InferenceBody, InferenceRequest } from '../types/types.js';
-import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
+import type { CheckSafetyStreamDebug, InferenceBody, InferenceRequest } from '../types/types.js';
+import { AIModel, ChatDbRecord } from '../models/AiModel.js';
 
 const intentSchema = z.object({
     message_objective: z.enum(['DANGER', 'LOAN', 'CREDIT_CARD', 'DEBIT_CARD', 'BANK_ACCOUNT', 'FINANCE', 'OTHER']).describe(
@@ -348,9 +348,53 @@ export function checkSafetyStream(): any {
             });
         }
 
+        const requestStartedAtMs = Date.now();
+        const debugPayload: CheckSafetyStreamDebug = {
+            started_at: new Date(requestStartedAtMs).toISOString(),
+            finished_at: '',
+            total_duration_ms: 0,
+            blocked: false,
+            block_reason: null,
+            intent_objective: null,
+            steps: []
+        };
+
+        const finalizeDebugPayload = (overrides?: Partial<CheckSafetyStreamDebug>): CheckSafetyStreamDebug => {
+            const finalized: CheckSafetyStreamDebug = {
+                ...debugPayload,
+                ...overrides,
+                finished_at: new Date().toISOString(),
+                total_duration_ms: Date.now() - requestStartedAtMs
+            };
+            req.system = req.system || {};
+            req.system.check_safety_stream = finalized;
+            return finalized;
+        };
+
+        const measureStep = async <T>(name: string, operation: () => Promise<T>): Promise<T> => {
+            const stepStartedAtMs = Date.now();
+            try {
+                const result = await operation();
+                debugPayload.steps.push({
+                    name,
+                    duration_ms: Date.now() - stepStartedAtMs,
+                    status: 'ok'
+                });
+                return result;
+            } catch (error) {
+                debugPayload.steps.push({
+                    name,
+                    duration_ms: Date.now() - stepStartedAtMs,
+                    status: 'error',
+                    error: error instanceof Error ? error.message : String(error)
+                });
+                throw error;
+            }
+        };
+
         /** Open an SSE stream and send terminal events, then end the response. */
-        const sendSseBlock = (chatId: string | undefined, message: string, answer: unknown[]) => {
-            const payload = { success: true, chat_id: chatId, message, answer };
+        const sendSseBlock = (chatId: string | undefined, message: string, answer: unknown[], checkSafetyDebug?: CheckSafetyStreamDebug) => {
+            const payload = { success: true, chat_id: chatId, message, answer, check_safety_debug: checkSafetyDebug };
             res.setHeader('Content-Type', 'text/event-stream');
             res.setHeader('Cache-Control', 'no-cache, no-transform');
             res.setHeader('Connection', 'keep-alive');
@@ -365,27 +409,36 @@ export function checkSafetyStream(): any {
         try {
             console.log(body.params);
 
-            if (!body.params.chat_id) {
-                chatWithId = await AIModel.initChat({
-                    ...body,
-                    params: {
-                        ...body.params,
-                        is_guest_chat: isGuestChat
-                    }
-                }, `${ip}`, mode === 'incognito');
-            }
-            if (body.params.chat_id) chatWithId = await AIModel.getChatById(body.params.chat_id) as ChatDbRecord;
-            if (body.params.chat_id && !chatWithId) {
-                console.log(`chat_id "${body.params.chat_id}" not found, creating new chat`);
-                chatWithId = await AIModel.initChat({
-                    ...body,
-                    params: {
-                        ...body.params,
-                        chat_id: null,
-                        is_guest_chat: isGuestChat
-                    }
-                }, `${ip}`, mode === 'incognito');
-            }
+            chatWithId = await measureStep('init_or_load_chat', async (): Promise<ChatDbRecord | null> => {
+                let resolvedChat: ChatDbRecord | null = null;
+
+                if (!body.params.chat_id) {
+                    resolvedChat = await AIModel.initChat({
+                        ...body,
+                        params: {
+                            ...body.params,
+                            is_guest_chat: isGuestChat
+                        }
+                    }, `${ip}`, mode === 'incognito');
+                }
+                if (body.params.chat_id) {
+                    resolvedChat = await AIModel.getChatById(body.params.chat_id) as ChatDbRecord;
+                }
+                if (body.params.chat_id && !resolvedChat) {
+                    console.log(`chat_id "${body.params.chat_id}" not found, creating new chat`);
+                    resolvedChat = await AIModel.initChat({
+                        ...body,
+                        params: {
+                            ...body.params,
+                            chat_id: null,
+                            is_guest_chat: isGuestChat
+                        }
+                    }, `${ip}`, mode === 'incognito');
+                }
+
+                return resolvedChat;
+            });
+
             if (chatWithId?.chat_id) {
                 body.params.chat_id = chatWithId.chat_id;
                 req.system = req.system || {};
@@ -412,31 +465,33 @@ export function checkSafetyStream(): any {
                 ? [{ role: 'system', content: `Use the following context only if it helps classify the latest user message.\n${contextText}` }]
                 : [];
 
-            const [_savedMessageRecord, intentCheckResponse] = await Promise.all([
-                AIModel.saveMessageToChat(chatWithId!.chat_id, false, {
-                    role: ChatRole.User,
-                    data: [
-                        {
-                            content: body.message
-                        }
-                    ]
-                }),
-                getResponse({
-                    messages: [
-                        {
-                            role: 'system',
-                            content: `You are a multilingual text safety manager and intent classifier. Check the provided text and tell to which category it belongs based on provided schema. Loans are always LEGAL!`
-                        },
-                        ...contextMessages,
-                        ...messages
-                    ],
-                    schema: intentSchema,
-                    aiProvider: LLMProvider.DEEPSEEK,
-                    model: DeepSeekModels.CHAT,
-                    jsonSchemaName: 'safety_check',
-                    maxTokens: 100
-                })
-            ]);
+            const [_savedMessageRecord, intentCheckResponse] = await measureStep('save_message_and_intent_check', async () => {
+                return Promise.all([
+                    AIModel.saveMessageToChat(chatWithId!.chat_id, false, {
+                        role: ChatRole.User,
+                        data: [
+                            {
+                                content: body.message
+                            }
+                        ]
+                    }),
+                    getResponse({
+                        messages: [
+                            {
+                                role: 'system',
+                                content: `You are a multilingual text safety manager and intent classifier. Check the provided text and tell to which category it belongs based on provided schema. Loans are always LEGAL!`
+                            },
+                            ...contextMessages,
+                            ...messages
+                        ],
+                        schema: intentSchema,
+                        aiProvider: LLMProvider.DEEPSEEK,
+                        model: DeepSeekModels.CHAT,
+                        jsonSchemaName: 'safety_check',
+                        maxTokens: 100
+                    })
+                ]);
+            });
 
             req.system = req.system || {};
             req.system.user_message_saved = true;
@@ -447,6 +502,7 @@ export function checkSafetyStream(): any {
             console.log('Check point 2');
 
             console.log('Intent result:', intentResult);
+            debugPayload.intent_objective = intentResult.message_objective;
 
             if (['DANGER'].includes(intentResult.message_objective)) {
                 const unsafeMessage = resolveTranslation(
@@ -456,20 +512,27 @@ export function checkSafetyStream(): any {
                 );
 
                 if (chatWithId?.chat_id) {
-                    await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
-                        role: ChatRole.Assistant,
-                        data: [
-                            {
-                                type: ContentDataType.Markdown,
-                                content: unsafeMessage
-                            }
-                        ]
+                    await measureStep('save_blocked_message', async () => {
+                        await AIModel.saveMessageToChat(chatWithId!.chat_id, false, {
+                            role: ChatRole.Assistant,
+                            data: [
+                                {
+                                    type: ContentDataType.Markdown,
+                                    content: unsafeMessage
+                                }
+                            ]
+                        });
                     });
                 }
 
+                const checkSafetyDebug = finalizeDebugPayload({
+                    blocked: true,
+                    block_reason: intentResult.message_objective
+                });
+
                 return sendSseBlock(chatWithId?.chat_id, unsafeMessage, [
                     { type: ContentDataType.Markdown, content: unsafeMessage }
-                ]);
+                ], checkSafetyDebug);
             }
 
             if (['OTHER'].includes(intentResult.message_objective)) {
@@ -480,23 +543,30 @@ export function checkSafetyStream(): any {
                 );
 
                 if (chatWithId?.chat_id) {
-                    await AIModel.saveMessageToChat(chatWithId.chat_id, false, {
-                        role: ChatRole.Assistant,
-                        data: [
-                            {
-                                type: ContentDataType.Markdown,
-                                content: onlyFinanceMessage
-                            }
-                        ]
+                    await measureStep('save_blocked_message', async () => {
+                        await AIModel.saveMessageToChat(chatWithId!.chat_id, false, {
+                            role: ChatRole.Assistant,
+                            data: [
+                                {
+                                    type: ContentDataType.Markdown,
+                                    content: onlyFinanceMessage
+                                }
+                            ]
+                        });
                     });
                 }
 
+                const checkSafetyDebug = finalizeDebugPayload({
+                    blocked: true,
+                    block_reason: intentResult.message_objective
+                });
+
                 return sendSseBlock(chatWithId?.chat_id, onlyFinanceMessage, [
                     { type: ContentDataType.Markdown, content: onlyFinanceMessage }
-                ]);
+                ], checkSafetyDebug);
             }
 
-            const summaryResponse = await getResponse({
+            const summaryResponse = await measureStep('summary_generation', async () => getResponse({
                 messages: [
                     {
                         role: 'system',
@@ -510,7 +580,7 @@ export function checkSafetyStream(): any {
                 model: DeepSeekModels.CHAT,
                 jsonSchemaName: 'safety_check',
                 maxTokens: 100
-            });
+            }));
 
             const summaryResult = JSON.parse(summaryResponse || '{}') as z.infer<typeof summarySchema>;
 
@@ -518,10 +588,15 @@ export function checkSafetyStream(): any {
 
             req.system = req.system || {};
             req.system.summaries = summaryResult;
+            finalizeDebugPayload({
+                blocked: false,
+                block_reason: null
+            });
 
             next();
 
         } catch (error) {
+            finalizeDebugPayload();
             const serverErrorMessage = resolveTranslation(
                 body.params.country,
                 countries,
