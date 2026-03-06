@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
-import { ChatRole, ContentDataType, DeepInfraModels, LLMProvider } from '../enums/enums.js';
+import { ChatRole, ContentDataType, DeepInfraModels, DeepSeekModels, LLMProvider } from '../enums/enums.js';
 import { fetchOffersByIds, getResponse, getSortedffersAndCategories, normalizeOfferForLLM, OriginalOfferData, countries } from '../utils/common.js';
 import { AIModel, getAiProvider } from '../models/AiModel.js';
 import { InferenceRequest } from '../types/types.js';
@@ -367,17 +367,6 @@ const streamToolHandlers: Record<string, StreamToolHandler> = {
     fetch_top_offers: toolFetchRelevantOffers,
 };
 
-export function registerStreamTool(name: string, handler: StreamToolHandler): void {
-    const normalizedName = name.trim();
-    if (!normalizedName) {
-        throw new Error('Tool name is required');
-    }
-    streamToolHandlers[normalizedName] = handler;
-}
-
-export function listStreamTools(): string[] {
-    return Object.keys(streamToolHandlers);
-}
 
 function getNested(target: Record<string, unknown>, path: string): unknown {
     return path.split('.').reduce<unknown>((acc, key) => {
@@ -957,11 +946,14 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
 
     // Auto-detect finance topics and inject the default pipeline when not already provided
     let toolsRequested = parseTools(body.tools);
+    console.log('Parsed tools from request:', toolsRequested.map(t => t.name));
     if (toolsRequested.length === 0) {
         toolsRequested = buildDefaultFinancePipeline(body);
     }
 
     const requestedContentTypes = parseRequestedContentTypes(body);
+
+    console.log('Final tool pipeline:', toolsRequested.map(t => t.name));
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -1024,13 +1016,13 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
 
     baseMessages.push(...normalizedMessages);
 
-    const ai = getAiProvider(LLMProvider.DEEPINFRA);
+    const ai = getAiProvider(LLMProvider.DEEPSEEK);
     let completion;
     try {
         completion = await ai.chat.completions.create({
-            model: DeepInfraModels.LLAMA4_MAVERICK_17B,
+            model: DeepSeekModels.CHAT,
             messages: baseMessages,
-            temperature: 0.25,
+            temperature: 0.15,
             stream: true
         });
     } catch (error) {
