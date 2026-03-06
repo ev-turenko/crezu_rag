@@ -4,7 +4,7 @@ import { InferenceRequest } from '../types/types.js';
 
 const attributionSchema = z.object({
   client_id: z.string().trim().min(1),
-  appsflyer: z.unknown().nullable().optional(),
+  appsflyer_data: z.unknown().nullable().optional(),
   install_referrer: z.string().trim().nullable().optional(),
   appsflyer_id: z.string().trim().nullable().optional(),
 });
@@ -35,7 +35,7 @@ const isEmptyValue = (value: unknown): boolean => {
 export const saveAttribution = async (req: InferenceRequest, res: Response) => {
   const parsedAttribution = attributionSchema.safeParse({
     client_id: req.body?.client_id ?? req.body?.params?.client_id,
-    appsflyer: req.body?.appsflyer ?? null,
+    appsflyer_data: req.body?.appsflyer ?? null,
     install_referrer: req.body?.install_referrer ?? null,
     appsflyer_id: req.body?.appsflyer_id ?? null,
   });
@@ -48,32 +48,32 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
     });
   }
 
-  const { client_id, appsflyer, install_referrer, appsflyer_id } = parsedAttribution.data;
+  const { client_id, appsflyer_data, install_referrer, appsflyer_id } = parsedAttribution.data;
 
   try {
     const existingAttribution = await req.pbSuperAdmin!
       .collection('attributions')
       .getList(1, 1, {
         filter: `client_id="${escapeFilterValue(client_id)}"`,
-        fields: 'id,client_id,appsflyer,install_referrer,appsflyer_id',
+        fields: 'id,client_id,appsflyer_data,install_referrer,appsflyer_id',
       });
 
     if (existingAttribution.totalItems > 0) {
       const existingRecord = existingAttribution.items[0] as {
         id: string;
-        appsflyer?: unknown;
+        appsflyer_data?: unknown;
         install_referrer?: string | null;
         appsflyer_id?: string | null;
       };
 
       const updatePayload: {
-        appsflyer?: unknown;
+        appsflyer_data?: unknown;
         install_referrer?: string;
         appsflyer_id?: string;
       } = {};
 
-      if (isEmptyValue(existingRecord.appsflyer) && !isEmptyValue(appsflyer)) {
-        updatePayload.appsflyer = appsflyer;
+      if (isEmptyValue(existingRecord.appsflyer_data) && !isEmptyValue(appsflyer_data)) {
+        updatePayload.appsflyer_data = appsflyer_data;
       }
 
       if (isEmptyValue(existingRecord.install_referrer) && !isEmptyValue(install_referrer)) {
@@ -105,7 +105,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
 
     await req.pbSuperAdmin!.collection('attributions').create({
       client_id,
-      appsflyer,
+      appsflyer_data,
       install_referrer,
       appsflyer_id,
     });
