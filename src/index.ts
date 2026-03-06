@@ -17,6 +17,7 @@ import testRoutes from './routes/testRoutes.js';
 import geoipRoutes from './routes/geoipRoutes.js';
 import filesRoutes from './routes/filesRoutes.js';
 import clientIdRoutes from './routes/clientIdRoutes.js';
+import attributionRoutes from './routes/attributionRoutes.js';
 
 
 dotenv.config();
@@ -54,6 +55,7 @@ app.use('/api/test', testRoutes);
 app.use('/api/geoip', geoipRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/client-id', clientIdRoutes);
+app.use('/api/attribution', attributionRoutes);
 
 const getLocalIpAddress = () => {
   const interfaces = os.networkInterfaces();
