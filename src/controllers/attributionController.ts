@@ -35,7 +35,7 @@ const isEmptyValue = (value: unknown): boolean => {
 export const saveAttribution = async (req: InferenceRequest, res: Response) => {
   const parsedAttribution = attributionSchema.safeParse({
     client_id: req.body?.client_id ?? req.body?.params?.client_id,
-    appsflyer_data: req.body?.appsflyer ?? null,
+    appsflyer_data: req.body?.appsflyer_data ?? null,
     install_referrer: req.body?.install_referrer ?? null,
     appsflyer_id: req.body?.appsflyer_id ?? null,
   });
