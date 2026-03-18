@@ -118,7 +118,7 @@ export function handleSearch() {
     return async (req: InferenceRequest, res: Response) => {
         try {
 
-            const query = req.body?.query || req.query?.query;
+            const query = req.body?.query || req.query?.query || req.query?.search || req.body?.search;
             const countryCode = req.body?.country_code || req.query?.country_code;
 
             console.log('Received search query:', query);
