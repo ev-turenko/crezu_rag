@@ -89,6 +89,7 @@ export function getConfig() {
             clientIdEndpoint: 'https://ai.finmatcher.com/api/client-id', // endpoint to resolve client_id by uuid, uses x-api-key header with uuid
             termsLink: getTermsLink(countryCode ? countryCode : 'es'),
             privacyLink: getPrivacyLink(countryCode ? countryCode : 'es'),
+            searchEndpoint: 'https://ai.finmatcher.com/api/search', // endpoint for search queries
             isfe: true // is feed empty – if empty, no offers will be shown before user searches for offers
         })
     }
