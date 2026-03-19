@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { processRequest, getHistory, getHistoryInfinite, getAllChats, reportMessage, getSuggestions, shareChat } from '../controllers/inferenceController.js';
+import { reportOffer } from '../controllers/offersReportController.js';
 import { getChatsByClientId } from '../controllers/chatsController.js';
 import { streamAssistantResponse } from '../controllers/streamController.js';
 import { checkSafety, checkSafetyStream } from '../middleware/intent.js';
@@ -18,6 +19,7 @@ router.get('/client/:client_id/chats', initPbInstance(process.env.PB_URL || 'htt
 router.post('/history', getHistory);
 router.post('/history/infinite', getHistoryInfinite);
 router.post('/report', reportMessage);
+router.post('/offers/report', reportOffer);
 router.post('/suggestions', getSuggestions);
 router.post('/chats/share/:chat_id', shareChat);
 
