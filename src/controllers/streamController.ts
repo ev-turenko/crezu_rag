@@ -847,34 +847,93 @@ async function executeTools({
 
 
 // ---------------------------------------------------------------------------
-// Finance keyword auto-detection
+// Auto-tool execution policy
 // ---------------------------------------------------------------------------
 
-/**
- * Keywords that trigger the full offer-recommendation pipeline automatically.
- * Add more topic buckets as needed.
- */
-const FINANCE_TOPIC_KEYWORDS: string[] = [
-    // Loans
-    'loan', 'loans', 'borrow', 'lending', 'microloan', 'microcredit',
-    'préstamo', 'préstamos', 'crédito', 'créditos',
-    'pożyczka', 'pożyczki', 'chwilówka',
-    // Bank cards
-    'credit card', 'debit card', 'bank card', 'tarjeta', 'karta kredytowa',
-    'karta debetowa',
-    // Bank accounts
-    'bank account', 'savings account', 'checking account', 'cuenta bancaria',
-    'konto bankowe', 'oszczędnościowe',
-    // Generic finance
-    'finance', 'financial', 'interest rate', 'mortgage', 'refinanc',
-];
+type IntentObjective =
+    | 'DANGER'
+    | 'LOAN'
+    | 'CREDIT_CARD'
+    | 'DEBIT_CARD'
+    | 'BANK_ACCOUNT'
+    | 'FINANCE'
+    | 'OTHER';
+
+const PRODUCT_INTENTS: Set<IntentObjective> = new Set([
+    'LOAN',
+    'CREDIT_CARD',
+    'DEBIT_CARD',
+    'BANK_ACCOUNT',
+]);
 
 /**
- * Returns true when the message likely contains a request for financial products.
+ * Product-focused keywords used only as a fallback when middleware intent is
+ * generic FINANCE (or unavailable) and the user still explicitly asks to find
+ * cards/loans/accounts offers.
  */
-function isFinanceRequest(message: string): boolean {
+const PRODUCT_REQUEST_KEYWORDS: string[] = [
+    // Loans (EN/ES/PL)
+    'loan', 'loans', 'borrow', 'lending', 'microloan', 'microcredit', 'payday loan', 'mortgage', 'refinance',
+    'préstamo', 'préstamos', 'crédito', 'créditos',
+    'pożyczka', 'pożyczki', 'chwilówka',
+
+    // Cards (EN/ES/PL)
+    'credit card', 'debit card', 'bank card',
+    'tarjeta de crédito', 'tarjeta de debito', 'tarjeta',
+    'karta kredytowa', 'karta debetowa',
+
+    // Accounts (EN/ES/PL)
+    'bank account', 'savings account', 'checking account', 'open account',
+    'cuenta bancaria', 'abrir cuenta',
+    'konto bankowe',
+
+    // Product-intent qualifiers
+    'apply for', 'best loan', 'best card', 'loan offer', 'card offer', 'compare loans', 'compare cards',
+];
+
+function parseIntentObjective(value: unknown): IntentObjective | null {
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const normalized = value.trim().toUpperCase();
+    const allowed: IntentObjective[] = [
+        'DANGER',
+        'LOAN',
+        'CREDIT_CARD',
+        'DEBIT_CARD',
+        'BANK_ACCOUNT',
+        'FINANCE',
+        'OTHER',
+    ];
+
+    return (allowed as string[]).includes(normalized) ? (normalized as IntentObjective) : null;
+}
+
+/**
+ * Returns true when the latest message explicitly asks for financial products
+ * (as opposed to generic finance advice like budgeting/credit education).
+ */
+function isProductOfferRequest(message: string): boolean {
     const lower = message.toLowerCase();
-    return FINANCE_TOPIC_KEYWORDS.some(kw => lower.includes(kw));
+    return PRODUCT_REQUEST_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+function shouldAutoRunFinanceTools(intentObjective: IntentObjective | null, userMessage: string): boolean {
+    if (intentObjective && PRODUCT_INTENTS.has(intentObjective)) {
+        return true;
+    }
+
+    if (intentObjective === 'FINANCE') {
+        return isProductOfferRequest(userMessage);
+    }
+
+    // Defensive fallback: if middleware intent is missing, infer from text.
+    if (!intentObjective) {
+        return isProductOfferRequest(userMessage);
+    }
+
+    return false;
 }
 
 /**
@@ -930,6 +989,7 @@ TOOL PIPELINE SUMMARY:
 RESPONSE GUIDELINES:
 – If the user wants to buy something – that's a financial topic, assist them with that.
 - If the user includes some non-financial request, just ignore the non-financial part and focus on providing the best financial recommendations you can based on the tools' outputs and your knowledge.
+- If the user asks a general finance question (budgeting, saving, debt management, credit score education), provide practical advice even when no product tools are used.
 - If reason_best_offers produced a markdown explanation, reference or expand on it in your answer
 - Highlight the key benefits of each recommended product
 - Be concise, friendly, and helpful
@@ -945,10 +1005,21 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
         return res.status(400).json({ success: false, error: 'message or messages are required' });
     }
 
-    // Auto-detect finance topics and inject the default pipeline when not already provided
+    // Respect explicit tools from request body. Otherwise auto-run the default
+    // pipeline only when middleware intent indicates product selection.
     let toolsRequested = parseTools(body.tools);
+    const hasExplicitTools = toolsRequested.length > 0;
+    const intentObjective = parseIntentObjective(req.system?.check_safety_stream?.intent_objective);
+    const autoToolsEnabled = !hasExplicitTools && shouldAutoRunFinanceTools(intentObjective, userMessage);
+
     console.log('Parsed tools from request:', toolsRequested.map(t => t.name));
-    if (toolsRequested.length === 0) {
+    console.log('Tool gating decision:', {
+        intent_objective: intentObjective,
+        has_explicit_tools: hasExplicitTools,
+        auto_tools_enabled: autoToolsEnabled,
+    });
+
+    if (autoToolsEnabled) {
         toolsRequested = buildDefaultFinancePipeline(body);
     }
 
@@ -1012,6 +1083,11 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
         baseMessages.push({
             role: ChatRole.System,
             content: 'Tool outputs for this request:\n\n' + toolContextLines.join('\n\n---\n\n')
+        });
+    } else {
+        baseMessages.push({
+            role: ChatRole.System,
+            content: 'No product retrieval tools were run for this request. Provide concise, practical financial guidance and do not invent specific offers.'
         });
     }
 

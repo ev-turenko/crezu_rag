@@ -17,7 +17,7 @@ const intentSchema = z.object({
         "- 'DEBIT_CARD': The user is asking about a debit card. " +
         "- 'BANK_ACCOUNT': The user is asking about a bank account. " +
         // "- 'CURRENCY_EXCHANGE': The user is asking about currency exchange. " +
-        "- 'FINANCE': The user has a general financial question (e.g., investments, budgeting, taxes, credit score) that is not specifically about a loan. " +
+        "- 'FINANCE': The user has a general financial question (e.g., investments, budgeting, taxes, credit score, purchasing something legal) that is not specifically about a loan. " +
         "- 'OTHER': Anything else that doesn't fit the above categories."
     ),
     confidence: z.number().min(0).max(1).describe(
