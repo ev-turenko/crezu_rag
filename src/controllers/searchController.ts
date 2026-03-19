@@ -30,7 +30,9 @@ async function getOfferCategories(countryCode: string, offerType: string): Promi
             },
         });
         const data = await response.json();
-        const allCategories = mergeAllCategoryValues(data);
+        console.log('Fetched offer categories:', data);
+        const groups = Array.isArray(data) ? data : data.groups || [];
+        const allCategories = mergeAllCategoryValues(groups);
         console.log('Merged categories:', allCategories);
         return allCategories;
     } catch (error: any) {
@@ -45,7 +47,7 @@ async function getBestFitCategory(query: string, categories: string[]): Promise<
         const messages = [
             {
                 role: "system" as const,
-                content: `You are a helpful multilingual assistant that categorizes user search queries into specific offer categories. The available categories are: ${categories.join(', ')}. Analyze the user's search query and respond with UP TO 2 categories that best match the user's intent, ranked by relevance.`
+                content: `You are a helpful multilingual assistant that categorizes user search queries into specific offer categories. The available categories are: ${categories.join(', ')}. Analyze the user's search query and respond with UP TO 2 categories that best match the user's intent, ranked by relevance, do not use categories that obviously mean the same as the provided offer type`
             },
             {
                 role: "user" as const,
@@ -123,8 +125,11 @@ export function handleSearch() {
 
             console.log('Received search query:', query);
 
-            const offerType = await getOfferType(query, countryCode);
-            const categories = await getOfferCategories(countryCode, offerType);
+
+
+            const offerType = await getOfferType(query, `${countryCode}`.toLowerCase());
+            const categories = await getOfferCategories(`${countryCode}`.toLowerCase(), offerType);
+            console.log("CAT: ", categories)
             const bestFitCategories = await getBestFitCategory(query, categories);
             console.log('Classified offer type:', offerType);
             console.log('Best fit categories:', bestFitCategories);
@@ -148,7 +153,7 @@ export function handleSearch() {
                 }),
             });
             return res.status(200).json({
-                data: await response.json(),
+                ...await response.json(),
                 success: true,
                 error: null,
                 classified_offer_type: offerType,
