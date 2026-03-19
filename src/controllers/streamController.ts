@@ -529,6 +529,64 @@ function parseRequestedContentTypes(body: Record<string, unknown>): Set<string> 
     );
 }
 
+function resolveRequestCountryCode(body: Record<string, unknown>): string {
+    const params = toRecord(body.params);
+    const rawCountry = params.country ?? body.country ?? '';
+    return resolveCountryCode(rawCountry);
+}
+
+function resolveRequestLanguage(body: Record<string, unknown>): string {
+    const countryCode = resolveRequestCountryCode(body);
+    return COUNTRY_TO_LANG[countryCode.toLowerCase()] ?? 'en';
+}
+
+function buildLanguagePolicyPrompt(language: string): string {
+    if (language === 'es') {
+        return [
+            'LANGUAGE POLICY:',
+            '- Respond in Spanish by default.',
+            '- If the user explicitly asks for another language, follow that request.',
+            '- Keep product names, company names, and URLs unchanged.',
+        ].join('\n');
+    }
+
+    if (language === 'pl') {
+        return [
+            'LANGUAGE POLICY:',
+            '- Respond in Polish by default.',
+            '- If the user explicitly asks for another language, follow that request.',
+            '- Keep product names, company names, and URLs unchanged.',
+        ].join('\n');
+    }
+
+    if (language === 'sv') {
+        return [
+            'LANGUAGE POLICY:',
+            '- Respond in Swedish by default.',
+            '- If the user explicitly asks for another language, follow that request.',
+            '- Keep product names, company names, and URLs unchanged.',
+        ].join('\n');
+    }
+
+    return '';
+}
+
+function getNoToolsInstruction(language: string): string {
+    if (language === 'es') {
+        return 'En esta solicitud no se ejecutaron herramientas de recuperacion de ofertas. Proporciona orientacion financiera breve y practica, y no inventes ofertas especificas.';
+    }
+
+    if (language === 'pl') {
+        return 'W tym zapytaniu nie uruchomiono narzedzi do pobierania ofert. Udziel zwięzłej, praktycznej porady finansowej i nie wymyślaj konkretnych ofert.';
+    }
+
+    if (language === 'sv') {
+        return 'I denna forfragan korades inga verktyg for att hamta erbjudanden. Ge kort, praktisk finansiell vagledning och hitta inte pa specifika erbjudanden.';
+    }
+
+    return 'No product retrieval tools were run for this request. Provide concise, practical financial guidance and do not invent specific offers.';
+}
+
 /**
  * After the LLM finishes streaming, scan the combined text (LLM reply +
  * reasoning markdown) to find which offers from the candidate pool were
@@ -661,42 +719,39 @@ type ThinkingStepTemplates = {
 const THINKING_STEPS_BY_LANG: Record<string, ThinkingStepTemplates> = {
     // Spanish – Mexico / Spain / Latin America
     es: {
-        searchingData:     'Buscando datos...',
-        checkingSource:    (n) => `Revisando fuente ${n}...`,
-        checkingResults:   'Verificando resultados relevantes...',
-        comparingResults:  'Comparando opciones...',
-        findingBest:       'Encontrando la mejor solución...',
-        browsingSources:   'Navegando por las fuentes...',
+        searchingData:     'Buscando ofertas y tasas...',
+        checkingSource:    (n) => `Validando feed del proveedor ${n}...`,
+        checkingResults:   'Evaluando que tan bien encajan las ofertas con tu solicitud...',
+        comparingResults:  'Comparando costos, probabilidad de aprobacion y beneficios...',
+        findingBest:       'Preparando tus mejores recomendaciones...',
+        browsingSources:   'Contrastando condiciones y criterios de elegibilidad...',
     },
     // Polish
     pl: {
-        searchingData:     'Wyszukuję dane...',
-        checkingSource:    (n) => `Sprawdzam źródło ${n}...`,
-        checkingResults:   'Weryfikuję trafne wyniki...',
-        comparingResults:  'Porównuję opcje...',
-        findingBest:       'Szukam najlepszego rozwiązania...',
-        browsingSources:   'Przeglądam zródła...',
+        searchingData:     'Wyszukuje oferty i stawki...',
+        checkingSource:    (n) => `Weryfikuje zrodlo dostawcy ${n}...`,
+        checkingResults:   'Oceniam, jak dobrze oferty pasuja do Twojego zapytania...',
+        comparingResults:  'Porownuje koszty, szanse akceptacji i korzysci...',
+        findingBest:       'Przygotowuje najlepsze rekomendacje...',
+        browsingSources:   'Sprawdzam warunki ofert i kryteria kwalifikacji...',
     },
-
-
-    // German
-    de: {
-        searchingData:     'Daten werden gesucht...',
-        checkingSource:    (n) => `Quelle ${n} wird geprüft...`,
-        checkingResults:   'Relevante Ergebnisse werden geprüft...',
-        comparingResults:  'Optionen werden verglichen...',
-        findingBest:       'Beste Lösung wird gesucht...',
-        browsingSources:   'Quellen werden durchsucht...',
+    // Swedish
+    sv: {
+        searchingData:     'Soker erbjudanden och rantesatser...',
+        checkingSource:    (n) => `Verifierar leverantorsflode ${n}...`,
+        checkingResults:   'Bedomer hur val erbjudanden matchar din forfragan...',
+        comparingResults:  'Jamfor kostnader, sannolikhet for godkannande och fordelar...',
+        findingBest:       'Tar fram dina basta rekommendationer...',
+        browsingSources:   'Kontrollerar villkor och behorighetskrav...',
     },
-
     // English (default)
     en: {
-        searchingData:     'Searching data...',
-        checkingSource:    (n) => `Checking source ${n}...`,
-        checkingResults:   'Checking relevant search results...',
-        comparingResults:  'Comparing results...',
-        findingBest:       'Finding the best solution...',
-        browsingSources:   'Browsing sources...',
+        searchingData:     'Searching offers and rates...',
+        checkingSource:    (n) => `Validating provider feed ${n}...`,
+        checkingResults:   'Scoring offers against your request...',
+        comparingResults:  'Comparing approval odds, costs, and benefits...',
+        findingBest:       'Preparing your best-match recommendations...',
+        browsingSources:   'Cross-checking terms and eligibility criteria...',
     },
 };
 
@@ -706,6 +761,7 @@ const COUNTRY_TO_LANG: Record<string, string> = {
     uy: 'es', py: 'es', bo: 'es', ec: 'es', cr: 'es', gt: 'es', hn: 'es',
     sv: 'es', ni: 'es', pa: 'es', do: 'es', cu: 'es', pr: 'es',
     pl: 'pl',
+    se: 'sv',
     br: 'pt', pt: 'pt',
     fr: 'fr', be: 'fr',
     de: 'de', at: 'de', ch: 'de',
@@ -736,8 +792,8 @@ function startThinkingTicker(
     let stopped = false;
 
     const buildStepSequence = (): string[] => {
-        const totalSources = randomInt(3, 10);
-        const seq: string[] = [steps.searchingData];
+        const totalSources = randomInt(2, 5);
+        const seq: string[] = [steps.searchingData, steps.browsingSources];
 
         for (let i = 1; i <= totalSources; i++) {
             seq.push(steps.checkingSource(i));
@@ -761,7 +817,9 @@ function startThinkingTicker(
         // If the real tool is still running after one full sequence, loop with filler steps
         while (!stopped) {
             const filler = [
-                steps.checkingSource(randomInt(1, 10)),
+                steps.browsingSources,
+                steps.checkingSource(randomInt(1, 5)),
+                steps.checkingResults,
                 steps.comparingResults,
                 steps.findingBest,
             ];
@@ -792,9 +850,7 @@ async function executeTools({
   if (toolsRequested.length === 0) return { outputs: {}, pipeline: createEmptyPipeline() };
 
   // Resolve country for localized thinking steps
-  const params = toRecord(body.params);
-  const rawCountry = params.country ?? body.country ?? '';
-  const countryCode = resolveCountryCode(rawCountry);
+    const countryCode = resolveRequestCountryCode(body);
   const thinkingSteps = getThinkingSteps(countryCode);
 
   const usage: ToolUsageRecord[] = toolsRequested.map(t => ({
@@ -1000,6 +1056,8 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
     const body = toRecord(req.body);
     const userMessage = typeof body.message === 'string' ? body.message.trim() : '';
     const incomingMessages = Array.isArray(body.messages) ? body.messages : [];
+    const requestLanguage = resolveRequestLanguage(body);
+    const languagePolicyPrompt = buildLanguagePolicyPrompt(requestLanguage);
 
     if (!userMessage && incomingMessages.length === 0) {
         return res.status(400).json({ success: false, error: 'message or messages are required' });
@@ -1063,10 +1121,14 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
     }
 
     const normalizedMessages = normalizeIncomingMessages(incomingMessages, userMessage);
+    const assistantSystemPrompt = languagePolicyPrompt
+        ? `${FINANCIAL_ASSISTANT_SYSTEM_PROMPT}\n\n${languagePolicyPrompt}`
+        : FINANCIAL_ASSISTANT_SYSTEM_PROMPT;
+
     const baseMessages: ChatCompletionMessageParam[] = [
         {
             role: ChatRole.System,
-            content: FINANCIAL_ASSISTANT_SYSTEM_PROMPT
+            content: assistantSystemPrompt
         }
     ];
 
@@ -1087,7 +1149,7 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
     } else {
         baseMessages.push({
             role: ChatRole.System,
-            content: 'No product retrieval tools were run for this request. Provide concise, practical financial guidance and do not invent specific offers.'
+            content: getNoToolsInstruction(requestLanguage)
         });
     }
 
