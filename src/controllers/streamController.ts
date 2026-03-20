@@ -1099,6 +1099,7 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
         if (res.writableEnded) {
             return;
         }
+        res.setHeader('X-Accel-Buffering', 'no');
         if (res.socket) {
             res.socket.setNoDelay(true);
         }   
