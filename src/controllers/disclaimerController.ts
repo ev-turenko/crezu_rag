@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 
 export const getDisclaimer = (_: Request, res: Response) => {
     res.status(200).json({
-        show: false,
+        show: true,
         message: null
     });
 };
