@@ -146,10 +146,21 @@ export function handleSearch() {
             }
 
             const categories = await getOfferCategories(`${countryCode}`.toLowerCase(), offerType);
-            console.log("CAT: ", categories)
             const bestFitCategories = await getBestFitCategory(query, categories);
             console.log('Classified offer type:', offerType);
             console.log('Best fit categories:', bestFitCategories);
+
+
+            // no offers for visa and mastercard, so they are removed for now
+            if (offerType === 'debit_card' || offerType === 'credit_card') {
+                console.log('Filtering out visa and mastercard categories for credit/debit card offer type');
+                const filteredCategories = bestFitCategories.filter(category => category.toLowerCase() !== 'visa' && category.toLowerCase() !== 'mastercard');
+                bestFitCategories.length = 0;
+                bestFitCategories.push(...filteredCategories);
+            }
+
+
+            console.log('Final categories after filtering:', bestFitCategories);
 
 
             const url = new URL('https://api.finmatcher.com/api/offer/search?page=1&size=9000');
