@@ -48,7 +48,11 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
     });
   }
 
+  console.log("BEFORE", req.body?.appsflyer_data)
+
   const { client_id, appsflyer_data, install_referrer, appsflyer_id } = parsedAttribution.data;
+
+  console.log(appsflyer_data)
 
   try {
     const existingAttribution = await req.pbSuperAdmin!
