@@ -1099,6 +1099,9 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
         if (res.writableEnded) {
             return;
         }
+        if (res.socket) {
+            res.socket.setNoDelay(true);
+        }   
         res.write(`event: ${eventName}\n`);
         res.write(`data: ${JSON.stringify(payload)}\n\n`);
     };
