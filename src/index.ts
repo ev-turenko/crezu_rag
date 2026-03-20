@@ -21,6 +21,7 @@ import attributionRoutes from './routes/attributionRoutes.js';
 import searchRoutes from './routes/searchRoutes.js';
 import regFormHashesRoutes from './routes/regFormHashesRoutes.js';
 import disclaimerRoutes from './routes/disclaimerRoutes.js';
+import notificationsRoutes from './routes/notificationsRoutes.js';
 
 
 dotenv.config();
@@ -62,6 +63,7 @@ app.use('/api/attribution', attributionRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/test/reg-form', regFormHashesRoutes);
 app.use('/api/disclaimer', disclaimerRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 const getLocalIpAddress = () => {
   const interfaces = os.networkInterfaces();
