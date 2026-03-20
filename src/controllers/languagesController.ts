@@ -11,10 +11,10 @@ export function getLanguages() {
                 { code: 'sv' }
             ],
             countries: [
-                { provider: '374', country_code: 'ES', country_id: 'es' },
-                { provider: '373', country_code: 'MX', country_id: 'mx' },
-                { provider: '375', country_code: 'PL', country_id: 'pl' },
-                { provider: '377', country_code: 'SE', country_id: 'se' }
+                { provider: '374', country_code: 'es', country_id: '1' },
+                { provider: '373', country_code: 'mx', country_id: '2' },
+                { provider: '375', country_code: 'pl', country_id: '14' },
+                { provider: '377', country_code: 'se', country_id: '22' }
             ]
         });
     };
