@@ -45,7 +45,7 @@ export class ViewChatController {
             }
 
             if (!chat.is_public) {
-                const uuid = req.cookies?.uuid as string | undefined;
+                const uuid = req.cookies?.uuid || req.query.uuid as string | undefined;
                 let isOwner = false;
 
                 if (uuid) {
