@@ -1088,6 +1088,10 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    if (res.socket) {
+        res.socket.setNoDelay(true);
+    }   
     res.flushHeaders?.();
 
     let clientAborted = false;
@@ -1099,10 +1103,6 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
         if (res.writableEnded) {
             return;
         }
-        res.setHeader('X-Accel-Buffering', 'no');
-        if (res.socket) {
-            res.socket.setNoDelay(true);
-        }   
         res.write(`event: ${eventName}\n`);
         res.write(`data: ${JSON.stringify(payload)}\n\n`);
     };
