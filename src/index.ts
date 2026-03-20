@@ -22,6 +22,7 @@ import searchRoutes from './routes/searchRoutes.js';
 import regFormHashesRoutes from './routes/regFormHashesRoutes.js';
 import disclaimerRoutes from './routes/disclaimerRoutes.js';
 import notificationsRoutes from './routes/notificationsRoutes.js';
+import languagesRoutes from './routes/languagesRoutes.js';
 
 
 dotenv.config();
@@ -54,6 +55,7 @@ app.use('/api/fields/income-types', incomeTypesRoutes);
 app.use('/api/offer', offersRoutes);
 app.use('/api/config', configRoutes)
 app.use('/api/countries', countriesRoutes);
+app.use('/api/localization', languagesRoutes);
 app.use('/api/view', viewChatRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/geoip', geoipRoutes);
