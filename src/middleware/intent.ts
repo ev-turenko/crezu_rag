@@ -588,3 +588,75 @@ export function checkSafetyStream(): any {
         }
     }
 }
+
+export function ensureChatName(): any {
+    return async (req: InferenceRequest, res: Response, next: NextFunction) => {
+        try {
+            const chatId = req.system?.middleware_chat_id || req.body?.params?.chat_id;
+
+            if (!chatId) {
+                console.log('No chat_id found, skipping ensureChatName middleware');
+                return next();
+            }
+
+            const chat = await AIModel.getChatById(chatId);
+
+            if (!chat) {
+                console.log('Chat not found, skipping ensureChatName middleware');
+                return next();
+            }
+
+            if (chat.chat_name && chat.chat_name.trim().length > 0) {
+                console.log(`Chat already has name: "${chat.chat_name}"`);
+                return next();
+            }
+
+            try {
+                const userMessage = typeof req.body?.message === 'string' ? req.body.message : '';
+                
+                if (!userMessage || userMessage.trim().length === 0) {
+                    console.log('No user message to generate chat name from');
+                    return next();
+                }
+
+                console.log('Generating chat name from user intent...');
+
+                const chatNameSchema = z.object({
+                    chat_name: z.string().describe('A very short and concise chat title (max 50 characters) that summarizes the user\'s financial intent or question.')
+                });
+
+                const chatNameResponse = await getResponse({
+                    messages: [
+                        {
+                            role: ChatRole.System,
+                            content: `Generate a very short and concise chat title (max 50 characters) that summarizes the user's financial intent or question.`
+                        },
+                        {
+                            role: ChatRole.User,
+                            content: userMessage
+                        }
+                    ],
+                    schema: chatNameSchema,
+                    aiProvider: LLMProvider.DEEPSEEK,
+                    model: DeepSeekModels.CHAT,
+                    jsonSchemaName: 'chat_name_generation',
+                    maxTokens: 50
+                });
+
+                const responseObj = JSON.parse(chatNameResponse || '{}');
+                const chatName = (responseObj.chat_name || 'Chat').trim().slice(0, 100);
+                console.log(`Generated chat name: "${chatName}"`);
+                await AIModel.updateChatName(chatId, chatName);
+
+            } catch (error) {
+                console.log('Error generating chat name:', error instanceof Error ? error.message : String(error));
+            }
+
+            next();
+
+        } catch (error) {
+            console.log('Error in ensureChatName middleware:', error instanceof Error ? error.message : String(error));
+            next();
+        }
+    }
+}

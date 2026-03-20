@@ -48,6 +48,7 @@ export interface ChatDbRecord {
   is_terminated_by_system: boolean;
   is_guest_chat?: boolean;
   is_public?: boolean;
+  chat_name?: string;
   reported_messages: number[] | null;
   created: string;
   updated: string;
@@ -148,6 +149,24 @@ export class AIModel {
       return record;
     } catch (error) {
       console.log('Chat not found:', error);
+      return null;
+    }
+  }
+
+  public static async updateChatName(chatId: string, chatName: string): Promise<ChatDbRecord | null> {
+    console.log(`Updating chat_name for chat_id "${chatId}" to "${chatName}"`);
+    const pb = new PocketBase('https://pb.cashium.pro/');
+    pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
+    try {
+      const chat = await pb.collection(PbCollections.CHATS).getFirstListItem<ChatDbRecord>(`chat_id="${chatId}"`);
+      if (!chat) {
+        console.log(`Chat with chat_id "${chatId}" not found for updating chat_name`);
+        return null;
+      }
+      const updatedChat = await pb.collection(PbCollections.CHATS).update(chat.id, { chat_name: chatName });
+      return updatedChat as ChatDbRecord;
+    } catch (error) {
+      console.log('Error updating chat_name:', error);
       return null;
     }
   }
