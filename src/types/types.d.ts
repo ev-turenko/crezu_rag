@@ -94,6 +94,7 @@ export interface InferenceRequest extends Request {
   system?: {
     user_message_saved?: boolean;
     middleware_chat_id?: string;
+    detected_language?: string;
     summaries?: {
       general_summary?: string | null;
       last_intent_summary?: string | null;

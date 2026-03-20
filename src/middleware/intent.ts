@@ -199,6 +199,7 @@ export function checkSafety(): any {
             console.log('Intent check response:', intentCheckResponse);
             const intentResult = JSON.parse(intentCheckResponse || '{}') as z.infer<typeof intentSchema>;
             console.log("Check point 2")
+            if (intentResult.language) req.system.detected_language = intentResult.language;
             if (['DANGER'].includes(intentResult.message_objective)) {
                 const unsafeMessage = resolveTranslation(
                     body.params.country,
@@ -503,6 +504,7 @@ export function checkSafetyStream(): any {
 
             console.log('Intent result:', intentResult);
             debugPayload.intent_objective = intentResult.message_objective;
+            if (intentResult.language) req.system.detected_language = intentResult.language;
 
             if (['DANGER'].includes(intentResult.message_objective)) {
                 const unsafeMessage = resolveTranslation(
@@ -621,6 +623,36 @@ export function ensureChatName(): any {
 
                 console.log('Generating chat name from user intent...');
 
+                let detectedLanguage = req.system?.detected_language;
+
+                if (!detectedLanguage) {
+                    try {
+                        const langSchema = z.object({
+                            language: z.string().describe('The ISO 639-1 language code of the text (e.g., "en", "es", "ru").')
+                        });
+                        const langResponse = await getResponse({
+                            messages: [
+                                { role: ChatRole.System, content: 'Detect the language of the following text and return its ISO 639-1 code.' },
+                                { role: ChatRole.User, content: userMessage }
+                            ],
+                            schema: langSchema,
+                            aiProvider: LLMProvider.DEEPSEEK,
+                            model: DeepSeekModels.CHAT,
+                            jsonSchemaName: 'language_detection',
+                            maxTokens: 10
+                        });
+                        const parsed = JSON.parse(langResponse || '{}');
+                        detectedLanguage = parsed.language || undefined;
+                        console.log(`Detected language for chat name: "${detectedLanguage}"`);
+                    } catch {
+                        // language detection failed, will use message-level fallback
+                    }
+                }
+
+                const languageInstruction = detectedLanguage
+                    ? ` Respond in the user's language (ISO 639-1: "${detectedLanguage}").`
+                    : ' Respond in the same language as the user\'s message.';
+
                 const chatNameSchema = z.object({
                     chat_name: z.string().describe('A very short and concise chat title (max 50 characters) that summarizes the user\'s financial intent or question.')
                 });
@@ -629,7 +661,7 @@ export function ensureChatName(): any {
                     messages: [
                         {
                             role: ChatRole.System,
-                            content: `Generate a very short and concise chat title (max 50 characters) that summarizes the user's financial intent or question.`
+                            content: `Generate a very short and concise chat title (max 50 characters) that summarizes the user's financial intent or question.${languageInstruction}`
                         },
                         {
                             role: ChatRole.User,
