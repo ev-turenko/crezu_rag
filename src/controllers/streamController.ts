@@ -299,6 +299,8 @@ async function toolReasonBestOffers(args: Record<string, unknown>, context: Stre
         includeLinks
     );
 
+    console.log('Reasoning tool output:', { markdown, rankedOfferIds: rankedOffers.map(o => o.offer.id) });
+
     context.pipeline.reasonedOffers = rankedOffers;
 
     return {
