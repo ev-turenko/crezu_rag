@@ -304,7 +304,8 @@ async function toolReasonBestOffers(args: Record<string, unknown>, context: Stre
     context.pipeline.reasonedOffers = rankedOffers;
 
     return {
-        markdown,
+        // markdown,
+        markdown: '',
         offers: rankedOffers.map(r => r.offer),
     };
 }
@@ -710,50 +711,50 @@ async function saveAssistantMessage(chatId: string | null, data: AssistantDataIt
 // ---------------------------------------------------------------------------
 
 type ThinkingStepTemplates = {
-    searchingData: string;
+    searchingData: string[];
     checkingSource: (n: number) => string;
-    checkingResults: string;
-    comparingResults: string;
-    findingBest: string;
-    browsingSources: string;
+    checkingResults: string[];
+    comparingResults: string[];
+    findingBest: string[];
+    browsingSources: string[];
 };
 
 const THINKING_STEPS_BY_LANG: Record<string, ThinkingStepTemplates> = {
     // Spanish – Mexico / Spain / Latin America
     es: {
-        searchingData:     'Buscando ofertas y tasas...',
+        searchingData:     ['Buscando ofertas y tasas...', 'Consultando productos financieros...', 'Cargando ofertas disponibles...', 'Obteniendo datos del mercado...'],
         checkingSource:    (n) => `Validando feed del proveedor ${n}...`,
-        checkingResults:   'Evaluando que tan bien encajan las ofertas con tu solicitud...',
-        comparingResults:  'Comparando costos, probabilidad de aprobacion y beneficios...',
-        findingBest:       'Preparando tus mejores recomendaciones...',
-        browsingSources:   'Contrastando condiciones y criterios de elegibilidad...',
+        checkingResults:   ['Evaluando que tan bien encajan las ofertas con tu solicitud...', 'Analizando la relevancia de las ofertas...', 'Midiendo compatibilidad de productos...', 'Comparando opciones con tu perfil...'],
+        comparingResults:  ['Comparando costos, probabilidad de aprobacion y beneficios...', 'Analizando tasas y comisiones...', 'Revisando requisitos y condiciones...', 'Evaluando ventajas de cada opcion...'],
+        findingBest:       ['Preparando tus mejores recomendaciones...', 'Seleccionando las mejores opciones para ti...', 'Finalizando recomendaciones personalizadas...', 'Ordenando las mejores ofertas...'],
+        browsingSources:   ['Contrastando condiciones y criterios de elegibilidad...', 'Revisando los terminos de cada proveedor...', 'Verificando requisitos de elegibilidad...', 'Validando detalles de las ofertas...'],
     },
     // Polish
     pl: {
-        searchingData:     'Wyszukuje oferty i stawki...',
+        searchingData:     ['Wyszukuje oferty i stawki...', 'Pobieram dostepne produkty finansowe...', 'Laduje baze ofert...', 'Szukam najlepszych opcji...'],
         checkingSource:    (n) => `Weryfikuje zrodlo dostawcy ${n}...`,
-        checkingResults:   'Oceniam, jak dobrze oferty pasuja do Twojego zapytania...',
-        comparingResults:  'Porownuje koszty, szanse akceptacji i korzysci...',
-        findingBest:       'Przygotowuje najlepsze rekomendacje...',
-        browsingSources:   'Sprawdzam warunki ofert i kryteria kwalifikacji...',
+        checkingResults:   ['Oceniam, jak dobrze oferty pasuja do Twojego zapytania...', 'Analizuje trafnosc ofert...', 'Sprawdzam dopasowanie produktow...', 'Oceniam zgodnosc ofert z Twoimi potrzebami...'],
+        comparingResults:  ['Porownuje koszty, szanse akceptacji i korzysci...', 'Analizuje oprocentowanie i oplaty...', 'Oceniam warunki i wymagania...', 'Wazam zalety kazdej oferty...'],
+        findingBest:       ['Przygotowuje najlepsze rekomendacje...', 'Wybieram najlepsze opcje dla Ciebie...', 'Finalizuje spersonalizowane rekomendacje...', 'Klasyfikuje najlepiej pasujace oferty...'],
+        browsingSources:   ['Sprawdzam warunki ofert i kryteria kwalifikacji...', 'Weryfikuje szczegoly kazdego dostawcy...', 'Sprawdzam wymagania kwalifikacyjne...', 'Waliduje szczegoly ofert...'],
     },
     // Swedish
     sv: {
-        searchingData:     'Soker erbjudanden och rantesatser...',
+        searchingData:     ['Soker erbjudanden och rantesatser...', 'Hamtar tillgangliga finansiella produkter...', 'Laddar produktdatabas...', 'Letar efter basta alternativen...'],
         checkingSource:    (n) => `Verifierar leverantorsflode ${n}...`,
-        checkingResults:   'Bedomer hur val erbjudanden matchar din forfragan...',
-        comparingResults:  'Jamfor kostnader, sannolikhet for godkannande och fordelar...',
-        findingBest:       'Tar fram dina basta rekommendationer...',
-        browsingSources:   'Kontrollerar villkor och behorighetskrav...',
+        checkingResults:   ['Bedomer hur val erbjudanden matchar din forfragan...', 'Analyserar erbjudandets relevans...', 'Kontrollerar produktanpassning...', 'Matchar erbjudanden med dina behov...'],
+        comparingResults:  ['Jamfor kostnader, sannolikhet for godkannande och fordelar...', 'Analyserar rantor och avgifter...', 'Utvardering av villkor och krav...', 'Avvager fordelarna med varje alternativ...'],
+        findingBest:       ['Tar fram dina basta rekommendationer...', 'Valjer de basta alternativen for dig...', 'Slutfor personliga rekommendationer...', 'Rangordnar bast passande erbjudanden...'],
+        browsingSources:   ['Kontrollerar villkor och behorighetskrav...', 'Granskar varje leverantors villkor...', 'Verifierar behorighetsvillkor...', 'Validerar erbjudandedetaljer...'],
     },
     // English (default)
     en: {
-        searchingData:     'Searching offers and rates...',
+        searchingData:     ['Searching offers and rates...', 'Looking up financial products...', 'Fetching available offers...', 'Loading product database...'],
         checkingSource:    (n) => `Validating provider feed ${n}...`,
-        checkingResults:   'Scoring offers against your request...',
-        comparingResults:  'Comparing approval odds, costs, and benefits...',
-        findingBest:       'Preparing your best-match recommendations...',
-        browsingSources:   'Cross-checking terms and eligibility criteria...',
+        checkingResults:   ['Scoring offers against your request...', 'Evaluating offer relevance...', 'Analyzing product fit...', 'Matching offers to your needs...'],
+        comparingResults:  ['Comparing approval odds, costs, and benefits...', 'Weighing costs and eligibility...', 'Analyzing interest rates and fees...', 'Evaluating terms and conditions...'],
+        findingBest:       ['Preparing your best-match recommendations...', 'Selecting top products for you...', 'Finalizing recommendations...', 'Ranking best-fit offers...'],
+        browsingSources:   ['Cross-checking terms and eligibility criteria...', 'Reviewing provider conditions...', 'Checking eligibility requirements...', 'Validating offer details...'],
     },
 };
 
@@ -779,6 +780,10 @@ function randomInt(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function pickStep(options: string[]): string {
+    return options[randomInt(0, options.length - 1)];
+}
+
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -795,15 +800,15 @@ function startThinkingTicker(
 
     const buildStepSequence = (): string[] => {
         const totalSources = randomInt(2, 5);
-        const seq: string[] = [steps.searchingData, steps.browsingSources];
+        const seq: string[] = [pickStep(steps.searchingData), pickStep(steps.browsingSources)];
 
         for (let i = 1; i <= totalSources; i++) {
             seq.push(steps.checkingSource(i));
         }
 
-        seq.push(steps.checkingResults);
-        seq.push(steps.comparingResults);
-        seq.push(steps.findingBest);
+        seq.push(pickStep(steps.checkingResults));
+        seq.push(pickStep(steps.comparingResults));
+        seq.push(pickStep(steps.findingBest));
         return seq;
     };
 
@@ -812,23 +817,23 @@ function startThinkingTicker(
         for (const label of sequence) {
             if (stopped) break;
             sendThinkingStep(label);
-            // Random delay 180–520 ms between steps for a natural feel
-            await sleep(randomInt(180, 520));
+            // Random delay 700–1 400 ms between steps for a natural, unhurried feel
+            await sleep(randomInt(700, 1400));
         }
 
         // If the real tool is still running after one full sequence, loop with filler steps
         while (!stopped) {
             const filler = [
-                steps.browsingSources,
+                pickStep(steps.browsingSources),
                 steps.checkingSource(randomInt(1, 5)),
-                steps.checkingResults,
-                steps.comparingResults,
-                steps.findingBest,
+                pickStep(steps.checkingResults),
+                pickStep(steps.comparingResults),
+                pickStep(steps.findingBest),
             ];
             for (const label of filler) {
                 if (stopped) break;
                 sendThinkingStep(label);
-                await sleep(randomInt(250, 600));
+                await sleep(randomInt(800, 1500));
             }
         }
     })();
