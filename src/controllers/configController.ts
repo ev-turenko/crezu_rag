@@ -90,7 +90,8 @@ export function getConfig() {
             termsLink: getTermsLink(countryCode ? countryCode : 'es'),
             privacyLink: getPrivacyLink(countryCode ? countryCode : 'es'),
             searchEndpoint: 'https://ai.finmatcher.com/api/search', // endpoint for search queries
-            isfe: true // is feed empty – if empty, no offers will be shown before user searches for offers
+            isfe: true, // is feed empty – if empty, no offers will be shown before user searches for offers
+            localizationEndpoint: 'https://ai.finmatcher.com/api/localization', // endpoint to get localized strings for the app
         })
     }
 }
