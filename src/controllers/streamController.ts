@@ -304,6 +304,7 @@ async function toolReasonBestOffers(args: Record<string, unknown>, context: Stre
     context.pipeline.reasonedOffers = rankedOffers;
 
     return {
+        // !IMPORTANT Here markdown uses English and the justification for now is redundant
         // markdown,
         markdown: '',
         offers: rankedOffers.map(r => r.offer),
