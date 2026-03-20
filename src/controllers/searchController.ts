@@ -75,7 +75,7 @@ async function getBestFitCategory(query: string, categories: string[]): Promise<
     }
 }   
 
-async function getOfferType(query: string, countryCode: string | undefined = undefined): Promise<string> {
+async function getOfferType(query: string, countryCode: string | undefined = undefined): Promise<string | null> {
     let possibleOfferTypes: string[] = [];
     if (countryCode === "mx" || countryCode === "es") possibleOfferTypes = ['credit_card', 'debit_card', 'fast_loan'];
     if (countryCode === "pl") possibleOfferTypes = ['credit_card', 'fast_loan'];
@@ -84,11 +84,13 @@ async function getOfferType(query: string, countryCode: string | undefined = und
         return 'fast_loan';
     }
 
+    const allTypes = ['not_related', ...possibleOfferTypes] as [string, ...string[]];
+
     try {
         const messages = [
             {
                 role: "system" as const,
-                content: `You are a multilingual expert at categorizing financial product search queries. Classify the user's search query into one of these offer types: ${possibleOfferTypes.join(', ')}. Respond with ONLY the offer type that best matches the user's intent.`
+                content: `You are a multilingual expert at categorizing financial product search queries. Classify the user's search query into one of these offer types: ${possibleOfferTypes.join(', ')}. If the query is not related to any of these financial products, respond with "not_related". Respond with ONLY the offer type that best matches the user's intent.`
             },
             {
                 role: "user" as const,
@@ -99,7 +101,7 @@ async function getOfferType(query: string, countryCode: string | undefined = und
         const response = await getResponse({
             messages: messages,
             schema: z.object({
-                offer_type: z.enum(possibleOfferTypes)
+                offer_type: z.enum(allTypes)
             }).strict(),
             aiProvider: LLMProvider.DEEPSEEK,
             model: DeepSeekModels.CHAT,
@@ -109,10 +111,11 @@ async function getOfferType(query: string, countryCode: string | undefined = und
 
         const parsed = JSON.parse(response);
         console.log('LLM response for offer type classification:', parsed);
-        return parsed.offer_type || 'credit_card';
+        if (!parsed.offer_type || parsed.offer_type === 'not_related') return null;
+        return parsed.offer_type;
     } catch (error: any) {
         console.error('Error classifying offer type:', error);
-        return 'credit_card';
+        return null;
     }
 }
 
@@ -128,6 +131,20 @@ export function handleSearch() {
 
 
             const offerType = await getOfferType(query, `${countryCode}`.toLowerCase());
+
+            if (!offerType) {
+                return res.status(200).json({
+                    total: 0,
+                    items: [],
+                    page: 1,
+                    size: 9000,
+                    success: true,
+                    error: null,
+                    classified_offer_type: "",
+                    best_fit_categories: []
+                });
+            }
+
             const categories = await getOfferCategories(`${countryCode}`.toLowerCase(), offerType);
             console.log("CAT: ", categories)
             const bestFitCategories = await getBestFitCategory(query, categories);
