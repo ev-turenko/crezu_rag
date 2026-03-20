@@ -24,6 +24,7 @@ import disclaimerRoutes from './routes/disclaimerRoutes.js';
 import notificationsRoutes from './routes/notificationsRoutes.js';
 import languagesRoutes from './routes/languagesRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
+import chatGreetingRoutes from './routes/chatGreetingRoutes.js';
 
 
 dotenv.config();
@@ -68,6 +69,7 @@ app.use('/api/test/reg-form', regFormHashesRoutes);
 app.use('/api/disclaimer', disclaimerRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/chat-greeting', chatGreetingRoutes);
 
 const getLocalIpAddress = () => {
   const interfaces = os.networkInterfaces();
