@@ -153,6 +153,20 @@ export class AIModel {
     }
   }
 
+  public static async getClientIdByEmail(email: string): Promise<string | null> {
+    const pb = new PocketBase('https://pb.cashium.pro/');
+    pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
+    try {
+      const client = await pb.collection('clients').getFirstListItem<{ client_id: string }>(
+        `email="${email}"`,
+        { fields: 'client_id' }
+      );
+      return client.client_id || null;
+    } catch {
+      return null;
+    }
+  }
+
   public static async updateChatName(chatId: string, chatName: string): Promise<ChatDbRecord | null> {
     console.log(`Updating chat_name for chat_id "${chatId}" to "${chatName}"`);
     const pb = new PocketBase('https://pb.cashium.pro/');

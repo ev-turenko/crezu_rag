@@ -45,7 +45,32 @@ export class ViewChatController {
             }
 
             if (!chat.is_public) {
-                return res.status(403).send(this.renderErrorPage('This chat is not public'));
+                const uuid = req.cookies?.uuid as string | undefined;
+                let isOwner = false;
+
+                if (uuid) {
+                    const profileResponse = await fetch('https://finmatcher.com/api/auth/profile', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-api-key': encodeURIComponent(uuid),
+                        }
+                    });
+
+                    if (profileResponse.ok) {
+                        const profileJson = await profileResponse.json() as { email?: string };
+                        if (profileJson?.email) {
+                            const clientId = await AIModel.getClientIdByEmail(profileJson.email);
+                            if (clientId && clientId === chat.client_id) {
+                                isOwner = true;
+                            }
+                        }
+                    }
+                }
+
+                if (!isOwner) {
+                    return res.status(403).send(this.renderErrorPage('This chat is not public'));
+                }
             }
 
             const html = this.renderChatPage(chat);
