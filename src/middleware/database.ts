@@ -134,51 +134,40 @@ async function resolveRegisteredUser(
   }
 }
 
-export function checkTrialOrAuth() {
+export function checkChatsAuth() {
   return async (req: InferenceRequest, res: Response, next: NextFunction) => {
-    const uuid = req.cookies?.uuid as string | undefined;
     const clientId = req.params?.client_id || '';
 
-    // 1. Try registered auth first
-    if (uuid) {
-      const isRegistered = await resolveRegisteredUser(uuid, clientId, req);
-      if (isRegistered) {
-        return next();
-      }
-    }
-
-    // 2. Fall back to trial check
-    if (!clientId) {
-      return res.status(403).json({ success: false, error: 'registration_required' });
-    }
-
+    // 1. Check whether a registered client with this client_id exists
+    let clientRecord: ClientRecord | null = null;
     try {
-      const result = await req.pbSuperAdmin!
-        .collection('app_trials')
-        .getList(1, 1, {
-          filter: `client_id="${escapeFilterValue(clientId)}"`,
-          fields: 'id,trial_end_timestamp,is_claimed',
-        });
-
-      if (result.totalItems === 0) {
-        return res.status(403).json({ success: false, error: 'registration_required' });
-      }
-
-      const trial = result.items[0] as unknown as {
-        trial_end_timestamp: number;
-        is_claimed: boolean;
-      };
-
-      if (!trial.is_claimed || trial.trial_end_timestamp <= Date.now()) {
-        return res.status(403).json({ success: false, error: 'trial_expired' });
-      }
-
-      req.userProfile = { client_id: clientId, is_trial: true };
-      return next();
-    } catch (error) {
-      console.error('Error checking trial in checkTrialOrAuth:', error);
-      return res.status(500).json({ success: false, error: 'Internal server error' });
+      clientRecord = await req.pbSuperAdmin!
+        .collection('clients')
+        .getFirstListItem<ClientRecord>(
+          `client_id="${escapeFilterValue(clientId)}"`,
+          { fields: 'id,client_id,email,name,city' },
+        );
+    } catch {
+      // No client record found
     }
+
+    if (!clientRecord) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    // 2. Client exists — uuid cookie is required
+    const uuid = req.cookies?.uuid as string | undefined;
+    if (!uuid) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    // 3. Validate the uuid against the external auth service
+    const isValid = await resolveRegisteredUser(uuid, clientId, req);
+    if (!isValid) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    return next();
   };
 }
 
