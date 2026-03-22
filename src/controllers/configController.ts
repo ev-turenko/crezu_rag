@@ -1,19 +1,21 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
-const feedDisclaimerByLang: Record<'en' | 'es' | 'pl', string> = {
+const feedDisclaimerByLang: Record<'en' | 'es' | 'pl' | 'sv', string> = {
     en: 'AI generated suggestions. Consult with a professional before making decisions.',
     es: 'Sugerencias generadas por IA. Consulte con un profesional antes de tomar decisiones.',
     pl: 'Sugestie wygenerowane przez AI. Przed podjęciem decyzji skonsultuj się ze specjalistą.',
+    sv: 'AI-genererade förslag. Konsultera en professionell innan du fattar beslut.'
 };
 
-function normalizeConfigLang(rawLang: string | undefined): 'en' | 'es' | 'pl' {
+function normalizeConfigLang(rawLang: string | undefined): 'en' | 'es' | 'pl' | 'sv' {
     if (!rawLang) return 'en';
 
     const lang = rawLang.toLowerCase();
 
     if (lang.startsWith('es')) return 'es';
     if (lang.startsWith('pl')) return 'pl';
+    if (lang.startsWith('sv')) return 'sv';
     return 'en';
 }
 
@@ -21,7 +23,10 @@ function normalizeConfigLang(rawLang: string | undefined): 'en' | 'es' | 'pl' {
 function getRelevantAuthEndpoint(countryCode: string): string {
     if(countryCode.toLowerCase() === 'mx') {
         return 'https://finmart.mx/?from_app=com.finmatcher.app.ai&browser=external';
-    } else {
+    } else if(countryCode.toLowerCase() === 'sv' || countryCode.toLowerCase() === 'se') {
+        return 'https://finmatcher.se/?from_app=com.finmatcher.app.ai&browser=external';
+    }
+    else {
         return `https://finmatcher.com/${countryCode}/?from_app=com.finmatcher.app.ai&browser=external`;
     }
 }
@@ -37,6 +42,9 @@ function getTermsLink(countryCode: string): string {
     if(countryCode.toLowerCase() === 'pl') {
         return 'https://finmatcher.com/pl/terms-and-conditions/';
     }
+    if(countryCode.toLowerCase() === 'sv' || countryCode.toLowerCase() === 'se') {
+        return 'https://finmatcher.se/anvandarvillkor/';
+    }
     return 'https://finmatcher.com/es/terminos-y-condiciones/';
 }
 
@@ -49,6 +57,9 @@ function getPrivacyLink(countryCode: string): string {
     }
     if(countryCode.toLowerCase() === 'pl') {
         return 'https://finmatcher.com/pl/polityka-prywatnosci/';
+    }
+    if(countryCode.toLowerCase() === 'sv' || countryCode.toLowerCase() === 'se') {
+        return 'https://finmatcher.se/integritetspolicy/';
     }
     return 'https://finmatcher.com/es/politica-de-privacidad/';
 }
