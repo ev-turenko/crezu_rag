@@ -134,6 +134,48 @@ async function resolveRegisteredUser(
   }
 }
 
+async function checkActiveTrial(
+  clientId: string,
+  req: InferenceRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  if (!clientId) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+    return;
+  }
+
+  try {
+    const result = await req.pbSuperAdmin!
+      .collection('app_trials')
+      .getList(1, 1, {
+        filter: `client_id="${escapeFilterValue(clientId)}"`,
+        fields: 'id,trial_end_timestamp,is_claimed',
+      });
+
+    if (result.totalItems === 0) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    const trial = result.items[0] as unknown as {
+      trial_end_timestamp: number;
+      is_claimed: boolean;
+    };
+
+    if (!trial.is_claimed || trial.trial_end_timestamp <= Date.now()) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    req.userProfile = { client_id: clientId, is_trial: true };
+    next();
+  } catch (error) {
+    console.error('checkActiveTrial error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
 export function checkChatsAuth() {
   return async (req: InferenceRequest, res: Response, next: NextFunction) => {
     const clientId = req.params?.client_id || '';
@@ -152,7 +194,8 @@ export function checkChatsAuth() {
     }
 
     if (!clientRecord) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
+      // No registered client — fall back to trial check
+      return checkActiveTrial(clientId, req, res, next);
     }
 
     // 2. Client exists — uuid cookie is required
