@@ -5,6 +5,9 @@ import { getAiProvider } from '../models/AiModel.js';
 import { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/index.mjs";
 import PocketBase from 'pocketbase';
 
+export const escapeFilterValue = (value: string): string =>
+  value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'function' | 'tool' | 'developer';
   content: string;

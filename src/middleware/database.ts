@@ -4,6 +4,7 @@ import { ClientRecord, InferenceRequest } from "../types/types.js";
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
 import z from "zod";
+import { escapeFilterValue } from "../utils/common.js";
 
 dotenv.config();
 
@@ -30,6 +31,123 @@ export function initPbInstance(pbUrl: string): any {
 
 
 
+
+const finmatcherProfileSchema = z.object({
+  email: z.email(),
+  name: z.string(),
+  city: z.string().nullable(),
+});
+
+async function resolveRegisteredUser(
+  uuid: string,
+  clientId: string,
+  req: InferenceRequest,
+): Promise<boolean> {
+  try {
+    const response = await fetch('https://finmatcher.com/api/auth/profile', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': encodeURIComponent(uuid),
+      },
+    });
+    const responseJson = await response.json();
+    const parsed = finmatcherProfileSchema.safeParse(responseJson);
+
+    if (!parsed.success) {
+      return false;
+    }
+
+    const userProfile = parsed.data;
+
+    try {
+      const client = await req.pbSuperAdmin!
+        .collection('clients')
+        .getFirstListItem<ClientRecord>(
+          `email="${escapeFilterValue(userProfile.email)}" || client_id="${escapeFilterValue(clientId)}"`,
+          { fields: 'id,client_id,email,name,city' },
+        );
+
+      req.userProfile = {
+        id: client.id,
+        client_id: client.client_id || '',
+        email: client.email || null,
+        name: client.name || '',
+        city: client.city || null,
+        is_trial: false,
+      };
+      return true;
+    } catch {
+      // Client record not yet created — create it and still allow access
+      try {
+        await req.pbSuperAdmin!.collection('clients').create({
+          email: userProfile.email,
+          client_id: clientId || uuidv4(),
+          password: 'defaultpassword12345678!',
+          passwordConfirm: 'defaultpassword12345678!',
+        });
+      } catch { /* ignore duplicate create race */ }
+      req.userProfile = {
+        client_id: clientId || '',
+        email: userProfile.email,
+        name: userProfile.name,
+        city: userProfile.city,
+        is_trial: false,
+      };
+      return true;
+    }
+  } catch {
+    return false;
+  }
+}
+
+export function checkTrialOrAuth() {
+  return async (req: InferenceRequest, res: Response, next: NextFunction) => {
+    const uuid = req.cookies?.uuid as string | undefined;
+    const clientId = req.params?.client_id || '';
+
+    // 1. Try registered auth first
+    if (uuid) {
+      const isRegistered = await resolveRegisteredUser(uuid, clientId, req);
+      if (isRegistered) {
+        return next();
+      }
+    }
+
+    // 2. Fall back to trial check
+    if (!clientId) {
+      return res.status(403).json({ success: false, error: 'registration_required' });
+    }
+
+    try {
+      const result = await req.pbSuperAdmin!
+        .collection('app_trials')
+        .getList(1, 1, {
+          filter: `client_id="${escapeFilterValue(clientId)}"`,
+          fields: 'id,trial_end_timestamp,is_claimed',
+        });
+
+      if (result.totalItems === 0) {
+        return res.status(403).json({ success: false, error: 'registration_required' });
+      }
+
+      const trial = result.items[0] as unknown as {
+        trial_end_timestamp: number;
+        is_claimed: boolean;
+      };
+
+      if (!trial.is_claimed || trial.trial_end_timestamp <= Date.now()) {
+        return res.status(403).json({ success: false, error: 'trial_expired' });
+      }
+
+      req.userProfile = { client_id: clientId, is_trial: true };
+      return next();
+    } catch (error) {
+      console.error('Error checking trial in checkTrialOrAuth:', error);
+      return res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+  };
+}
 
 export function getUserEntry() {
   return async (req: InferenceRequest, res: Response, next: NextFunction) => {

@@ -85,6 +85,7 @@ export interface ClientRecord {
   email?: string | null;
   name?: string | null;
   city?: string | null;
+  is_trial?: boolean;
 }
 export interface InferenceRequest extends Request {
   pb?: PocketBase

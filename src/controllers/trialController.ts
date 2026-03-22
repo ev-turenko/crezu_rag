@@ -1,11 +1,9 @@
 import type { Response } from 'express';
 import z from 'zod';
 import { InferenceRequest } from '../types/types.js';
+import { escapeFilterValue } from '../utils/common.js';
 
 const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-
-const escapeFilterValue = (value: string): string =>
-  value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
 const daysRemaining = (trialEndTimestamp: number): number =>
   Math.max(0, Math.ceil((trialEndTimestamp - Date.now()) / 86_400_000));
