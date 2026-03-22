@@ -185,6 +185,22 @@ export class AIModel {
     }
   }
 
+  public static async deleteChat(chatId: string, clientId: string): Promise<true | null> {
+    const pb = new PocketBase('https://pb.cashium.pro/');
+    pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
+    try {
+      const chat = await pb.collection(PbCollections.CHATS).getFirstListItem<ChatDbRecord>(
+        `chat_id="${chatId}" && client_id="${clientId}"`
+      );
+      await pb.collection(PbCollections.CHATS).delete(chat.id);
+      return true;
+    } catch (error: any) {
+      if (error?.status === 404) return null;
+      console.log('Error deleting chat:', error);
+      return null;
+    }
+  }
+
   public static async getSuggestions(lang: string): Promise<Suggestion[]> {
     const options = [
       {

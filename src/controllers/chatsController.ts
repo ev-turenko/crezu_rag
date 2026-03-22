@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { ClientRecord, InferenceRequest } from '../types/types.js';
 import { dateGroups } from '../utils/common.js';
+import { AIModel } from '../models/AiModel.js';
 
 function getDateGroup(dateString: string): string {
     const createdDate = new Date(dateString);
@@ -96,4 +97,33 @@ export function getChatsByClientId() {
             });
         }
     }
+}
+
+export function deleteChat() {
+    return async (req: InferenceRequest, res: Response) => {
+        const client: ClientRecord | null | undefined = req.userProfile;
+        const { chat_id } = req.params;
+
+        if (!chat_id) {
+            return res.status(400).json({ success: false, error: 'chat_id is required' });
+        }
+
+        const clientId = client?.client_id;
+        if (!clientId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        try {
+            const result = await AIModel.deleteChat(chat_id, clientId);
+
+            if (result === null) {
+                return res.status(404).json({ success: false, error: 'Chat not found' });
+            }
+
+            return res.json({ success: true, error: null });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ success: false, error: 'Internal server error' });
+        }
+    };
 }

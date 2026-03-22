@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { processRequest, getHistory, getHistoryInfinite, getAllChats, reportMessage, getSuggestions, shareChat } from '../controllers/inferenceController.js';
 import { reportOffer } from '../controllers/offersReportController.js';
-import { getChatsByClientId } from '../controllers/chatsController.js';
+import { getChatsByClientId, deleteChat } from '../controllers/chatsController.js';
 import { streamAssistantResponse } from '../controllers/streamController.js';
 import { checkSafety, checkSafetyStream, ensureChatName } from '../middleware/intent.js';
-import { getUserEntry, initPbInstance, checkTrialOrAuth } from '../middleware/database.js';
+import { initPbInstance, checkTrialOrAuth } from '../middleware/database.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -16,6 +16,7 @@ router.post('/message/stream', checkSafetyStream(), ensureChatName(), streamAssi
 router.post('/chats', getAllChats);
 router.post('/client/:client_id/chats', initPbInstance(process.env.PB_URL || 'https://pb.cashium.pro/'), checkTrialOrAuth(), getChatsByClientId());
 router.get('/client/:client_id/chats', initPbInstance(process.env.PB_URL || 'https://pb.cashium.pro/'), checkTrialOrAuth(), getChatsByClientId());
+router.delete('/client/:client_id/chats/:chat_id', initPbInstance(process.env.PB_URL || 'https://pb.cashium.pro/'), checkTrialOrAuth(), deleteChat());
 router.post('/history', getHistory);
 router.post('/history/infinite', getHistoryInfinite);
 router.post('/report', reportMessage);
