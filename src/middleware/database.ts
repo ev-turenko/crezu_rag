@@ -32,6 +32,33 @@ export function initPbInstance(pbUrl: string): any {
 
 
 
+async function migrateTrialChats(
+  trialClientId: string,
+  registeredClientId: string,
+  req: InferenceRequest,
+): Promise<void> {
+  try {
+    const chats = await req.pbSuperAdmin!
+      .collection('chats')
+      .getFullList({
+        filter: `client_id="${escapeFilterValue(trialClientId)}" && is_trial_chat=true`,
+        fields: 'id',
+      });
+
+    if (chats.length === 0) return;
+
+    await Promise.all(
+      chats.map((chat) =>
+        req.pbSuperAdmin!.collection('chats').update(chat.id, { client_id: registeredClientId }),
+      ),
+    );
+
+    console.log(`Migrated ${chats.length} trial chat(s) from client_id="${trialClientId}" → "${registeredClientId}"`);
+  } catch (error) {
+    console.error('migrateTrialChats error (non-fatal):', error);
+  }
+}
+
 const finmatcherProfileSchema = z.object({
   email: z.email(),
   name: z.string(),
@@ -76,6 +103,12 @@ async function resolveRegisteredUser(
         city: client.city || null,
         is_trial: false,
       };
+
+      // Migrate trial chats when the URL client_id differs from the registered one
+      if (clientId && client.client_id && client.client_id !== clientId) {
+        await migrateTrialChats(clientId, client.client_id, req);
+      }
+
       return true;
     } catch {
       // Client record not yet created — create it and still allow access
