@@ -90,7 +90,7 @@ export function getConfig() {
             feedDisclaimer: feedDisclaimerByLang[normalizedLang],
             supportedLanguages: ['en', 'es', 'pl'],
             regScreens: ['auth2', 'auth3', 'auth4', 'auth5'], // auth1 | auth2 | auth3 | auth4 | auth5
-            regScreensPolicy: "optional", // enforce | optional | disabled
+            regScreensPolicy: "disabled", // enforce | optional | disabled
             feedEndpoint: 'https://ai.finmatcher.com/api/offer',
             inferenceEndpoint: 'https://ai.finmatcher.com/api/inference', 
             authEndpoint: getRelevantAuthEndpoint(countryCode ? countryCode : 'es'), // endpoint for auth navigation
