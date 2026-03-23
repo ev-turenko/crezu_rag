@@ -3,6 +3,38 @@ import puppeteer from 'puppeteer';
 import { AIModel, ChatDbRecord } from '../models/AiModel.js';
 
 export class ViewChatController {
+    private async isAuthorizedToViewChat(req: Request, chat: ChatDbRecord): Promise<boolean> {
+        if (chat.is_public) return true;
+
+        const uuid = req.cookies?.uuid || req.query.uuid as string | undefined;
+        if (uuid) {
+            const profileResponse = await fetch('https://finmatcher.com/api/auth/profile', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': encodeURIComponent(uuid),
+                }
+            });
+
+            if (profileResponse.ok) {
+                const profileJson = await profileResponse.json() as { email?: string };
+                if (profileJson?.email) {
+                    const clientId = await AIModel.getClientIdByEmail(profileJson.email);
+                    if (clientId && clientId === chat.client_id) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        const trialClientId = req.cookies?.client_id || req.query.client_id as string | undefined;
+        if (trialClientId && trialClientId === chat.client_id) {
+            return AIModel.hasActiveTrial(trialClientId);
+        }
+
+        return false;
+    }
+
     async viewSharedChat(req: Request, res: Response) {
         const chatId = req.params.chat_id;
 
@@ -17,7 +49,7 @@ export class ViewChatController {
                 return res.status(404).send(this.renderErrorPage('Chat not found'));
             }
 
-            if (!chat.is_public) {
+            if (!await this.isAuthorizedToViewChat(req, chat)) {
                 return res.status(403).send(this.renderErrorPage('This chat is not public'));
             }
 
@@ -44,40 +76,8 @@ export class ViewChatController {
                 return res.status(404).send(this.renderErrorPage('Chat not found'));
             }
 
-            if (!chat.is_public) {
-                const uuid = req.cookies?.uuid || req.query.uuid as string | undefined;
-                let isOwner = false;
-
-                if (uuid) {
-                    const profileResponse = await fetch('https://finmatcher.com/api/auth/profile', {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-api-key': encodeURIComponent(uuid),
-                        }
-                    });
-
-                    if (profileResponse.ok) {
-                        const profileJson = await profileResponse.json() as { email?: string };
-                        if (profileJson?.email) {
-                            const clientId = await AIModel.getClientIdByEmail(profileJson.email);
-                            if (clientId && clientId === chat.client_id) {
-                                isOwner = true;
-                            }
-                        }
-                    }
-                }
-
-                if (!isOwner) {
-                    const trialClientId = req.cookies?.client_id || req.query.client_id as string | undefined;
-                    if (trialClientId && trialClientId === chat.client_id) {
-                        isOwner = await AIModel.hasActiveTrial(trialClientId);
-                    }
-                }
-
-                if (!isOwner) {
-                    return res.status(403).send(this.renderErrorPage('This chat is not public'));
-                }
+            if (!await this.isAuthorizedToViewChat(req, chat)) {
+                return res.status(403).send(this.renderErrorPage('This chat is not public'));
             }
 
             const html = this.renderChatPage(chat);
