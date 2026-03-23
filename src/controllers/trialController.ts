@@ -77,6 +77,25 @@ export const checkTrialEligibility = async (req: InferenceRequest, res: Response
 
   const { client_id } = parsed.data;
 
+  // Registered clients are never eligible for a trial
+  try {
+    const registeredClient = await req.pbSuperAdmin!
+      .collection('clients')
+      .getList(1, 1, {
+        filter: `client_id="${escapeFilterValue(client_id)}"`,
+        fields: 'id',
+      });
+
+    if (registeredClient.totalItems > 0) {
+      return res.status(200).json({
+        eligible: false,
+        trial_duration_days: TRIAL_DURATION_MS / 86_400_000,
+      });
+    }
+  } catch {
+    // Non-fatal: fall through to app_trials check
+  }
+
   try {
     const result = await req.pbSuperAdmin!
       .collection('app_trials')
@@ -110,6 +129,25 @@ export const acceptTrial = async (req: InferenceRequest, res: Response) => {
   }
 
   const { client_id } = parsed.data;
+
+  // Registered clients are not eligible for trials
+  try {
+    const registeredClient = await req.pbSuperAdmin!
+      .collection('clients')
+      .getList(1, 1, {
+        filter: `client_id="${escapeFilterValue(client_id)}"`,
+        fields: 'id',
+      });
+
+    if (registeredClient.totalItems > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'Registered clients are not eligible for trials',
+      });
+    }
+  } catch {
+    // Non-fatal: fall through to trial creation
+  }
 
   try {
     const existing = await req.pbSuperAdmin!

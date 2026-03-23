@@ -59,6 +59,29 @@ async function migrateTrialChats(
   }
 }
 
+async function endActiveTrialIfExists(clientId: string, pbSuperAdmin: PocketBase): Promise<void> {
+  try {
+    const result = await pbSuperAdmin
+      .collection('app_trials')
+      .getList(1, 1, {
+        filter: `client_id="${escapeFilterValue(clientId)}" && is_claimed=true`,
+        fields: 'id,trial_end_timestamp',
+      });
+
+    if (result.totalItems > 0) {
+      const trial = result.items[0] as unknown as { id: string; trial_end_timestamp: number };
+      if (trial.trial_end_timestamp > Date.now()) {
+        await pbSuperAdmin.collection('app_trials').update(trial.id, {
+          trial_end_timestamp: Date.now(),
+        });
+        console.log(`Ended active trial for registered client_id="${clientId}"`);
+      }
+    }
+  } catch (error) {
+    console.error('endActiveTrialIfExists error (non-fatal):', error);
+  }
+}
+
 const finmatcherProfileSchema = z.object({
   email: z.email(),
   name: z.string(),
@@ -140,6 +163,7 @@ async function checkActiveTrial(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
+  console.log('Checking active trial for client_id:', clientId);
   if (!clientId) {
     res.status(401).json({ success: false, error: 'Unauthorized' });
     return;
@@ -197,6 +221,9 @@ export function checkChatsAuth() {
       // No registered client — fall back to trial check
       return checkActiveTrial(clientId, req, res, next);
     }
+
+    // End any active trial now that this client_id is confirmed as registered
+    await endActiveTrialIfExists(clientId, req.pbSuperAdmin!);
 
     // 2. Client exists — uuid cookie is required
     const uuid = req.cookies?.uuid as string | undefined;
