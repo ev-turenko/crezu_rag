@@ -7,6 +7,7 @@ const attributionSchema = z.object({
   appsflyer_data: z.unknown().nullable().optional(),
   install_referrer: z.string().trim().nullable().optional(),
   appsflyer_id: z.string().trim().nullable().optional(),
+  maestra_uuid: z.string().trim().nullable().optional(),
 });
 
 const escapeFilterValue = (value: string): string =>
@@ -38,6 +39,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
     appsflyer_data: req.body?.appsflyer_data ?? null,
     install_referrer: req.body?.install_referrer ?? null,
     appsflyer_id: req.body?.appsflyer_id ?? null,
+    maestra_uuid: req.body?.maestra_uuid ?? null,
   });
 
   if (!parsedAttribution.success) {
@@ -50,7 +52,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
 
   console.log("BEFORE", req.body?.appsflyer_data)
 
-  const { client_id, appsflyer_data, install_referrer, appsflyer_id } = parsedAttribution.data;
+  const { client_id, appsflyer_data, install_referrer, appsflyer_id, maestra_uuid } = parsedAttribution.data;
 
   console.log(appsflyer_data)
 
@@ -59,7 +61,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       .collection('attributions')
       .getList(1, 1, {
         filter: `client_id="${escapeFilterValue(client_id)}"`,
-        fields: 'id,client_id,appsflyer_data,install_referrer,appsflyer_id',
+        fields: 'id,client_id,appsflyer_data,install_referrer,appsflyer_id,maestra_uuid',
       });
 
     if (existingAttribution.totalItems > 0) {
@@ -68,12 +70,14 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
         appsflyer_data?: unknown;
         install_referrer?: string | null;
         appsflyer_id?: string | null;
+        maestra_uuid?: string | null;
       };
 
       const updatePayload: {
         appsflyer_data?: unknown;
         install_referrer?: string;
         appsflyer_id?: string;
+        maestra_uuid?: string;
       } = {};
 
       if (isEmptyValue(existingRecord.appsflyer_data) && !isEmptyValue(appsflyer_data)) {
@@ -86,6 +90,10 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
 
       if (isEmptyValue(existingRecord.appsflyer_id) && !isEmptyValue(appsflyer_id)) {
         updatePayload.appsflyer_id = appsflyer_id!;
+      }
+
+      if (isEmptyValue(existingRecord.maestra_uuid) && !isEmptyValue(maestra_uuid)) {
+        updatePayload.maestra_uuid = maestra_uuid!;
       }
 
       if (Object.keys(updatePayload).length > 0) {
@@ -112,6 +120,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       appsflyer_data,
       install_referrer,
       appsflyer_id,
+      maestra_uuid,
     });
 
     return res.status(200).json({
