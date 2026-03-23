@@ -229,7 +229,7 @@ export class AIModel {
         category: 'loan',
       },
       {
-        langs: ['se'],
+        langs: ['se', 'sv'],
         title: 'Lån',
         text: 'Hitta det bästa lånet',
         prompt:
@@ -253,15 +253,6 @@ export class AIModel {
         prompt:
           'Am nevoie de un card de credit personalizat, ajută-mă să găsesc cea mai bună opțiune, bazat pe tot ce știi',
         id: 8,
-        category: 'credit_card',
-      },
-      {
-        langs: ['se'],
-        title: 'Kreditkort',
-        text: 'Jag hjälper dig med att hitta kreditkort',
-        prompt:
-          'Jag behöver ett anpassat kreditkort, hjälp mig att hitta det bästa alternativet, baserat på allt du vet',
-        id: 9,
         category: 'credit_card',
       },
       {
