@@ -103,6 +103,13 @@ export function getConfig() {
             searchEndpoint: 'https://ai.finmatcher.com/api/search', // endpoint for search queries
             isfe: true, // is feed empty – if empty, no offers will be shown before user searches for offers
             localizationEndpoint: 'https://ai.finmatcher.com/api/localization', // endpoint to get localized strings for the app
+            maestra: {
+                domain: '',
+                endpointIos: '',
+                endpointAndroid: '',
+                shouldCreateCustomer: false,
+                subscribeCustomerIfCreated: false,
+            },
         })
     }
 }
