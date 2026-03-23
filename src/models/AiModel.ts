@@ -5,7 +5,7 @@ import PocketBase from 'pocketbase';
 import { InferenceBody, Suggestion } from '../types/types.js';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
-import z, { int } from 'zod';
+import z from 'zod';
 
 export interface ChatMessage {
   index: number;
