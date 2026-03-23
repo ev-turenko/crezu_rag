@@ -185,6 +185,22 @@ export class AIModel {
     }
   }
 
+  public static async hasActiveTrial(clientId: string): Promise<boolean> {
+    const pb = new PocketBase('https://pb.cashium.pro/');
+    pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);
+    try {
+      const result = await pb.collection('app_trials').getList(1, 1, {
+        filter: `client_id="${clientId}" && is_claimed=true`,
+        fields: 'trial_end_timestamp',
+      });
+      if (result.totalItems === 0) return false;
+      const trial = result.items[0] as unknown as { trial_end_timestamp: number };
+      return trial.trial_end_timestamp > Date.now();
+    } catch {
+      return false;
+    }
+  }
+
   public static async deleteChat(chatId: string, clientId: string): Promise<true | null> {
     const pb = new PocketBase('https://pb.cashium.pro/');
     pb.authStore.save(process.env.PB_SUPERADMIN_TOKEN ?? '', null);

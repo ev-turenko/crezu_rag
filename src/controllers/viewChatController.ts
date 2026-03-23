@@ -69,6 +69,13 @@ export class ViewChatController {
                 }
 
                 if (!isOwner) {
+                    const trialClientId = req.cookies?.client_id || req.query.client_id as string | undefined;
+                    if (trialClientId && trialClientId === chat.client_id) {
+                        isOwner = await AIModel.hasActiveTrial(trialClientId);
+                    }
+                }
+
+                if (!isOwner) {
                     return res.status(403).send(this.renderErrorPage('This chat is not public'));
                 }
             }
