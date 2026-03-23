@@ -6,6 +6,8 @@ export class ViewChatController {
     private async isAuthorizedToViewChat(req: Request, chat: ChatDbRecord): Promise<boolean> {
         if (chat.is_public) return true;
 
+        console.log('Checking authorization for chat:', chat.chat_id);
+
         const uuid = req.cookies?.uuid || req.query.uuid as string | undefined;
         if (uuid) {
             const profileResponse = await fetch('https://finmatcher.com/api/auth/profile', {
@@ -31,6 +33,8 @@ export class ViewChatController {
         if (trialClientId && trialClientId === chat.client_id) {
             return AIModel.hasActiveTrial(trialClientId);
         }
+
+        console.log('Unauthorized access attempt to chat:', trialClientId , chat.chat_id);
 
         return false;
     }
