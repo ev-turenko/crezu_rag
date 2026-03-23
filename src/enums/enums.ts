@@ -28,7 +28,9 @@ export enum ChatIntent {
 }
 
 export enum PbCollections {
-    CHATS = 'chats'
+    CHATS = 'chats',
+    CLIENTS = 'clients',
+    DELETION_REQUESTS = 'deletion_requests',
 }
 
 export enum LLMProvider {
