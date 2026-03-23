@@ -300,6 +300,51 @@ export class AIModel {
         id: 5,
         category: 'credit_card',
       },
+      {
+        langs: ['es-es', 'es-mx', 'es'],
+        title: 'Cómo pagar deudas',
+        text: 'Aprende a manejar y pagar tus deudas',
+        prompt:
+          'Ayúdame a encontrar las mejores opciones para pagar mis deudas, basándote en todo lo que conoces',
+        id: 9,
+        category: 'debt',
+      },
+      {
+        langs: ['se', 'sv'],
+        title: 'Hur man betalar skulder',
+        text: 'Lär dig hantera och betala dina skulder',
+        prompt:
+          'Hjälp mig att hitta de bästa alternativen för att betala mina skulder, baserat på allt du vet',
+        id: 10,
+        category: 'debt',
+      },
+      {
+        langs: ['ro'],
+        title: 'Cum să îți plătești datoriile',
+        text: 'Află cum să gestionezi și să plătești datoriile',
+        prompt:
+          'Ajută-mă să găsesc cele mai bune opțiuni pentru a-mi plăti datoriile, bazându-te pe tot ce știi',
+        id: 11,
+        category: 'debt',
+      },
+      {
+        langs: ['pl'],
+        title: 'Jak spłacić długi',
+        text: 'Dowiedz się, jak zarządzać długami i je spłacić',
+        prompt:
+          'Pomóż mi znaleźć najlepsze opcje spłaty moich długów, bazując na wszystkim, co wiesz',
+        id: 12,
+        category: 'debt',
+      },
+      {
+        langs: ['en'],
+        title: 'How to pay debts',
+        text: 'Learn how to manage and pay your debts',
+        prompt:
+          'Help me find the best options to pay my debts, based on everything you know',
+        id: 13,
+        category: 'debt',
+      },
     ];
     const result = [];
     const filtered = options.filter(option => option.langs.includes(lang));
