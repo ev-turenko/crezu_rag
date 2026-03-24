@@ -44,6 +44,10 @@ async function getOfferCategories(countryCode: string, offerType: string): Promi
 
 async function getBestFitCategory(query: string, categories: string[]): Promise<string[]> {
     try {
+        if (categories.length === 0) {
+            console.warn('No categories available for classification, returning empty array');
+            return [];
+        }
         const messages = [
             {
                 role: "system" as const,
@@ -154,6 +158,7 @@ export function handleSearch() {
             // no offers for visa and mastercard, so they are removed for now
             if (offerType === 'debit_card' || offerType === 'credit_card') {
                 console.log('Filtering out visa and mastercard categories for credit/debit card offer type');
+                console.log('Categories before filtering:', bestFitCategories);
                 const filteredCategories = bestFitCategories.filter(category => category.toLowerCase() !== 'visa' && category.toLowerCase() !== 'mastercard');
                 bestFitCategories.length = 0;
                 bestFitCategories.push(...filteredCategories);
