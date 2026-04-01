@@ -1,10 +1,20 @@
 import { Response } from 'express';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import { ChatRole, ContentDataType, DeepInfraModels, DeepSeekModels, LLMProvider } from '../enums/enums.js';
-import { fetchOffersByIds, getResponse, getSortedffersAndCategories, normalizeOfferForLLM, OriginalOfferData, countries } from '../utils/common.js';
+import { fetchOffersByIds, getResponse, getSortedffersAndCategories, normalizeOfferForLLM, OriginalOfferData, countries, escapeFilterValue } from '../utils/common.js';
 import { AIModel, getAiProvider } from '../models/AiModel.js';
 import { InferenceRequest } from '../types/types.js';
+import PocketBase from 'pocketbase';
 import z from 'zod';
+
+type AttributionSubParams = {
+    sub1: string | null; // appsflyer_id
+    sub2: string | null; // media_source
+    sub3: string | null; // af_channel
+    sub4: string | null; // campaign
+    sub5: string | null; // network
+    sub6: string | null; // af_c_id
+};
 
 type ToolStatus = 'queued' | 'running' | 'done' | 'error';
 type AllowedMessageRole = 'system' | 'assistant' | 'user';
@@ -46,6 +56,8 @@ type PipelineState = {
     reasonedOffers: RankedOffer[];
     /** Final app_offers array produced by format_app_offers */
     formattedAppOffers: FetchedOffer[];
+    /** Attribution sub params derived from appsflyer_data + appsflyer_id */
+    attributionSubParams: AttributionSubParams | null;
 };
 
 /**
@@ -102,7 +114,97 @@ function createEmptyPipeline(): PipelineState {
         combinedOfferDetails: [],
         reasonedOffers: [],
         formattedAppOffers: [],
+        attributionSubParams: null,
     };
+}
+
+// ---------------------------------------------------------------------------
+// Attribution helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches attribution sub params from PocketBase for the given client_id.
+ * sub1 = appsflyer_id
+ * sub2 = media_source, sub3 = af_channel, sub4 = campaign,
+ * sub5 = network, sub6 = af_c_id  (all from appsflyer_data.payload)
+ */
+async function fetchAttributionSubParams(
+    pbSuperAdmin: PocketBase,
+    clientId: string
+): Promise<AttributionSubParams | null> {
+    try {
+        const result = await pbSuperAdmin
+            .collection('attributions')
+            .getList(1, 1, {
+                filter: `client_id="${escapeFilterValue(clientId)}"`,
+                fields: 'appsflyer_id,appsflyer_data',
+            });
+
+        if (result.totalItems === 0) {
+            return null;
+        }
+
+        const record = result.items[0] as Record<string, unknown>;
+        const sub1 = typeof record.appsflyer_id === 'string' && record.appsflyer_id.trim()
+            ? record.appsflyer_id.trim()
+            : null;
+
+        let payload: Record<string, unknown> = {};
+        const rawData = record.appsflyer_data;
+        if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+            const nested = (rawData as Record<string, unknown>).payload;
+            if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+                payload = nested as Record<string, unknown>;
+            }
+        }
+
+        const extractStr = (key: string): string | null => {
+            const v = payload[key];
+            return typeof v === 'string' && v.trim() ? v.trim() : null;
+        };
+
+        return {
+            sub1,
+            sub2: extractStr('media_source'),
+            sub3: extractStr('af_channel'),
+            sub4: extractStr('campaign'),
+            sub5: extractStr('network'),
+            sub6: extractStr('af_c_id'),
+        };
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Appends/overrides sub1–sub6 query params on a URL.
+ * A null value removes the param if it already exists on the URL.
+ */
+function appendSubParams(url: string, params: AttributionSubParams | null): string {
+    if (!params) {
+        return url;
+    }
+    try {
+        const u = new URL(url);
+        const entries: [string, string | null][] = [
+            ['sub1', params.sub1],
+            ['sub2', params.sub2],
+            ['sub3', params.sub3],
+            ['sub4', params.sub4],
+            ['sub5', params.sub5],
+            ['sub6', params.sub6],
+        ];
+        for (const [key, value] of entries) {
+            if (value !== null) {
+                u.searchParams.set(key, value);
+            } else {
+                u.searchParams.delete(key);
+            }
+        }
+        return u.toString();
+    } catch {
+        return url;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -326,10 +428,12 @@ async function toolFormatAppOffers(args: Record<string, unknown>, context: Strea
         ? context.pipeline.reasonedOffers.map(r => r.offer)
         : context.pipeline.combinedOfferDetails;
 
+    const subParams = context.pipeline.attributionSubParams;
+
     const formatted: FetchedOffer[] = source.slice(0, limit).map(o => ({
         id: o.id,
         name: o.name,
-        url: o.url,
+        url: appendSubParams(o.url, subParams),
         avatar: o.avatar,
         headers: o.headers,
         button_text: null,
@@ -848,14 +952,17 @@ async function executeTools({
   sendToolUsage,
   sendThinkingStep,
   isClientAborted,
+  pipelineOverrides,
 }: {
   toolsRequested: StreamToolDefinition[];
   body: Record<string, unknown>;
   sendToolUsage: (tools: ToolUsageRecord[]) => void;
   sendThinkingStep: (label: string) => void;
   isClientAborted: () => boolean;
+  pipelineOverrides?: Partial<PipelineState>;
 }): Promise<{ outputs: Record<string, unknown>; pipeline: PipelineState }> {
-  if (toolsRequested.length === 0) return { outputs: {}, pipeline: createEmptyPipeline() };
+  const emptyPipeline = createEmptyPipeline();
+  if (toolsRequested.length === 0) return { outputs: {}, pipeline: { ...emptyPipeline, ...pipelineOverrides } };
 
   // Resolve country for localized thinking steps
     const countryCode = resolveRequestCountryCode(body);
@@ -871,7 +978,7 @@ async function executeTools({
   sendToolUsage(usage);
 
   const outputs: Record<string, unknown> = {};
-  const pipeline = createEmptyPipeline();
+  const pipeline: PipelineState = { ...emptyPipeline, ...pipelineOverrides };
 
   for (let i = 0; i < toolsRequested.length; i++) {
     if (isClientAborted()) break;
@@ -1078,6 +1185,14 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
     const intentObjective = parseIntentObjective(req.system?.check_safety_stream?.intent_objective);
     const autoToolsEnabled = !hasExplicitTools && shouldAutoRunFinanceTools(intentObjective, userMessage);
 
+    const bodyParams = toRecord(body.params);
+    const clientId = typeof bodyParams.client_id === 'string' && bodyParams.client_id.trim()
+        ? bodyParams.client_id.trim()
+        : null;
+    const attributionSubParams = clientId && req.pbSuperAdmin
+        ? await fetchAttributionSubParams(req.pbSuperAdmin, clientId)
+        : null;
+
     console.log('Parsed tools from request:', toolsRequested.map(t => t.name));
     console.log('Tool gating decision:', {
         intent_objective: intentObjective,
@@ -1124,7 +1239,8 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
         body,
         sendToolUsage: (tools) => sendEvent('tool-usage', { tools }),
         sendThinkingStep: (label) => sendEvent('thinking-step', { label }),
-        isClientAborted: () => clientAborted
+        isClientAborted: () => clientAborted,
+        pipelineOverrides: { attributionSubParams },
     });
 
     if (clientAborted) {
