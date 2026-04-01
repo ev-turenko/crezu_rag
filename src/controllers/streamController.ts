@@ -767,27 +767,42 @@ function buildAssistantData(options: {
     const wantsAppOffers = options.source === 'app' || options.requestedContentTypes.has(ContentDataType.AppOffers);
 
     if (wantsAppOffers) {
-        // Candidate pool = everything the pipeline fetched (broadest set)
-        const candidatePool: FetchedOffer[] =
-            options.pipeline.combinedOfferDetails.length > 0
-                ? options.pipeline.combinedOfferDetails
-                : (options.pipeline.formattedAppOffers.length > 0 ? options.pipeline.formattedAppOffers : []);
+        // Prefer attribution-stamped offers from format_app_offers as the candidate pool.
+        // Fall back to combinedOfferDetails only when format_app_offers was not run.
+        const formattedOffers: FetchedOffer[] =
+            options.pipeline.formattedAppOffers.length > 0
+                ? options.pipeline.formattedAppOffers
+                : (Array.isArray(options.toolOutputs.format_app_offers)
+                    ? (options.toolOutputs.format_app_offers as FetchedOffer[])
+                    : []);
 
-        // Fallback priority: format_app_offers → reasoned → combined → legacy outputs
+        // candidatePool: use attribution-stamped offers when available, otherwise raw combined
+        const candidatePool: FetchedOffer[] =
+            formattedOffers.length > 0
+                ? formattedOffers
+                : options.pipeline.combinedOfferDetails;
+
+        // Fallback priority: format_app_offers → legacy tool outputs
         const legacyOutput =
             options.toolOutputs.fetch_relevant_offers ??
             options.toolOutputs.fetch_top_offers ??
             options.toolOutputs.fetch_top_rpc_offers;
 
         const fallback: FetchedOffer[] = (
-            Array.isArray(options.toolOutputs.format_app_offers) ? options.toolOutputs.format_app_offers :
-            options.pipeline.formattedAppOffers.length > 0 ? options.pipeline.formattedAppOffers :
+            formattedOffers.length > 0 ? formattedOffers :
             Array.isArray(legacyOutput) ? legacyOutput :
             []
         ) as FetchedOffer[];
 
-        // Derive app_offers from what the LLM actually mentioned in its text
-        const offerDetails = extractMentionedOffers(fullMarkdown, candidatePool, fallback);
+        // Derive app_offers from what the LLM actually mentioned in its text.
+        // Then re-map each matched offer's URL to the attribution-stamped version
+        // (keyed by id) so sub-params are never lost even when matching by name/id.
+        const urlById = new Map<number, string>(formattedOffers.map(o => [o.id, o.url]));
+        const mentionedOffers = extractMentionedOffers(fullMarkdown, candidatePool, fallback);
+        const offerDetails = mentionedOffers.map(o => {
+            const stampedUrl = urlById.get(o.id);
+            return stampedUrl ? { ...o, url: stampedUrl } : o;
+        });
 
         if (offerDetails.length > 0) {
             result.push({
