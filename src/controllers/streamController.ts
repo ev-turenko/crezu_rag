@@ -383,7 +383,10 @@ async function toolReasonBestOffers(args: Record<string, unknown>, context: Stre
     const limit = clampNumber(args.limit, 1, 20, 5);
     const includeLinks = args.include_links !== false;
 
-    const offers = context.pipeline.combinedOfferDetails;
+    const subParams = context.pipeline.attributionSubParams;
+    const offers = context.pipeline.combinedOfferDetails.map(o =>
+        subParams ? { ...o, url: appendSubParams(o.url, subParams) } : o
+    );
     if (offers.length === 0) {
         return { markdown: '', offers: [] };
     }
