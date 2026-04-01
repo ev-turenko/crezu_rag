@@ -429,6 +429,7 @@ async function toolFormatAppOffers(args: Record<string, unknown>, context: Strea
         : context.pipeline.combinedOfferDetails;
 
     const subParams = context.pipeline.attributionSubParams;
+    console.log('format_app_offers: attribution sub-params:', subParams ?? 'none');
 
     const formatted: FetchedOffer[] = source.slice(0, limit).map(o => ({
         id: o.id,
@@ -1207,6 +1208,14 @@ export async function streamAssistantResponse(req: InferenceRequest, res: Respon
     const attributionSubParams = clientId && req.pbSuperAdmin
         ? await fetchAttributionSubParams(req.pbSuperAdmin, clientId)
         : null;
+
+    if (!clientId) {
+        console.log('Attribution: no client_id in request, skipping lookup');
+    } else if (!attributionSubParams) {
+        console.log('Attribution: no record found for client_id:', clientId);
+    } else {
+        console.log('Attribution: sub-params attached for client_id:', clientId, attributionSubParams);
+    }
 
     console.log('Parsed tools from request:', toolsRequested.map(t => t.name));
     console.log('Tool gating decision:', {

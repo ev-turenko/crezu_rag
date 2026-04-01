@@ -12,7 +12,7 @@ dotenv.config();
 const router = Router();
 
 router.post('/message', checkSafety(), processRequest);
-router.post('/message/stream', checkSafetyStream(), ensureChatName(), streamAssistantResponse);
+router.post('/message/stream', initPbInstance(process.env.PB_URL || 'https://pb.cashium.pro/'), checkSafetyStream(), ensureChatName(), streamAssistantResponse);
 router.post('/chats', getAllChats);
 router.post('/client/:client_id/chats', initPbInstance(process.env.PB_URL || 'https://pb.cashium.pro/'), checkChatsAuth(), getChatsByClientId());
 router.get('/client/:client_id/chats', initPbInstance(process.env.PB_URL || 'https://pb.cashium.pro/'), checkChatsAuth(), getChatsByClientId());
