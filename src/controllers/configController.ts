@@ -124,12 +124,16 @@ export function getConfig() {
             client_id = uuidv4();
         }
 
-        const oferwall = req.pbSuperAdmin
+        const offerwall = req.pbSuperAdmin
             ? await isOferwallCampaign(req.pbSuperAdmin, client_id)
             : false;
 
-        const finalScreen = oferwall ? 'offers' : 'chat';
-        const isfe = !oferwall;
+        if(!req.pbSuperAdmin) {
+            console.log("No pbSuperAdmin");
+        }
+
+        const finalScreen = offerwall ? 'offers' : 'chat';
+        const isfe = !offerwall;
 
         res.json({
             client_id: client_id,
