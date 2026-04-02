@@ -1,5 +1,9 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import PocketBase from 'pocketbase';
+import z from 'zod';
+import { InferenceRequest } from '../types/types.js';
+import { escapeFilterValue } from '../utils/common.js';
 
 const feedDisclaimerByLang: Record<'en' | 'es' | 'pl' | 'sv', string> = {
     en: 'AI generated suggestions. Consult with a professional before making decisions.',
@@ -64,8 +68,43 @@ function getPrivacyLink(countryCode: string): string {
     return 'https://finmatcher.com/es/politica-de-privacidad/';
 }
 
+const appsflyerPayloadSchema = z.object({
+    payload: z.object({
+        campaign: z.string().optional().nullable(),
+        af_adset: z.string().optional().nullable(),
+    }),
+    status: z.string(),
+});
+
+const OFERWALL_CAMPAIGN = 'oferwall_uacMXacc3980Cr130_alp';
+
+async function isOferwallCampaign(
+    pbSuperAdmin: PocketBase,
+    clientId: string,
+): Promise<boolean> {
+    try {
+        const result = await pbSuperAdmin
+            .collection('attributions')
+            .getList(1, 1, {
+                filter: `client_id="${escapeFilterValue(clientId)}"`,
+                fields: 'appsflyer_data',
+            });
+
+        if (result.totalItems === 0) return false;
+
+        const record = result.items[0] as Record<string, unknown>;
+        const parsed = appsflyerPayloadSchema.safeParse(record.appsflyer_data);
+        if (!parsed.success) return false;
+
+        const { campaign, af_adset } = parsed.data.payload;
+        return campaign === OFERWALL_CAMPAIGN || af_adset === OFERWALL_CAMPAIGN;
+    } catch {
+        return false;
+    }
+}
+
 export function getConfig() {
-    return async (req: Request, res: Response) => {
+    return async (req: InferenceRequest, res: Response) => {
         const countryCode = req.query.country_code as string | undefined;
         const appName = req.query.app_name as string | undefined;
         const appVersion = req.query.app_version as string | undefined;
@@ -82,10 +121,18 @@ export function getConfig() {
         if(!client_id) {
             client_id = uuidv4();
         }
+
+        const oferwall = req.pbSuperAdmin
+            ? await isOferwallCampaign(req.pbSuperAdmin, client_id)
+            : false;
+
+        const finalScreen = oferwall ? 'offers' : 'chat';
+        const isfe = !oferwall;
+
         return res.json({
             client_id: client_id,
             version: appBuildNumber,
-            finalScreen: 'chat', // chat | offers
+            finalScreen, // chat | offers
             offersScreenPolicy: 'with_offers', // with offers | empty where empty means that initially no offers will be shown to the user before initial requests
             feedDisclaimer: feedDisclaimerByLang[normalizedLang],
             supportedLanguages: ['en', 'es', 'pl'],
@@ -101,7 +148,7 @@ export function getConfig() {
             termsLink: getTermsLink(countryCode ? countryCode : 'es'),
             privacyLink: getPrivacyLink(countryCode ? countryCode : 'es'),
             searchEndpoint: 'https://ai.finmatcher.com/api/search', // endpoint for search queries
-            isfe: true, // is feed empty – if empty, no offers will be shown before user searches for offers
+            isfe, // is feed empty – if empty, no offers will be shown before user searches for offers
             localizationEndpoint: 'https://ai.finmatcher.com/api/localization', // endpoint to get localized strings for the app
             maestra: {
                 domain: '',
