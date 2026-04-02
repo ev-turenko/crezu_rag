@@ -497,6 +497,7 @@ export async function logRequestMetaInfo(
     ip: string,
     userAgent: string,
     endpoint: string = 'unknown',
+    returnedConfig: Record<string, unknown> = {}
 ): Promise<void> {
     try {
         await pbSuperAdmin.collection('requests_meta_info').create({
@@ -504,6 +505,7 @@ export async function logRequestMetaInfo(
             ip,
             user_agent: userAgent,
             endpoint,
+            returned_config: returnedConfig
         });
     } catch {
         // non-critical, swallow errors

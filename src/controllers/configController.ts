@@ -148,7 +148,7 @@ export function getConfig() {
         const finalScreen = offerwall ? 'offers' : 'chat';
         const isfe = !offerwall;
 
-        res.json({
+        const finalConfig = {
             client_id: client_id,
             version: appBuildNumber,
             finalScreen, // chat | offers
@@ -176,10 +176,12 @@ export function getConfig() {
                 shouldCreateCustomer: false,
                 subscribeCustomerIfCreated: false,
             },
-        });
+        }
+
+        res.json({...finalConfig});
 
         if (req.pbSuperAdmin) {
-            void logRequestMetaInfo(req.pbSuperAdmin, client_id, ip, userAgent, '/api/config');
+            void logRequestMetaInfo(req.pbSuperAdmin, client_id, ip, userAgent, '/api/config', finalConfig);
         }
     }
 }
