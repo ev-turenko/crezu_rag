@@ -133,10 +133,9 @@ export class OffersController {
 
             try {
                 const baseUrl = 'https://api.finmatcher.com/api/offer/search?page=1&size=9000';
-                const urlWithSubs = appendSubParams(baseUrl, subParams);
-                // url.search = params.toString();
+                // url.search = params.toString()
 
-                const response = await fetch(urlWithSubs, {
+                const response = await fetch(baseUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -158,6 +157,14 @@ export class OffersController {
                 // }
 
                 const data: OffersResponse = await response.json();
+                if (subParams) {
+                    data.items = data.items.map(item => ({
+                        ...item,
+                        url: appendSubParams(item.url, subParams),
+                    }));
+                } else {
+                    console.log('No subParams to append to offer URLs');
+                }
                 return res.status(200).json(data);
             } catch (error) {
                 console.error('Error fetching offers:', error);
