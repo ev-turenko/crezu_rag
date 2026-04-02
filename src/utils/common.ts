@@ -489,3 +489,23 @@ export const dateGroups = {
   november: 'm11',
   december: 'm12'
 }
+
+
+export async function logRequestMetaInfo(
+    pbSuperAdmin: PocketBase,
+    clientId: string,
+    ip: string,
+    userAgent: string,
+    endpoint: string = 'unknown',
+): Promise<void> {
+    try {
+        await pbSuperAdmin.collection('requests_meta_info').create({
+            client_id: clientId,
+            ip,
+            user_agent: userAgent,
+            endpoint,
+        });
+    } catch {
+        // non-critical, swallow errors
+    }
+}
