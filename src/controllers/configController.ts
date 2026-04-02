@@ -80,13 +80,15 @@ const OFERWALL_CAMPAIGN = 'oferwall_uacMXacc3980Cr130_alp';
 
 async function isOferwallCampaign(
     pbSuperAdmin: PocketBase,
-    clientId: string,
+    userAgent: string,
+    ip: string,
+    callback?: (clientId: string) => void
 ): Promise<boolean> {
     try {
         const result = await pbSuperAdmin
             .collection('attributions')
             .getList(1, 1, {
-                filter: `client_id="${escapeFilterValue(clientId)}"`,
+                filter: `user_agent="${escapeFilterValue(userAgent)}" && ip="${escapeFilterValue(ip)}"`,
                 fields: 'appsflyer_data',
             });
 
@@ -98,16 +100,28 @@ async function isOferwallCampaign(
 
         const { campaign, af_adset } = parsed.data.payload;
 
-        console.log('Attribution data for client_id', clientId, { campaign, af_adset });
+        console.log('Attribution data for userAgent and ip', { userAgent, ip, campaign, af_adset });
+        try {
+            if (callback) {
+                const clientId = record.client_id as string;
+                callback(clientId);
+            }
+        } catch (e) {
+
+         }
         return campaign === OFERWALL_CAMPAIGN || af_adset === OFERWALL_CAMPAIGN;
     } catch (e) {
-        console.error('Error checking offerwall campaign for client_id', clientId, e);
+        console.error('Error checking offerwall campaign for userAgent and ip', { userAgent, ip }, e);
         return false;
     }
 }
 
 export function getConfig() {
     return async (req: InferenceRequest, res: Response) => {
+        const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
+                ?? req.socket.remoteAddress
+                ?? '';
+        const userAgent = req.headers['user-agent'] ?? '';
         const countryCode = req.query.country_code as string | undefined;
         const appName = req.query.app_name as string | undefined;
         const appVersion = req.query.app_version as string | undefined;
@@ -126,7 +140,9 @@ export function getConfig() {
         }
 
         const offerwall = req.pbSuperAdmin
-            ? await isOferwallCampaign(req.pbSuperAdmin, client_id)
+            ? await isOferwallCampaign(req.pbSuperAdmin, userAgent, ip, (clientId) => {
+                client_id = clientId;
+            })
             : false;
 
         if(!req.pbSuperAdmin) {
@@ -169,10 +185,6 @@ export function getConfig() {
         });
 
         if (req.pbSuperAdmin) {
-            const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
-                ?? req.socket.remoteAddress
-                ?? '';
-            const userAgent = req.headers['user-agent'] ?? '';
             void logRequestMetaInfo(req.pbSuperAdmin, client_id, ip, userAgent, '/api/config');
         }
     }
