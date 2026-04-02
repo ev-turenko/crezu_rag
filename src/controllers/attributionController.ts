@@ -1,6 +1,7 @@
 import type { Response } from 'express';
 import z from 'zod';
 import { InferenceRequest } from '../types/types.js';
+import { logRequestMetaInfo } from '../utils/common.js';
 
 const attributionSchema = z.object({
   client_id: z.string().trim().min(1),
@@ -34,6 +35,9 @@ const isEmptyValue = (value: unknown): boolean => {
 };
 
 export const saveAttribution = async (req: InferenceRequest, res: Response) => {
+  const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
+                ?? req.socket.remoteAddress
+                ?? '';
   const parsedAttribution = attributionSchema.safeParse({
     client_id: req.body?.client_id ?? req.body?.params?.client_id,
     appsflyer_data: req.body?.appsflyer_data ?? null,
@@ -61,7 +65,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       .collection('attributions')
       .getList(1, 1, {
         filter: `client_id="${escapeFilterValue(client_id)}"`,
-        fields: 'id,client_id,appsflyer_data,install_referrer,appsflyer_id,maestra_uuid',
+        fields: 'id,client_id,appsflyer_data,install_referrer,appsflyer_id,maestra_uuid,first_ip,last_ip',
       });
 
     if (existingAttribution.totalItems > 0) {
@@ -71,6 +75,8 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
         install_referrer?: string | null;
         appsflyer_id?: string | null;
         maestra_uuid?: string | null;
+        first_ip?: string | null;
+        last_ip?: string | null;
       };
 
       const updatePayload: {
@@ -78,6 +84,8 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
         install_referrer?: string;
         appsflyer_id?: string;
         maestra_uuid?: string;
+        first_ip?: string;
+        last_ip?: string;
       } = {};
 
       if (isEmptyValue(existingRecord.appsflyer_data) && !isEmptyValue(appsflyer_data)) {
@@ -95,6 +103,12 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       if (isEmptyValue(existingRecord.maestra_uuid) && !isEmptyValue(maestra_uuid)) {
         updatePayload.maestra_uuid = maestra_uuid!;
       }
+
+      if (isEmptyValue(existingRecord.first_ip)) {
+        updatePayload.first_ip = ip;
+      }
+
+      updatePayload.last_ip = ip;
 
       if (Object.keys(updatePayload).length > 0) {
         await req.pbSuperAdmin!.collection('attributions').update(existingRecord.id, updatePayload);
@@ -121,6 +135,8 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       install_referrer,
       appsflyer_id,
       maestra_uuid,
+      first_ip: ip,
+      last_ip: ip,
     });
 
     return res.status(200).json({
@@ -134,5 +150,11 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       error: 'Failed to save attribution data',
       details: (error as Error).message,
     });
+  } finally {
+    const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
+      ?? req.socket.remoteAddress
+      ?? '';
+    const userAgent = req.headers['user-agent'] ?? '';
+    await logRequestMetaInfo(req.pbSuperAdmin!, client_id, ip, userAgent, '/api/attribution');
   }
 };
