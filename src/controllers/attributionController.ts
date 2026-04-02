@@ -125,7 +125,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       }
 
       if (Object.keys(updatePayload).length > 0) {
-        await req.pbSuperAdmin!.collection('requests_meta_info').update(existingRecord.id, updatePayload);
+        await req.pbSuperAdmin!.collection('attributions').update(existingRecord.id, updatePayload);
 
         return res.status(200).json({
           success: true,
