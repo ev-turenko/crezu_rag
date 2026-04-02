@@ -88,7 +88,7 @@ async function isOferwallCampaign(
         const result = await pbSuperAdmin
             .collection('attributions')
             .getList(1, 1, {
-                filter: `user_agent="${escapeFilterValue(userAgent)}" && ip="${escapeFilterValue(ip)}"`,
+                filter: `user_agent="${escapeFilterValue(userAgent)}" && last_ip="${escapeFilterValue(ip)}"`,
                 fields: 'appsflyer_data',
             });
 
@@ -145,12 +145,6 @@ export function getConfig() {
             })
             : false;
 
-        if(!req.pbSuperAdmin) {
-            console.log("No pbSuperAdmin");
-        } else {
-            console.log("pbSuperAdmin initialized for config request", req.pbSuperAdmin);
-        }
-
         const finalScreen = offerwall ? 'offers' : 'chat';
         const isfe = !offerwall;
 
@@ -158,7 +152,7 @@ export function getConfig() {
             client_id: client_id,
             version: appBuildNumber,
             finalScreen, // chat | offers
-            offersScreenPolicy: 'with_offers', // with offers | empty where empty means that initially no offers will be shown to the user before initial requests
+            offersScreenPolicy: 'with_offers', // with offers | empty, where empty means that initially no offers will be shown to the user before initial requests
             feedDisclaimer: feedDisclaimerByLang[normalizedLang],
             supportedLanguages: ['en', 'es', 'pl'],
             regScreens: ['auth2', 'auth3', 'auth4', 'auth5'], // auth1 | auth2 | auth3 | auth4 | auth5
