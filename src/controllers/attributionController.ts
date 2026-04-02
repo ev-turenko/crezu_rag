@@ -38,6 +38,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
   const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
                 ?? req.socket.remoteAddress
                 ?? '';
+  const userAgent = req.headers['user-agent'] ?? '';
   const parsedAttribution = attributionSchema.safeParse({
     client_id: req.body?.client_id ?? req.body?.params?.client_id,
     appsflyer_data: req.body?.appsflyer_data ?? null,
@@ -65,7 +66,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       .collection('attributions')
       .getList(1, 1, {
         filter: `client_id="${escapeFilterValue(client_id)}"`,
-        fields: 'id,client_id,appsflyer_data,install_referrer,appsflyer_id,maestra_uuid,first_ip,last_ip',
+        fields: 'id,client_id,appsflyer_data,install_referrer,appsflyer_id,maestra_uuid,first_ip,last_ip,user_agent',
       });
 
     if (existingAttribution.totalItems > 0) {
@@ -77,6 +78,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
         maestra_uuid?: string | null;
         first_ip?: string | null;
         last_ip?: string | null;
+        user_agent?: string | null;
       };
 
       const updatePayload: {
@@ -86,6 +88,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
         maestra_uuid?: string;
         first_ip?: string;
         last_ip?: string;
+        user_agent?: string;
       } = {};
 
       if (isEmptyValue(existingRecord.appsflyer_data) && !isEmptyValue(appsflyer_data)) {
@@ -108,7 +111,12 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
         updatePayload.first_ip = ip;
       }
 
+      // Always update last_ip to have the most recent one, even if it was previously set
       updatePayload.last_ip = ip;
+      
+      if(existingRecord.user_agent !== userAgent) {
+        updatePayload.user_agent = userAgent;
+      }
 
       if (Object.keys(updatePayload).length > 0) {
         await req.pbSuperAdmin!.collection('attributions').update(existingRecord.id, updatePayload);
@@ -137,6 +145,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       maestra_uuid,
       first_ip: ip,
       last_ip: ip,
+      user_agent: userAgent
     });
 
     return res.status(200).json({
