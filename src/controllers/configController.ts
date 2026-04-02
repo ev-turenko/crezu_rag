@@ -130,6 +130,8 @@ export function getConfig() {
 
         if(!req.pbSuperAdmin) {
             console.log("No pbSuperAdmin");
+        } else {
+            console.log("pbSuperAdmin initialized for config request", req.pbSuperAdmin);
         }
 
         const finalScreen = offerwall ? 'offers' : 'chat';
