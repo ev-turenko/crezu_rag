@@ -100,7 +100,8 @@ async function isOferwallCampaign(
 
         console.log('Attribution data for client_id', clientId, { campaign, af_adset });
         return campaign === OFERWALL_CAMPAIGN || af_adset === OFERWALL_CAMPAIGN;
-    } catch {
+    } catch (e) {
+        console.error('Error checking offerwall campaign for client_id', clientId, e);
         return false;
     }
 }
