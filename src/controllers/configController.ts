@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import PocketBase from 'pocketbase';
 import z from 'zod';
 import { InferenceRequest } from '../types/types.js';
-import { escapeFilterValue } from '../utils/common.js';
+import { escapeFilterValue, logRequestMetaInfo } from '../utils/common.js';
 
 const feedDisclaimerByLang: Record<'en' | 'es' | 'pl' | 'sv', string> = {
     en: 'AI generated suggestions. Consult with a professional before making decisions.',
@@ -97,26 +97,11 @@ async function isOferwallCampaign(
         if (!parsed.success) return false;
 
         const { campaign, af_adset } = parsed.data.payload;
+
+        console.log('Attribution data for client_id', clientId, { campaign, af_adset });
         return campaign === OFERWALL_CAMPAIGN || af_adset === OFERWALL_CAMPAIGN;
     } catch {
         return false;
-    }
-}
-
-async function logRequestMetaInfo(
-    pbSuperAdmin: PocketBase,
-    clientId: string,
-    ip: string,
-    userAgent: string,
-): Promise<void> {
-    try {
-        await pbSuperAdmin.collection('requests_meta_info').create({
-            client_id: clientId,
-            ip,
-            user_agent: userAgent,
-        });
-    } catch {
-        // non-critical, swallow errors
     }
 }
 
@@ -181,7 +166,7 @@ export function getConfig() {
                 ?? req.socket.remoteAddress
                 ?? '';
             const userAgent = req.headers['user-agent'] ?? '';
-            void logRequestMetaInfo(req.pbSuperAdmin, client_id, ip, userAgent);
+            void logRequestMetaInfo(req.pbSuperAdmin, client_id, ip, userAgent, '/api/config');
         }
     }
 }
