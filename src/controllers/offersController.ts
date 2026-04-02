@@ -1,9 +1,94 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import PocketBase from 'pocketbase';
 import { OffersResponse } from '../types/offers.js';
+import { InferenceRequest } from '../types/types.js';
+import { escapeFilterValue } from '../utils/common.js';
+
+type AttributionSubParams = {
+    sub1: string | null; // appsflyer_id
+    sub2: string | null; // media_source
+    sub3: string | null; // af_channel
+    sub4: string | null; // campaign
+    sub5: string | null; // network
+    sub6: string | null; // af_c_id
+};
+
+async function fetchAttributionSubParams(
+    pbSuperAdmin: PocketBase,
+    ip: string,
+    userAgent: string
+): Promise<AttributionSubParams | null> {
+    try {
+        const result = await pbSuperAdmin
+            .collection('attributions')
+            .getList(1, 1, {
+                filter: `last_ip="${escapeFilterValue(ip)}" && user_agent="${escapeFilterValue(userAgent)}"`,
+                fields: 'appsflyer_id,appsflyer_data',
+                sort: '-created',
+            });
+
+        if (result.totalItems === 0) return null;
+
+        const record = result.items[0] as Record<string, unknown>;
+        const sub1 = typeof record.appsflyer_id === 'string' && record.appsflyer_id.trim()
+            ? record.appsflyer_id.trim()
+            : null;
+
+        let payload: Record<string, unknown> = {};
+        const rawData = record.appsflyer_data;
+        if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+            const nested = (rawData as Record<string, unknown>).payload;
+            if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+                payload = nested as Record<string, unknown>;
+            }
+        }
+
+        const extractStr = (key: string): string | null => {
+            const v = payload[key];
+            return typeof v === 'string' && v.trim() ? v.trim() : null;
+        };
+
+        return {
+            sub1,
+            sub2: extractStr('media_source'),
+            sub3: extractStr('af_channel'),
+            sub4: extractStr('campaign'),
+            sub5: extractStr('network'),
+            sub6: extractStr('af_c_id'),
+        };
+    } catch {
+        return null;
+    }
+}
+
+function appendSubParams(url: string, params: AttributionSubParams | null): string {
+    if (!params) return url;
+    try {
+        const u = new URL(url);
+        const entries: [string, string | null][] = [
+            ['sub1', params.sub1],
+            ['sub2', params.sub2],
+            ['sub3', params.sub3],
+            ['sub4', params.sub4],
+            ['sub5', params.sub5],
+            ['sub6', params.sub6],
+        ];
+        for (const [key, value] of entries) {
+            if (value !== null) {
+                u.searchParams.set(key, value);
+            } else {
+                u.searchParams.delete(key);
+            }
+        }
+        return u.toString();
+    } catch {
+        return url;
+    }
+}
 
 export class OffersController {
     getOffers() {
-        return async (req: Request, res: Response) => {
+        return async (req: InferenceRequest, res: Response) => {
             // Extract query parameters
             const {
                 offer_type,
@@ -15,6 +100,15 @@ export class OffersController {
                 page = 1,
                 size = 30
             } = req.query;
+
+            const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
+                ?? req.socket.remoteAddress
+                ?? '';
+            const userAgent = req.headers['user-agent'] ?? '';
+
+            const subParams = req.pbSuperAdmin
+                ? await fetchAttributionSubParams(req.pbSuperAdmin, ip, userAgent)
+                : null;
 
             // url: https://finmart.mx/api/offers 
 
@@ -38,10 +132,11 @@ export class OffersController {
             appendParam('size', size);
 
             try {
-                const url = new URL('https://api.finmatcher.com/api/offer/search?page=1&size=9000');
+                const baseUrl = 'https://api.finmatcher.com/api/offer/search?page=1&size=9000';
+                const urlWithSubs = appendSubParams(baseUrl, subParams);
                 // url.search = params.toString();
 
-                const response = await fetch(url.toString(), {
+                const response = await fetch(urlWithSubs, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
