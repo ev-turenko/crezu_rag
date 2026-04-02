@@ -103,6 +103,23 @@ async function isOferwallCampaign(
     }
 }
 
+async function logRequestMetaInfo(
+    pbSuperAdmin: PocketBase,
+    clientId: string,
+    ip: string,
+    userAgent: string,
+): Promise<void> {
+    try {
+        await pbSuperAdmin.collection('requests_meta_info').create({
+            client_id: clientId,
+            ip,
+            user_agent: userAgent,
+        });
+    } catch {
+        // non-critical, swallow errors
+    }
+}
+
 export function getConfig() {
     return async (req: InferenceRequest, res: Response) => {
         const countryCode = req.query.country_code as string | undefined;
@@ -129,7 +146,7 @@ export function getConfig() {
         const finalScreen = oferwall ? 'offers' : 'chat';
         const isfe = !oferwall;
 
-        return res.json({
+        res.json({
             client_id: client_id,
             version: appBuildNumber,
             finalScreen, // chat | offers
@@ -157,7 +174,15 @@ export function getConfig() {
                 shouldCreateCustomer: false,
                 subscribeCustomerIfCreated: false,
             },
-        })
+        });
+
+        if (req.pbSuperAdmin) {
+            const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
+                ?? req.socket.remoteAddress
+                ?? '';
+            const userAgent = req.headers['user-agent'] ?? '';
+            void logRequestMetaInfo(req.pbSuperAdmin, client_id, ip, userAgent);
+        }
     }
 }
 
