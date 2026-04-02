@@ -36,9 +36,8 @@ const isEmptyValue = (value: unknown): boolean => {
 
 export const saveAttribution = async (req: InferenceRequest, res: Response) => {
   const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
-                ?? req.socket.remoteAddress
-                ?? '';
-  const userAgent = req.headers['user-agent'] ?? '';
+    ?? req.socket.remoteAddress
+    ?? '';
   const parsedAttribution = attributionSchema.safeParse({
     client_id: req.body?.client_id ?? req.body?.params?.client_id,
     appsflyer_data: req.body?.appsflyer_data ?? null,
@@ -113,13 +112,20 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
 
       // Always update last_ip to have the most recent one, even if it was previously set
       updatePayload.last_ip = ip;
-      
-      if(existingRecord.user_agent !== userAgent) {
-        updatePayload.user_agent = userAgent;
+
+      if (isEmptyValue(existingRecord.user_agent)) {
+        try {
+          const result = await req.pbSuperAdmin!.collection('requests_meta_info').getFirstListItem(`client_id="${escapeFilterValue(client_id)}"`, {
+            fields: 'user_agent'
+          });
+          updatePayload.user_agent = result.user_agent;
+        } catch (e) {
+          console.error('Error fetching user agent for client_id', client_id, e);
+        }
       }
 
       if (Object.keys(updatePayload).length > 0) {
-        await req.pbSuperAdmin!.collection('attributions').update(existingRecord.id, updatePayload);
+        await req.pbSuperAdmin!.collection('requests_meta_info').update(existingRecord.id, updatePayload);
 
         return res.status(200).json({
           success: true,
@@ -145,7 +151,6 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       maestra_uuid,
       first_ip: ip,
       last_ip: ip,
-      user_agent: userAgent
     });
 
     return res.status(200).json({
@@ -159,11 +164,5 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       error: 'Failed to save attribution data',
       details: (error as Error).message,
     });
-  } finally {
-    const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
-      ?? req.socket.remoteAddress
-      ?? '';
-    const userAgent = req.headers['user-agent'] ?? '';
-    await logRequestMetaInfo(req.pbSuperAdmin!, client_id, ip, userAgent, '/api/attribution');
   }
 };
