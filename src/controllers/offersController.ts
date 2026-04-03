@@ -61,17 +61,19 @@ async function fetchAttributionSubParams(
     }
 }
 
-function appendSubParams(url: string, params: AttributionSubParams | null): string {
+function appendSubParams(url: string, params: AttributionSubParams | null, offer_id: string | number): string {
     if (!params) return url;
     try {
         const u = new URL(url);
         const entries: [string, string | null][] = [
-            ['sub1', params.sub1],
-            ['sub2', params.sub2],
+            ['sub1', params.sub2],
+            ['sub2', "FinmatcherAI"],
             ['sub3', params.sub3],
             ['sub4', params.sub4],
             ['sub5', params.sub5],
             ['sub6', params.sub6],
+            ['afid', params.sub1],
+            ['sub8', String(offer_id)],
         ];
         for (const [key, value] of entries) {
             if (value !== null) {
@@ -155,13 +157,24 @@ export class OffersController {
                 //     console.error('Error fetching offers:', response.status);
                 //     return res.status(200).json({ total: 0, items: [], page: 1, size: 30 });
                 // }
+                
 
                 const data: OffersResponse = await response.json();
                 if (subParams) {
-                    data.items = data.items.map(item => ({
-                        ...item,
-                        url: appendSubParams(item.url, subParams),
-                    }));
+                    data.items = data.items.map(item => {
+                        let baseUrl;
+                        if(`${country_code}`.toLowerCase() === 'mx') {
+                            baseUrl = "https://crezufin.xyz/X2zSfS6w";
+                        } else {
+                            baseUrl = item.url;
+                        }
+                        return {
+                            ...item,
+                            url: appendSubParams(baseUrl, subParams, item.id),
+                        }
+                        
+                        
+                    });
                 } else {
                     console.log('No subParams to append to offer URLs');
                 }

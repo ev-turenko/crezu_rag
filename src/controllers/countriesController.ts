@@ -6,11 +6,6 @@ export const COUNTRIES_CONFIG = [
         country_code: 'se',
         country_id: '22'
     },
-    // {
-    //     provider: '376',
-    //     country_code: 'ro',
-    //     country_id: '12'
-    // },
     {
         provider: '375',
         country_code: 'pl',
@@ -26,6 +21,11 @@ export const COUNTRIES_CONFIG = [
         country_code: 'mx',
         country_id: '2'
     }
+        // {
+    //     provider: '376',
+    //     country_code: 'ro',
+    //     country_id: '12'
+    // },
 ]
 
 
