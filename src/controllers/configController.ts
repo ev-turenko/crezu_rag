@@ -80,8 +80,21 @@ const OFERWALL_CAMPAIGN = [
     'oferwall_uacMXacc3980Cr130_alp', 
     'oferwall_uacMXacc2562Cr123_alp',
     'oferwall_uacMXacc3980Cr105_alp',
-    'oferwall_uacMXacc2562Cr92_alp'
+    'oferwall_uacMXacc2562Cr92_alp',
+    '**_alp'
 ];
+
+function matchesCampaign(value: string): boolean {
+    return OFERWALL_CAMPAIGN.some(pattern => {
+        if (pattern.startsWith('**')) {
+            return value.includes(pattern.slice(2));
+        }
+        if (pattern.startsWith('*')) {
+            return value.endsWith(pattern.slice(1));
+        }
+        return value === pattern;
+    });
+}
 
 async function isOferwallCampaign(
     pbSuperAdmin: PocketBase,
@@ -114,7 +127,7 @@ async function isOferwallCampaign(
         } catch (e) {
 
          }
-        return (campaign != null && OFERWALL_CAMPAIGN.includes(campaign)) || (af_adset != null && OFERWALL_CAMPAIGN.includes(af_adset));
+        return (campaign != null && matchesCampaign(campaign)) || (af_adset != null && matchesCampaign(af_adset));
     } catch (e) {
         console.error('Error checking offerwall campaign for userAgent and ip', { userAgent, ip }, e);
         return false;
