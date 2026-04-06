@@ -76,7 +76,7 @@ const appsflyerPayloadSchema = z.object({
     status: z.string(),
 });
 
-const OFERWALL_CAMPAIGN = 'oferwall_uacMXacc3980Cr130_alp';
+const OFERWALL_CAMPAIGN = ['oferwall_uacMXacc3980Cr130_alp'];
 
 async function isOferwallCampaign(
     pbSuperAdmin: PocketBase,
@@ -109,7 +109,7 @@ async function isOferwallCampaign(
         } catch (e) {
 
          }
-        return campaign === OFERWALL_CAMPAIGN || af_adset === OFERWALL_CAMPAIGN;
+        return (campaign != null && OFERWALL_CAMPAIGN.includes(campaign)) || (af_adset != null && OFERWALL_CAMPAIGN.includes(af_adset));
     } catch (e) {
         console.error('Error checking offerwall campaign for userAgent and ip', { userAgent, ip }, e);
         return false;
