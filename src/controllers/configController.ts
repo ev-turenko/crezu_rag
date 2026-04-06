@@ -76,7 +76,12 @@ const appsflyerPayloadSchema = z.object({
     status: z.string(),
 });
 
-const OFERWALL_CAMPAIGN = ['oferwall_uacMXacc3980Cr130_alp'];
+const OFERWALL_CAMPAIGN = [
+    'oferwall_uacMXacc3980Cr130_alp', 
+    'oferwall_uacMXacc2562Cr123_alp',
+    'oferwall_uacMXacc3980Cr105_alp',
+    'oferwall_uacMXacc2562Cr92_alp'
+];
 
 async function isOferwallCampaign(
     pbSuperAdmin: PocketBase,
