@@ -160,8 +160,11 @@ export function getConfig() {
         const offerwall = req.pbSuperAdmin
             ? await isOferwallCampaign(req.pbSuperAdmin, userAgent, ip, (clientId) => {
                 client_id = clientId;
+                console.log('Client ID set from callback', client_id);
             })
             : false;
+        
+        console.log('Determined offerwall status', { offerwall, userAgent, ip });
 
         const finalScreen = offerwall ? 'offers' : 'chat';
         const isfe = !offerwall;
