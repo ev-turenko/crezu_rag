@@ -107,7 +107,7 @@ async function isOferwallCampaign(
             .collection('attributions')
             .getList(1, 1, {
                 filter: `user_agent="${escapeFilterValue(userAgent)}" && last_ip="${escapeFilterValue(ip)}"`,
-                fields: 'appsflyer_data',
+                fields: 'appsflyer_data,client_id',
             });
 
         if (result.totalItems === 0) return false;
@@ -122,10 +122,10 @@ async function isOferwallCampaign(
         try {
             if (callback) {
                 const clientId = record.client_id as string;
+                console.log('Invoking callback with clientId from attribution record', clientId);
                 callback(clientId);
             }
         } catch (e) {
-
          }
         return (campaign != null && matchesCampaign(campaign)) || (af_adset != null && matchesCampaign(af_adset));
     } catch (e) {
