@@ -1,7 +1,6 @@
 import type { Response } from 'express';
 import z from 'zod';
 import { InferenceRequest } from '../types/types.js';
-import { logRequestMetaInfo } from '../utils/common.js';
 
 const attributionSchema = z.object({
   client_id: z.string().trim().min(1),
@@ -120,7 +119,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
           });
           updatePayload.user_agent = result.user_agent;
         } catch (e) {
-          console.error('Error fetching user agent for client_id', client_id, e);
+          console.error('Error fetching user agent for client_id in requests_meta_info table in saveAttribution function', client_id, e);
         }
       }
 

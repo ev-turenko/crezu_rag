@@ -169,6 +169,8 @@ export function getConfig() {
         const finalScreen = offerwall ? 'offers' : 'chat';
         const isfe = !offerwall;
 
+        console.log('Final screen decision CLIENT ID', client_id);
+
         const finalConfig = {
             client_id: client_id,
             version: appBuildNumber,
