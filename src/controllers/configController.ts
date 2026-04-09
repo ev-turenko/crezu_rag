@@ -160,6 +160,8 @@ export function getConfig() {
         const appBuildNumber = req.query.app_build_number as string | undefined;
         const platform = req.query.platform as string | undefined;
         const lang = req.query.lang as string | undefined;
+
+        console.log("QUERY STRING FROM CONFIG ENDPOINT", JSON.stringify(req.query, null, 2));
         
         const normalizedLang = normalizeConfigLang(lang);
         void platform
