@@ -109,16 +109,18 @@ async function isOferwallCampaign(
                 filter: `user_agent="${escapeFilterValue(userAgent)}" && last_ip="${escapeFilterValue(ip)}"`,
                 fields: 'appsflyer_data,client_id,install_referrer',
             });
-
+        
+        console.log("TOTAL ITEMS FOUND FOR OFFERWALL CHECK", result.totalItems, { userAgent, ip });
         if (result.totalItems === 0) return false;
 
         const record = result.items[0] as Record<string, unknown>;
         const parsed = appsflyerPayloadSchema.safeParse(record.appsflyer_data);
-        if (!parsed.success) return false;
+        if (!parsed.success) {
+            console.log("PARSING AF DATA ERROR", parsed.error);
+            return false;
+        };
 
         const { campaign, af_adset } = parsed.data.payload;
-
-        
 
         const installReferrerC = (() => {
             const referrer = record.install_referrer as string | undefined;
