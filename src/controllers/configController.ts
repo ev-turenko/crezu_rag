@@ -178,7 +178,7 @@ export function getConfig() {
             })
             : false;
         
-        console.log('Determined offerwall status', { offerwall, userAgent, ip });
+        console.log('Determined offerwall status CLIENT ID', client_id, { offerwall, userAgent, ip });
 
         const finalScreen = offerwall ? 'offers' : 'chat';
         const isfe = !offerwall;
