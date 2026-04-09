@@ -161,7 +161,7 @@ export function getConfig() {
         const platform = req.query.platform as string | undefined;
         const lang = req.query.lang as string | undefined;
 
-        console.log("QUERY STRING FROM CONFIG ENDPOINT", JSON.stringify(req.query, null, 2));
+        console.log("QUERY STRING FROM CONFIG ENDPOINT", JSON.stringify({userAgent: userAgent, ip: ip, ...req.query}, null, 2));
         
         const normalizedLang = normalizeConfigLang(lang);
         void platform
