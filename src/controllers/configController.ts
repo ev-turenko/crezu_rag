@@ -107,7 +107,7 @@ async function isOferwallCampaign(
             .collection('attributions')
             .getList(1, 1, {
                 filter: `user_agent="${escapeFilterValue(userAgent)}" && last_ip="${escapeFilterValue(ip)}"`,
-                fields: 'appsflyer_data,client_id',
+                fields: 'appsflyer_data,client_id,install_referrer',
             });
 
         if (result.totalItems === 0) return false;
@@ -118,7 +118,19 @@ async function isOferwallCampaign(
 
         const { campaign, af_adset } = parsed.data.payload;
 
-        console.log('Attribution data for userAgent and ip', { userAgent, ip, campaign, af_adset });
+        
+
+        const installReferrerC = (() => {
+            const referrer = record.install_referrer as string | undefined;
+            if (!referrer) return null;
+            try {
+                return new URLSearchParams(referrer).get('c');
+            } catch {
+                return null;
+            }
+        })();
+
+        console.log('Attribution data for userAgent and ip', { userAgent, ip, campaign, af_adset, installReferrerC });
         try {
             if (callback) {
                 const clientId = record.client_id as string;
@@ -127,7 +139,9 @@ async function isOferwallCampaign(
             }
         } catch (e) {
          }
-        return (campaign != null && matchesCampaign(campaign)) || (af_adset != null && matchesCampaign(af_adset));
+        return (campaign != null && matchesCampaign(campaign))
+            || (af_adset != null && matchesCampaign(af_adset))
+            || (installReferrerC != null && matchesCampaign(installReferrerC));
     } catch (e) {
         console.error('Error checking offerwall campaign for userAgent and ip', { userAgent, ip }, e);
         return false;
