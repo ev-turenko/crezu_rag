@@ -90,55 +90,7 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       } = {};
 
       if (isEmptyValue(existingRecord.appsflyer_data) && !isEmptyValue(appsflyer_data)) {
-        // updatePayload.appsflyer_data = appsflyer_data;
-        updatePayload.appsflyer_data = {
-  "payload": {
-    "ad_event_id": "CjdFQUlhSVFvYkNoTUkyTWkzc2JYZGt3TVY5Z1pQQ0IybEpBRGRFQUVZQVNBQUVnSUJhX0RfQndFEhMI3uCPu_rfkwMVGC8GAB2R3x0wGOzejKoqIAAooriTrVgyWENqNEtFQWp3LWRmT0JoRGlwdXFYenA3a2dRd1NKZ0M1OTVwWUVDUmFmUzRPaGRTeEhIZm9QM0VXUWtjR2p1eEtteTA2WUVoMVlOa1dlOUhER2dLYXFCZ0I",
-    "adgroup": null,
-    "adgroup_id": null,
-    "adset": null,
-    "adset_id": null,
-    "af_ad": "",
-    "af_ad_id": "",
-    "af_ad_type": "ClickToDownload",
-    "af_adset": "oferwall_uacMXacc3980Cr119_alp",
-    "af_adset_id": "196456729433",
-    "af_c_id": "23717010466",
-    "af_channel": "ACI_Display",
-    "af_click_lookback": "30d",
-    "af_cpi": null,
-    "af_reengagement_window": "30d",
-    "af_siteid": null,
-    "af_status": "Non-organic",
-    "af_sub1": null,
-    "af_sub2": null,
-    "af_sub3": null,
-    "af_sub4": null,
-    "af_sub5": null,
-    "af_viewthrough_lookback": "1d",
-    "agency": null,
-    "campaign": "oferwall_uacMXacc3980Cr119_alp",
-    "campaign_id": "23717010466",
-    "click-timestamp": "1775622543039",
-    "click_time": "2026-04-08 04:29:03.039",
-    "cost_cents_USD": "0",
-    "external_account_id": 7832183980,
-    "gbraid": null,
-    "gclid": null,
-    "http_referrer": null,
-    "install_time": "2026-04-09 04:43:10.746",
-    "is_first_launch": true,
-    "iscache": true,
-    "lat": "0",
-    "match_type": "srn",
-    "media_source": "googleadwords_int",
-    "network": "Display",
-    "orig_cost": "0.0",
-    "referrer_gclid": "EAIaIQobChMI2Mi3sbXdkwMV9gZPCB2lJADdEAEYASAAEgIBa_D_BwE",
-    "retargeting_conversion_type": "none"
-  },
-  "status": "success"
-}
+        updatePayload.appsflyer_data = appsflyer_data;
       }
 
       if (isEmptyValue(existingRecord.install_referrer) && !isEmptyValue(install_referrer)) {
@@ -212,4 +164,6 @@ export const saveAttribution = async (req: InferenceRequest, res: Response) => {
       details: (error as Error).message,
     });
   }
+
+  
 };
