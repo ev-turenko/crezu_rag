@@ -181,17 +181,18 @@ export class OffersController {
                     console.log("Rendering feed 1");
                     const limitedData = {
                         total: data.total,
-                        items: data.items.slice(0, 50),
+                        items: data.items.slice(0, 4),
                         page: data.page,
                         size: data.size,
                     };
                     console.log("Rendering feed 2", limitedData);
+                    res.status(200).json(limitedData);
                 } catch (e) {
                     console.log("Error logging offer data for feed rendering", e);
                 }
 
                 
-                return res.status(200).json(data);
+                // return res.status(200).json(data);
             } catch (error) {
                 console.error('Error fetching offers:', error);
                 return res.status(200).json({ total: 0, items: [], page: 1, size: 30 });
