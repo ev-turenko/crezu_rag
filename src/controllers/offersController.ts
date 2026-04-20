@@ -168,9 +168,15 @@ export class OffersController {
                         } else {
                             baseUrl = item.url;
                         }
+                        let offerId: string | number = item.id;
+                        try {
+                            const itemUrl = new URL(item.url);
+                            const offerIdParam = itemUrl.searchParams.get('offer_id');
+                            if (offerIdParam) offerId = offerIdParam;
+                        } catch {}
                         return {
                             ...item,
-                            url: appendSubParams(baseUrl, subParams, item.id),
+                            url: appendSubParams(baseUrl, subParams, offerId),
                         }
                     });
                 } else {
