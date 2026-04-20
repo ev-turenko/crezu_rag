@@ -157,13 +157,13 @@ export class OffersController {
                 //     console.error('Error fetching offers:', response.status);
                 //     return res.status(200).json({ total: 0, items: [], page: 1, size: 30 });
                 // }
-                
+
 
                 const data: OffersResponse = await response.json();
                 if (subParams) {
                     data.items = data.items.map(item => {
                         let baseUrl;
-                        if(`${country_code}`.toLowerCase() === 'mx') {
+                        if (`${country_code}`.toLowerCase() === 'mx') {
                             baseUrl = "https://crezufin.xyz/X2zSfS6w";
                         } else {
                             baseUrl = item.url;
@@ -172,12 +172,25 @@ export class OffersController {
                             ...item,
                             url: appendSubParams(baseUrl, subParams, item.id),
                         }
-                        
-                        
                     });
                 } else {
                     console.log('No subParams to append to offer URLs');
                 }
+                // limit data to the first 50 lines
+                try {
+                    console.log("Rendering feed 1");
+                    const limitedData = {
+                        total: data.total,
+                        items: data.items.slice(0, 50),
+                        page: data.page,
+                        size: data.size,
+                    };
+                    console.log("Rendering feed 2", limitedData);
+                } catch (e) {
+                    console.log("Error logging offer data for feed rendering", e);
+                }
+
+                
                 return res.status(200).json(data);
             } catch (error) {
                 console.error('Error fetching offers:', error);
