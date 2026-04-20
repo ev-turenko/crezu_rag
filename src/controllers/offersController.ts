@@ -161,7 +161,7 @@ export class OffersController {
 
                 const data: OffersResponse = await response.json();
                 if (subParams) {
-                    data.items = data.items.map(item => {
+                    data.items = data.items.map((item, index) => {
                         let baseUrl;
                         if (`${country_code}`.toLowerCase() === 'mx') {
                             baseUrl = "https://crezufin.xyz/X2zSfS6w";
@@ -177,6 +177,7 @@ export class OffersController {
                         return {
                             ...item,
                             url: appendSubParams(baseUrl, subParams, offerId),
+                            ...(index === 0 && { is_highlighted: true }),
                         }
                     });
                 } else {
