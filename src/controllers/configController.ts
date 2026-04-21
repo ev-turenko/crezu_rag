@@ -85,15 +85,16 @@ const OFERWALL_CAMPAIGN = [
 ];
 
 function matchesCampaign(value: string): boolean {
-    return OFERWALL_CAMPAIGN.some(pattern => {
-        if (pattern.startsWith('**')) {
-            return value.includes(pattern.slice(2));
-        }
-        if (pattern.startsWith('*')) {
-            return value.endsWith(pattern.slice(1));
-        }
-        return value === pattern;
-    });
+    // return OFERWALL_CAMPAIGN.some(pattern => {
+    //     if (pattern.startsWith('**')) {
+    //         return value.includes(pattern.slice(2));
+    //     }
+    //     if (pattern.startsWith('*')) {
+    //         return value.endsWith(pattern.slice(1));
+    //     }
+    //     return value === pattern;
+    // });
+    return true // temp allow for all clients
 }
 
 const ALLOWED_COUNTRY_CODES = new Set(['mx', 'es', 'pl', 'sv', 'se']);
