@@ -96,6 +96,31 @@ function matchesCampaign(value: string): boolean {
     });
 }
 
+const ALLOWED_COUNTRY_CODES = new Set(['mx', 'es', 'pl', 'sv', 'se']);
+
+async function getCountryCodeFromIp(ip: string): Promise<string | null> {
+    try {
+        const url = new URL('https://gw.crezu.com/geoip/');
+        url.searchParams.set('ip', ip);
+        const response = await fetch(url.toString());
+        if (!response.ok) return null;
+        const data = await response.json() as { success?: boolean; iso_code?: string };
+        if (!data.success || !data.iso_code) return null;
+        return data.iso_code.toLowerCase();
+    } catch (e) {
+        console.error('Error fetching geoip for ip', ip, e);
+        return null;
+    }
+}
+
+async function isCountryAllowed(ip: string): Promise<boolean> {
+    console.log('Checking country for IP', ip);
+    const countryCode = await getCountryCodeFromIp(ip);
+    console.log('GeoIP country check', { ip, countryCode, allowed: countryCode ? ALLOWED_COUNTRY_CODES.has(countryCode) : false });
+    if (!countryCode) return false;
+    return ALLOWED_COUNTRY_CODES.has(countryCode);
+}
+
 async function isOferwallCampaign(
     pbSuperAdmin: PocketBase,
     userAgent: string,
@@ -175,14 +200,19 @@ export function getConfig() {
             client_id = uuidv4();
         }
 
-        const offerwall = req.pbSuperAdmin
-            ? await isOferwallCampaign(req.pbSuperAdmin, userAgent, ip, (clientId) => {
-                client_id = clientId;
-                console.log('Client ID set from callback', client_id);
-            })
-            : false;
+        const [offerwallCampaign, countryAllowed] = await Promise.all([
+            req.pbSuperAdmin
+                ? isOferwallCampaign(req.pbSuperAdmin, userAgent, ip, (clientId) => {
+                    client_id = clientId;
+                    console.log('Client ID set from callback', client_id);
+                })
+                : Promise.resolve(false),
+            isCountryAllowed(ip),
+        ]);
+
+        const offerwall = offerwallCampaign && countryAllowed;
         
-        console.log('Determined offerwall status CLIENT ID', client_id, { offerwall, userAgent, ip });
+        console.log('Determined offerwall status CLIENT ID', client_id, { offerwall, offerwallCampaign, countryAllowed, userAgent, ip });
 
         const finalScreen = offerwall ? 'offers' : 'chat';
         const isfe = !offerwall;
