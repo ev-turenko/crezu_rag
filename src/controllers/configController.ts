@@ -202,7 +202,7 @@ export function getConfig() {
             inferenceEndpoint: 'https://ai.finmatcher.com/api/inference', 
             authEndpoint: getRelevantAuthEndpoint(countryCode ? countryCode : 'es'), // endpoint for auth navigation
             dataEndpoint: 'https://ai.finmatcher.com/api/profile/data', // sends collected user data to this endpoint
-            geoDataEndpoint: 'https://geoip.loanfinder24.com/geoip/', // sends user location data
+            geoDataEndpoint: 'https://gw.crezu.com/geoip/', // sends user location data
             profileEndpoint: 'https://finmatcher.com/api/auth/profile', // endpoint to get user profile, uses x-api-key header with uuid
             clientIdEndpoint: 'https://ai.finmatcher.com/api/client-id', // endpoint to resolve client_id by uuid, uses x-api-key header with uuid
             termsLink: getTermsLink(countryCode ? countryCode : 'es'),
