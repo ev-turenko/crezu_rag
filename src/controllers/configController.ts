@@ -244,7 +244,7 @@ export function getConfig() {
             maestra: {
                 domain: 'crezu.maestra.io',
                 endpointIos: '',
-                endpointAndroid: 'https://api.maestra.io/v3/operations/async?endpointId=crezu.FinmatcherAndroidApp',
+                endpointAndroid: 'crezu.FinmatcherAndroidApp',
                 shouldCreateCustomer: false,
                 subscribeCustomerIfCreated: false,
             },
