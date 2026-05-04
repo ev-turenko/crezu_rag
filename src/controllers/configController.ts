@@ -242,7 +242,7 @@ export function getConfig() {
             isfe, // is feed empty – if empty, no offers will be shown before user searches for offers
             localizationEndpoint: 'https://ai.finmatcher.com/api/localization', // endpoint to get localized strings for the app
             maestra: {
-                domain: 'crezu.maestra.io',
+                domain: 'api.maestra.io',
                 endpointIos: '',
                 endpointAndroid: 'crezu.FinmatcherAndroidApp',
                 shouldCreateCustomer: false,
