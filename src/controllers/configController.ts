@@ -245,8 +245,8 @@ export function getConfig() {
                 domain: 'api.maestra.io',
                 endpointIos: '',
                 endpointAndroid: 'crezu.FinmatcherAndroidApp',
-                shouldCreateCustomer: false,
-                subscribeCustomerIfCreated: false,
+                shouldCreateCustomer: true,
+                subscribeCustomerIfCreated: true,
             },
         }
 
