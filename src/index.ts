@@ -5,6 +5,8 @@ import cors from 'cors';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger.js';
 import inferenceRoutes from './routes/inferenceRoutes.js';
 import healthcheckRoutes from './routes/healthcheckRoutes.js';
 import employmentIndustriesRoutes from './routes/employmentIndustriesRoutes.js';
@@ -51,6 +53,21 @@ app.use(
     }
   })
 );
+
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
+  swaggerOptions: {
+    url: '/api-docs/swagger.json',
+    displayOperationId: true,
+    defaultModelsExpandDepth: 1,
+    defaultModelExpandDepth: 1,
+  },
+}));
+
+app.get('/api-docs/swagger.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
 
 app.use('/api/ai', inferenceRoutes);
 app.use('/api/health', healthcheckRoutes);

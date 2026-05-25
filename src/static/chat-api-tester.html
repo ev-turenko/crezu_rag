@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat API Tester</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --line: #d9dee7;
+      --line-strong: #b7c0cf;
+      --text: #172033;
+      --muted: #617089;
+      --accent: #1769aa;
+      --accent-strong: #0f4f82;
+      --ok: #147d42;
+      --warn: #a35f00;
+      --bad: #b42318;
+      --code: #101828;
+      --code-bg: #eef2f6;
+      --soft-blue: #eaf3fb;
+      --soft-green: #e9f7ef;
+      --soft-red: #fdecea;
+      --soft-yellow: #fff6df;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      min-height: 36px;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      padding: 7px 11px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button.secondary {
+      background: #fff;
+      color: var(--accent);
+    }
+
+    button.danger {
+      border-color: var(--bad);
+      background: var(--bad);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.58;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      padding: 8px 10px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 88px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      text-transform: uppercase;
+    }
+
+    pre {
+      margin: 0;
+      overflow: auto;
+      border-radius: 6px;
+      background: var(--code-bg);
+      color: var(--code);
+      padding: 12px;
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 14px;
+      min-height: 100vh;
+      padding: 18px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 14px;
+    }
+
+    .title {
+      min-width: 0;
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    .title p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      padding: 7px 11px;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--line-strong);
+    }
+
+    .dot.ok {
+      background: var(--ok);
+    }
+
+    .dot.bad {
+      background: var(--bad);
+    }
+
+    .settings {
+      display: grid;
+      grid-template-columns: minmax(260px, 2fr) repeat(4, minmax(100px, 1fr)) minmax(160px, 1fr);
+      gap: 10px;
+      align-items: end;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 14px;
+    }
+
+    .settings-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: minmax(360px, 0.94fr) minmax(420px, 1.06fr);
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .pane {
+      min-width: 0;
+      min-height: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .pane-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+      padding: 11px 12px;
+    }
+
+    .pane-header h2 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .pane-body {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .endpoint-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .endpoint-grid button {
+      width: 100%;
+      min-height: 40px;
+      line-height: 1.2;
+      white-space: normal;
+    }
+
+    .request-preview {
+      display: grid;
+      gap: 8px;
+    }
+
+    .request-editor {
+      display: grid;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      padding: 10px;
+    }
+
+    .request-editor .actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .request-editor .actions button {
+      width: 100%;
+      white-space: normal;
+    }
+
+    .path-preview {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--muted);
+      padding: 8px 10px;
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .path-preview.bad {
+      border-color: var(--bad);
+      background: var(--soft-red);
+      color: var(--bad);
+    }
+
+    .editor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .editor-panel {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .editor-panel textarea {
+      min-height: 96px;
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .editor-panel.body-panel {
+      grid-column: 1 / -1;
+    }
+
+    .editor-panel.body-panel textarea {
+      min-height: 180px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: none;
+    }
+
+    .checkbox-row input {
+      width: auto;
+    }
+
+    .editor-status {
+      min-height: 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .editor-status.ok {
+      color: var(--ok);
+    }
+
+    .editor-status.bad {
+      color: var(--bad);
+    }
+
+    .preview-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      text-transform: uppercase;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-rows: minmax(180px, 0.95fr) minmax(240px, 1.05fr);
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .scroll {
+      overflow: auto;
+      min-height: 0;
+    }
+
+    .transcript,
+    .log-list {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .message {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+    }
+
+    .message.user {
+      border-color: #b6d7f3;
+      background: var(--soft-blue);
+    }
+
+    .message.assistant {
+      border-color: #bee2cc;
+      background: var(--soft-green);
+    }
+
+    .message.system {
+      border-color: #f3d99b;
+      background: var(--soft-yellow);
+    }
+
+    .message .role,
+    .log-row .meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .message .role {
+      text-transform: uppercase;
+    }
+
+    .log-row .meta {
+      text-transform: none;
+    }
+
+    .message .content {
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.45;
+    }
+
+    .empty {
+      border: 1px dashed var(--line-strong);
+      border-radius: 8px;
+      padding: 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .log-row {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .log-row.ok {
+      border-left: 4px solid var(--ok);
+    }
+
+    .log-row.warn {
+      border-left: 4px solid var(--warn);
+    }
+
+    .log-row.bad {
+      border-left: 4px solid var(--bad);
+    }
+
+    .log-row button {
+      min-height: 30px;
+      padding: 5px 9px;
+      font-size: 12px;
+    }
+
+    .log-summary {
+      padding: 10px;
+    }
+
+    .log-detail {
+      border-top: 1px solid var(--line);
+      padding: 10px;
+      background: #fafbfc;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--code-bg);
+      color: var(--muted);
+    }
+
+    .badge.ok {
+      background: var(--soft-green);
+      color: var(--ok);
+    }
+
+    .badge.bad {
+      background: var(--soft-red);
+      color: var(--bad);
+    }
+
+    .badge.warn {
+      background: var(--soft-yellow);
+      color: var(--warn);
+    }
+
+    .sse-log {
+      max-height: 170px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 1180px) {
+      .settings {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        padding: 12px;
+      }
+
+      .topbar,
+      .pane-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .settings,
+      .two-col,
+      .editor-grid,
+      .endpoint-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .settings-actions {
+        flex-wrap: wrap;
+      }
+
+      .request-editor .actions {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="title">
+        <h1>Chat API Tester</h1>
+        <p id="activeTarget">Target: same origin</p>
+      </div>
+      <div class="status-pill">
+        <span id="statusDot" class="dot"></span>
+        <span id="statusText">Idle</span>
+      </div>
+    </header>
+
+    <section class="settings">
+      <label>
+        API base URL
+        <input id="baseUrl" autocomplete="off">
+      </label>
+      <label>
+        Client ID
+        <input id="clientId" autocomplete="off" value="browser-test-client">
+      </label>
+      <label>
+        Chat ID
+        <input id="chatId" autocomplete="off" placeholder="auto">
+      </label>
+      <label>
+        Country
+        <select id="country">
+          <option value="2">MX - 2</option>
+          <option value="1">ES - 1</option>
+          <option value="14">PL - 14</option>
+          <option value="22">SE - 22</option>
+        </select>
+      </label>
+      <label>
+        Provider
+        <input id="provider" value="373" autocomplete="off">
+      </label>
+      <label>
+        Language
+        <select id="lang">
+          <option value="es-mx">es-mx</option>
+          <option value="es-es">es-es</option>
+          <option value="en">en</option>
+          <option value="pl">pl</option>
+          <option value="se">se</option>
+        </select>
+      </label>
+      <label>
+        UUID cookie
+        <input id="uuidCookie" autocomplete="off" placeholder="optional">
+      </label>
+      <div class="settings-actions">
+        <button id="applyCookie" type="button" class="secondary">Set Cookie</button>
+        <button id="resetState" type="button" class="secondary">Reset</button>
+      </div>
+    </section>
+
+    <main class="main">
+      <section class="pane">
+        <div class="pane-header">
+          <h2>Requests</h2>
+          <span id="lastStatus" class="badge">No responses</span>
+        </div>
+        <div class="pane-body">
+          <label>
+            Message
+            <textarea id="message">I need a 5000 MXN loan for 3 months</textarea>
+          </label>
+
+          <div class="two-col">
+            <label>
+              Source
+              <select id="source">
+                <option value="app">app</option>
+                <option value="web">web</option>
+              </select>
+            </label>
+            <label>
+              History limit
+              <input id="historyLimit" type="number" min="1" max="50" value="20">
+            </label>
+          </div>
+
+          <div class="actions">
+            <button id="sendMessage" type="button">POST Message</button>
+            <button id="streamMessage" type="button">Stream Message</button>
+            <button id="stopStream" type="button" class="danger" disabled>Stop Stream</button>
+          </div>
+
+          <div class="endpoint-grid">
+            <button id="getSuggestions" type="button" class="secondary">Suggestions</button>
+            <button id="getAllChats" type="button" class="secondary">All Chats</button>
+            <button id="getClientChats" type="button" class="secondary">Client Chats</button>
+            <button id="postClientChats" type="button" class="secondary">Client Chats POST</button>
+            <button id="getHistory" type="button" class="secondary">History</button>
+            <button id="getInfiniteHistory" type="button" class="secondary">Infinite History</button>
+            <button id="shareChat" type="button" class="secondary">Share Chat</button>
+            <button id="fetchView" type="button" class="secondary">Fetch View</button>
+            <button id="fetchPdf" type="button" class="secondary">Fetch PDF</button>
+            <button id="openView" type="button" class="secondary">Open View</button>
+            <button id="openPdf" type="button" class="secondary">Open PDF</button>
+            <button id="deleteChat" type="button" class="danger">Delete Chat</button>
+            <button id="reportMessage" type="button" class="secondary">Report Message</button>
+            <button id="reportOffer" type="button" class="secondary">Report Offer</button>
+            <button id="chatGreeting" type="button" class="secondary">Greeting</button>
+          </div>
+
+          <div class="request-editor">
+            <label>
+              Editable endpoint
+              <select id="endpointSelect">
+                <option value="postMessage">POST Message</option>
+                <option value="streamMessage">Stream Message</option>
+                <option value="suggestions">Suggestions</option>
+                <option value="allChats">All Chats</option>
+                <option value="clientChatsGet">Client Chats</option>
+                <option value="clientChatsPost">Client Chats POST</option>
+                <option value="history">History</option>
+                <option value="infiniteHistory">Infinite History</option>
+                <option value="shareChat">Share Chat</option>
+                <option value="fetchView">Fetch View</option>
+                <option value="fetchPdf">Fetch PDF</option>
+                <option value="deleteChat">Delete Chat</option>
+                <option value="reportMessage">Report Message</option>
+                <option value="reportOffer">Report Offer</option>
+                <option value="chatGreeting">Greeting</option>
+              </select>
+            </label>
+            <div class="actions">
+              <button id="loadSelectedRequest" type="button" class="secondary">Load Generated</button>
+              <button id="sendSelectedRequest" type="button">Send Edited</button>
+              <button id="formatEditors" type="button" class="secondary">Format JSON</button>
+            </div>
+            <div id="resolvedPathPreview" class="path-preview">Resolved path: /api/ai/message</div>
+            <div class="editor-grid">
+              <div class="editor-panel">
+                <label class="checkbox-row">
+                  <input id="usePathEditor" type="checkbox">
+                  Use path JSON
+                </label>
+                <textarea id="pathEditor" spellcheck="false">{}</textarea>
+              </div>
+              <div class="editor-panel">
+                <label class="checkbox-row">
+                  <input id="useQueryEditor" type="checkbox">
+                  Use query JSON
+                </label>
+                <textarea id="queryEditor" spellcheck="false">{}</textarea>
+              </div>
+              <div class="editor-panel body-panel">
+                <label class="checkbox-row">
+                  <input id="useBodyEditor" type="checkbox">
+                  Use body JSON
+                </label>
+                <textarea id="bodyEditor" spellcheck="false"></textarea>
+              </div>
+            </div>
+            <div id="editorStatus" class="editor-status">Generated request loaded.</div>
+          </div>
+
+          <div class="request-preview">
+            <div class="preview-title">
+              <span>Current message payload</span>
+              <button id="copyPayload" type="button" class="secondary">Copy</button>
+            </div>
+            <pre id="payloadPreview"></pre>
+          </div>
+
+          <div>
+            <div class="preview-title" style="margin-bottom:8px;">
+              <span>SSE log</span>
+              <button id="clearSse" type="button" class="secondary">Clear</button>
+            </div>
+            <div id="sseLog" class="sse-log">No stream events.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <section class="pane">
+          <div class="pane-header">
+            <h2>Transcript</h2>
+            <button id="clearTranscript" type="button" class="secondary">Clear</button>
+          </div>
+          <div class="scroll">
+            <div id="transcript" class="transcript">
+              <div class="empty">No chat messages yet.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="pane">
+          <div class="pane-header">
+            <h2>Response Log</h2>
+            <button id="clearLog" type="button" class="secondary">Clear</button>
+          </div>
+          <div class="scroll">
+            <div id="responseLog" class="log-list">
+              <div class="empty">No API responses yet.</div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      transcript: [],
+      responses: [],
+      sseEvents: [],
+      streamAbort: null,
+      streamDraft: '',
+    };
+
+    const $ = id => document.getElementById(id);
+
+    const elements = {
+      activeTarget: $('activeTarget'),
+      applyCookie: $('applyCookie'),
+      baseUrl: $('baseUrl'),
+      bodyEditor: $('bodyEditor'),
+      chatGreeting: $('chatGreeting'),
+      chatId: $('chatId'),
+      clearLog: $('clearLog'),
+      clearSse: $('clearSse'),
+      clearTranscript: $('clearTranscript'),
+      clientId: $('clientId'),
+      copyPayload: $('copyPayload'),
+      country: $('country'),
+      deleteChat: $('deleteChat'),
+      editorStatus: $('editorStatus'),
+      endpointSelect: $('endpointSelect'),
+      fetchPdf: $('fetchPdf'),
+      fetchView: $('fetchView'),
+      formatEditors: $('formatEditors'),
+      getAllChats: $('getAllChats'),
+      getClientChats: $('getClientChats'),
+      getHistory: $('getHistory'),
+      getInfiniteHistory: $('getInfiniteHistory'),
+      getSuggestions: $('getSuggestions'),
+      historyLimit: $('historyLimit'),
+      lang: $('lang'),
+      lastStatus: $('lastStatus'),
+      loadSelectedRequest: $('loadSelectedRequest'),
+      message: $('message'),
+      openPdf: $('openPdf'),
+      openView: $('openView'),
+      pathEditor: $('pathEditor'),
+      payloadPreview: $('payloadPreview'),
+      postClientChats: $('postClientChats'),
+      provider: $('provider'),
+      reportMessage: $('reportMessage'),
+      reportOffer: $('reportOffer'),
+      resetState: $('resetState'),
+      resolvedPathPreview: $('resolvedPathPreview'),
+      responseLog: $('responseLog'),
+      sendMessage: $('sendMessage'),
+      sendSelectedRequest: $('sendSelectedRequest'),
+      shareChat: $('shareChat'),
+      source: $('source'),
+      sseLog: $('sseLog'),
+      statusDot: $('statusDot'),
+      statusText: $('statusText'),
+      stopStream: $('stopStream'),
+      streamMessage: $('streamMessage'),
+      transcript: $('transcript'),
+      queryEditor: $('queryEditor'),
+      useBodyEditor: $('useBodyEditor'),
+      usePathEditor: $('usePathEditor'),
+      useQueryEditor: $('useQueryEditor'),
+      uuidCookie: $('uuidCookie'),
+    };
+
+    function normalizeBaseUrl(value) {
+      const trimmed = value.trim();
+      if (!trimmed) return window.location.origin;
+      return trimmed.replace(/\/+$/, '');
+    }
+
+    function apiUrl(path, query) {
+      const url = new URL(path, `${normalizeBaseUrl(elements.baseUrl.value)}/`);
+      Object.entries(query || {}).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && `${value}` !== '') {
+          url.searchParams.set(key, value);
+        }
+      });
+      return url;
+    }
+
+    function settings() {
+      return {
+        baseUrl: normalizeBaseUrl(elements.baseUrl.value),
+        chatId: elements.chatId.value.trim(),
+        clientId: elements.clientId.value.trim() || 'browser-test-client',
+        country: Number(elements.country.value),
+        provider: elements.provider.value.trim() || '373',
+        lang: elements.lang.value,
+        source: elements.source.value,
+        historyLimit: Math.max(1, Number(elements.historyLimit.value) || 20),
+      };
+    }
+
+    function buildChatPayload(messageOverride) {
+      const current = settings();
+      const params = {
+        country: current.country,
+        provider: current.provider,
+        client_id: current.clientId,
+        is_guest_chat: true,
+      };
+
+      if (current.chatId) {
+        params.chat_id = current.chatId;
+      }
+
+      return {
+        message: messageOverride ?? elements.message.value,
+        messages: state.transcript.map(item => ({
+          role: item.role,
+          content: item.content,
+        })),
+        source: current.source,
+        content_types: ['markdown', 'app_offers'],
+        params,
+      };
+    }
+
+    function resolvePath(pathTemplate, pathParams = {}) {
+      return pathTemplate.replace(/\{([^}]+)\}/g, (match, key) => {
+        const value = pathParams[key];
+        if (value === undefined || value === null || `${value}` === '') {
+          throw new Error(`Missing path param: ${key}`);
+        }
+        return encodeURIComponent(`${value}`);
+      });
+    }
+
+    function endpoint(definition) {
+      const pathTemplate = definition.pathTemplate || definition.path;
+      const pathParams = definition.pathParams || {};
+      return {
+        ...definition,
+        pathTemplate,
+        pathParams,
+        path: resolvePath(pathTemplate, pathParams),
+      };
+    }
+
+    function buildEndpointRequest(key, messageOverride) {
+      const current = settings();
+      const message = messageOverride ?? elements.message.value.trim();
+
+      switch (key) {
+        case 'postMessage':
+          return endpoint({
+            label: 'POST Message',
+            method: 'POST',
+            path: '/api/ai/message',
+            options: {
+              query: { lang: current.lang, source: current.source },
+              body: buildChatPayload(message),
+            },
+          });
+        case 'streamMessage':
+          return endpoint({
+            label: 'Stream Message',
+            method: 'POST',
+            path: '/api/ai/message/stream',
+            options: {
+              query: { lang: current.lang, source: current.source },
+              body: buildChatPayload(message),
+            },
+          });
+        case 'suggestions':
+          return endpoint({
+            label: 'Suggestions',
+            method: 'POST',
+            path: '/api/ai/suggestions',
+            options: {
+              query: { lang: current.lang },
+              body: { params: { country: current.country } },
+            },
+          });
+        case 'allChats':
+          return endpoint({
+            label: 'All Chats',
+            method: 'POST',
+            path: '/api/ai/chats',
+            options: { body: { client_id: currentClientId() } },
+          });
+        case 'clientChatsGet':
+          return endpoint({
+            label: 'Client Chats',
+            method: 'GET',
+            pathTemplate: '/api/ai/client/{client_id}/chats',
+            pathParams: { client_id: currentClientId() },
+            options: {},
+          });
+        case 'clientChatsPost':
+          return endpoint({
+            label: 'Client Chats POST',
+            method: 'POST',
+            pathTemplate: '/api/ai/client/{client_id}/chats',
+            pathParams: { client_id: currentClientId() },
+            options: { body: { chat_id: currentChatId(), chat_name: 'Browser API test chat' } },
+          });
+        case 'history':
+          return endpoint({
+            label: 'History',
+            method: 'POST',
+            path: '/api/ai/history',
+            options: { body: { params: { chat_id: currentChatId() }, limit: current.historyLimit, offset: 0 } },
+          });
+        case 'infiniteHistory':
+          return endpoint({
+            label: 'Infinite History',
+            method: 'POST',
+            path: '/api/ai/history/infinite',
+            options: { body: { params: { chat_id: currentChatId(), limit: current.historyLimit, offset: 0 } } },
+          });
+        case 'shareChat':
+          return endpoint({
+            label: 'Share Chat',
+            method: 'POST',
+            pathTemplate: '/api/ai/chats/share/{chat_id}',
+            pathParams: { chat_id: currentChatId() },
+            options: { body: { is_public: true } },
+          });
+        case 'fetchView':
+          return endpoint({
+            label: 'Fetch View',
+            method: 'GET',
+            pathTemplate: '/api/view/chat/{chat_id}',
+            pathParams: { chat_id: currentChatId() },
+            options: {},
+          });
+        case 'fetchPdf':
+          return endpoint({
+            label: 'Fetch PDF',
+            method: 'GET',
+            pathTemplate: '/api/view/chat/{chat_id}/pdf',
+            pathParams: { chat_id: currentChatId() },
+            options: {},
+          });
+        case 'deleteChat':
+          return endpoint({
+            label: 'Delete Chat',
+            method: 'DELETE',
+            pathTemplate: '/api/ai/client/{client_id}/chats/{chat_id}',
+            pathParams: { client_id: currentClientId(), chat_id: currentChatId() },
+            options: {},
+          });
+        case 'reportMessage':
+          return endpoint({
+            label: 'Report Message',
+            method: 'POST',
+            path: '/api/ai/report',
+            options: {
+              body: {
+                params: { chat_id: currentChatId() },
+                answer_index: 0,
+                message: 'Browser API test report',
+              },
+            },
+          });
+        case 'reportOffer':
+          return endpoint({
+            label: 'Report Offer',
+            method: 'POST',
+            path: '/api/ai/offers/report',
+            options: {
+              body: {
+                offer_id: 'browser-test-offer',
+                description: 'Browser API test report',
+                client_id: currentClientId(),
+                chat_id: currentChatId(),
+              },
+            },
+          });
+        case 'chatGreeting':
+          return endpoint({
+            label: 'Chat Greeting',
+            method: 'GET',
+            path: '/api/chat-greeting',
+            options: {},
+          });
+        default:
+          throw new Error(`Unknown endpoint: ${key}`);
+      }
+    }
+
+    function setEditorStatus(message, tone) {
+      elements.editorStatus.textContent = message;
+      elements.editorStatus.className = `editor-status ${tone || ''}`.trim();
+    }
+
+    function parseEditorJson(raw, label, emptyValue, quiet = false) {
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        return { ok: true, value: emptyValue };
+      }
+
+      try {
+        return { ok: true, value: JSON.parse(trimmed) };
+      } catch (error) {
+        if (!quiet) {
+          setEditorStatus(`${label} JSON is invalid: ${error.message}`, 'bad');
+        }
+        return { ok: false };
+      }
+    }
+
+    function hasBody(options) {
+      return options && Object.prototype.hasOwnProperty.call(options, 'body');
+    }
+
+    function loadGeneratedRequest(key = elements.endpointSelect.value) {
+      const definition = buildEndpointRequest(key);
+      const options = definition.options || {};
+      const pathParams = definition.pathParams || {};
+      const query = options.query || {};
+      const hasRequestBody = hasBody(options);
+
+      elements.pathEditor.value = pretty(pathParams);
+      elements.queryEditor.value = pretty(query || {});
+      elements.bodyEditor.value = hasRequestBody ? pretty(options.body) : '';
+      elements.usePathEditor.checked = Object.keys(pathParams).length > 0;
+      elements.useQueryEditor.checked = Object.keys(query).length > 0;
+      elements.useBodyEditor.checked = hasRequestBody;
+      updateResolvedPathPreview(definition);
+      setEditorStatus(`${definition.method} ${definition.path} loaded`, 'ok');
+    }
+
+    function editorPathParams(definition, quiet = false) {
+      if (!elements.usePathEditor.checked) {
+        return { ok: true, value: definition.pathParams || {} };
+      }
+
+      const parsedPathParams = parseEditorJson(elements.pathEditor.value, 'Path params', {}, quiet);
+      if (!parsedPathParams.ok) return parsedPathParams;
+
+      if (!parsedPathParams.value || typeof parsedPathParams.value !== 'object' || Array.isArray(parsedPathParams.value)) {
+        if (!quiet) {
+          setEditorStatus('Path params must be a JSON object.', 'bad');
+        }
+        return { ok: false };
+      }
+
+      return parsedPathParams;
+    }
+
+    function resolveEditorPath(definition, quiet = false) {
+      const parsedPathParams = editorPathParams(definition, quiet);
+      if (!parsedPathParams.ok) return null;
+
+      try {
+        return {
+          path: resolvePath(definition.pathTemplate, parsedPathParams.value),
+          pathParams: parsedPathParams.value,
+        };
+      } catch (error) {
+        if (!quiet) {
+          setEditorStatus(error.message, 'bad');
+        }
+        return null;
+      }
+    }
+
+    function updateResolvedPathPreview(definition = buildEndpointRequest(elements.endpointSelect.value)) {
+      const resolved = resolveEditorPath(definition, true);
+      if (!resolved) {
+        elements.resolvedPathPreview.className = 'path-preview bad';
+        elements.resolvedPathPreview.textContent = `Resolved path: ${definition.pathTemplate}`;
+        return;
+      }
+
+      elements.resolvedPathPreview.className = 'path-preview';
+      elements.resolvedPathPreview.textContent = `Resolved path: ${resolved.path}`;
+    }
+
+    function editorRequestOptions(generatedOptions = {}) {
+      const options = {};
+
+      if (generatedOptions.headers) {
+        options.headers = generatedOptions.headers;
+      }
+
+      if (elements.useQueryEditor.checked) {
+        const parsedQuery = parseEditorJson(elements.queryEditor.value, 'Query params', {});
+        if (!parsedQuery.ok) return null;
+
+        if (!parsedQuery.value || typeof parsedQuery.value !== 'object' || Array.isArray(parsedQuery.value)) {
+          setEditorStatus('Query params must be a JSON object.', 'bad');
+          return null;
+        }
+
+        options.query = parsedQuery.value;
+      } else if (generatedOptions.query) {
+        options.query = generatedOptions.query;
+      }
+
+      if (elements.useBodyEditor.checked) {
+        const parsedBody = parseEditorJson(elements.bodyEditor.value, 'Body', undefined);
+        if (!parsedBody.ok) return null;
+        if (parsedBody.value !== undefined) {
+          options.body = parsedBody.value;
+        }
+      } else if (hasBody(generatedOptions)) {
+        options.body = generatedOptions.body;
+      }
+
+      setEditorStatus('Edited request is valid.', 'ok');
+      return options;
+    }
+
+    function formatEditors() {
+      const parsedPathParams = parseEditorJson(elements.pathEditor.value, 'Path params', {});
+      if (!parsedPathParams.ok) return;
+      if (!parsedPathParams.value || typeof parsedPathParams.value !== 'object' || Array.isArray(parsedPathParams.value)) {
+        setEditorStatus('Path params must be a JSON object.', 'bad');
+        return;
+      }
+
+      elements.pathEditor.value = pretty(parsedPathParams.value);
+
+      const parsedQuery = parseEditorJson(elements.queryEditor.value, 'Query params', {});
+      if (!parsedQuery.ok) return;
+      if (!parsedQuery.value || typeof parsedQuery.value !== 'object' || Array.isArray(parsedQuery.value)) {
+        setEditorStatus('Query params must be a JSON object.', 'bad');
+        return;
+      }
+
+      elements.queryEditor.value = pretty(parsedQuery.value);
+
+      if (elements.bodyEditor.value.trim()) {
+        const parsedBody = parseEditorJson(elements.bodyEditor.value, 'Body', undefined);
+        if (!parsedBody.ok) return;
+        elements.bodyEditor.value = pretty(parsedBody.value);
+      }
+
+      updateResolvedPathPreview();
+      setEditorStatus('JSON formatted.', 'ok');
+    }
+
+    async function sendSelectedRequest() {
+      const definition = buildEndpointRequest(elements.endpointSelect.value);
+      const resolved = resolveEditorPath(definition);
+      if (!resolved) return;
+
+      const options = editorRequestOptions(definition.options || {});
+      if (!options) return;
+      options.pathParams = resolved.pathParams;
+
+      if (definition.label === 'Stream Message') {
+        await streamChatMessage({ requestOptions: options, path: resolved.path });
+        return;
+      }
+
+      if (definition.label === 'POST Message') {
+        const message = typeof options.body?.message === 'string'
+          ? options.body.message.trim()
+          : '';
+        if (message) {
+          addTranscript('user', message, []);
+        }
+      }
+
+      await requestApi(definition.label, definition.method, resolved.path, options);
+    }
+
+    function setStatus(label, tone) {
+      elements.statusText.textContent = label;
+      elements.statusDot.className = `dot ${tone || ''}`.trim();
+    }
+
+    function statusClass(status) {
+      if (status >= 200 && status < 300) return 'ok';
+      if (status >= 400 && status < 500) return 'warn';
+      return 'bad';
+    }
+
+    function setLastStatus(record) {
+      const tone = statusClass(record.status);
+      elements.lastStatus.className = `badge ${tone}`;
+      elements.lastStatus.textContent = `${record.status} ${record.label}`;
+    }
+
+    function pretty(value) {
+      if (value === undefined) return '';
+      if (typeof value === 'string') return value;
+      return JSON.stringify(value, null, 2);
+    }
+
+    function escapeHtml(value) {
+      return `${value ?? ''}`.replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      })[char]);
+    }
+
+    function addTranscript(role, content, data) {
+      state.transcript.push({
+        role,
+        content: typeof content === 'string' ? content : pretty(content),
+        data,
+        at: new Date().toLocaleTimeString(),
+      });
+      renderTranscript();
+      updatePayloadPreview();
+    }
+
+    function renderTranscript() {
+      if (state.transcript.length === 0 && !state.streamDraft) {
+        elements.transcript.innerHTML = '<div class="empty">No chat messages yet.</div>';
+        return;
+      }
+
+      const rows = state.transcript.map(item => `
+        <article class="message ${escapeHtml(item.role)}">
+          <div class="role">
+            <span>${escapeHtml(item.role)}</span>
+            <span>${escapeHtml(item.at)}</span>
+          </div>
+          <div class="content">${escapeHtml(item.content)}</div>
+        </article>
+      `);
+
+      if (state.streamDraft) {
+        rows.push(`
+          <article class="message assistant">
+            <div class="role">
+              <span>assistant stream</span>
+              <span>live</span>
+            </div>
+            <div class="content">${escapeHtml(state.streamDraft)}</div>
+          </article>
+        `);
+      }
+
+      elements.transcript.innerHTML = rows.join('');
+      elements.transcript.parentElement.scrollTop = elements.transcript.parentElement.scrollHeight;
+    }
+
+    function renderSseLog() {
+      if (state.sseEvents.length === 0) {
+        elements.sseLog.textContent = 'No stream events.';
+        return;
+      }
+
+      elements.sseLog.textContent = state.sseEvents
+        .map(entry => `[${entry.at}] ${entry.event}\n${entry.data}`)
+        .join('\n\n');
+      elements.sseLog.scrollTop = elements.sseLog.scrollHeight;
+    }
+
+    function updatePayloadPreview() {
+      elements.payloadPreview.textContent = pretty(buildChatPayload());
+      elements.activeTarget.textContent = `Target: ${normalizeBaseUrl(elements.baseUrl.value)}`;
+    }
+
+    function responseChecks(record) {
+      const checks = [];
+      const body = record.parsed;
+
+      if (record.contentType.includes('application/json')) {
+        checks.push({ name: 'JSON body', passed: body !== undefined });
+      }
+
+      if (record.status >= 400 && body && typeof body === 'object') {
+        checks.push({
+          name: 'error/message field',
+          passed: Boolean(body.error || body.message || body.details || body.errors),
+        });
+      }
+
+      if (record.label === 'Suggestions' && record.status === 200) {
+        checks.push({ name: 'success=true', passed: body?.success === true });
+        checks.push({ name: 'suggestions array', passed: Array.isArray(body?.suggestions) });
+      }
+
+      if (record.label === 'All Chats' && record.status === 200) {
+        checks.push({ name: 'success=true', passed: body?.success === true });
+        checks.push({ name: 'chats array', passed: Array.isArray(body?.chats) });
+      }
+
+      if (record.label === 'History' && record.status === 200) {
+        checks.push({ name: 'messages array', passed: Array.isArray(body?.messages) });
+      }
+
+      if (record.label === 'Infinite History' && record.status === 200) {
+        checks.push({ name: 'pagination object', passed: Boolean(body?.pagination) });
+      }
+
+      if (record.label === 'Chat Greeting' && record.status === 200) {
+        checks.push({ name: 'null greeting accepted', passed: record.bodyText === 'null' });
+      }
+
+      return checks;
+    }
+
+    function addResponse(record) {
+      record.checks = responseChecks(record);
+      state.responses.unshift(record);
+      setLastStatus(record);
+      renderResponses();
+    }
+
+    function renderResponses() {
+      if (state.responses.length === 0) {
+        elements.responseLog.innerHTML = '<div class="empty">No API responses yet.</div>';
+        return;
+      }
+
+      elements.responseLog.innerHTML = state.responses.map((record, index) => {
+        const tone = statusClass(record.status);
+        const checks = record.checks.length
+          ? record.checks.map(item => `<span class="badge ${item.passed ? 'ok' : 'bad'}">${escapeHtml(item.name)}</span>`).join(' ')
+          : '<span class="badge">No data checks</span>';
+
+        return `
+          <article class="log-row ${tone}">
+            <div class="log-summary">
+              <div class="meta">
+                <span>${escapeHtml(record.method)} ${escapeHtml(record.path)}</span>
+                <span>${escapeHtml(record.duration)} ms</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <span class="badge ${tone}">${record.status}</span>
+                  <strong>${escapeHtml(record.label)}</strong>
+                  <span class="badge">${escapeHtml(record.contentType || 'no content-type')}</span>
+                </div>
+                <button class="secondary" type="button" data-toggle-detail="${index}">Details</button>
+              </div>
+              <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">${checks}</div>
+            </div>
+            <div class="log-detail" id="detail-${index}" hidden>
+              <pre>${escapeHtml(pretty({
+                url: record.url,
+                request: record.request,
+                response: {
+                  status: record.status,
+                  contentType: record.contentType,
+                  body: record.parsed ?? record.bodyText,
+                },
+                checks: record.checks,
+              }))}</pre>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    async function readResponseBody(response) {
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/pdf') || contentType.includes('application/octet-stream')) {
+        const buffer = await response.arrayBuffer();
+        return {
+          contentType,
+          bodyText: `<binary ${buffer.byteLength} bytes>`,
+          parsed: undefined,
+        };
+      }
+
+      const bodyText = await response.text();
+      let parsed;
+      if (contentType.includes('application/json') && bodyText) {
+        try {
+          parsed = JSON.parse(bodyText);
+        } catch {
+          parsed = undefined;
+        }
+      }
+
+      return { contentType, bodyText, parsed };
+    }
+
+    async function requestApi(label, method, path, options) {
+      const startedAt = performance.now();
+      const query = options?.query || {};
+      const body = options && Object.prototype.hasOwnProperty.call(options, 'body') ? options.body : undefined;
+      const url = apiUrl(path, query);
+      const request = {
+        pathParams: options?.pathParams || {},
+        query,
+        body,
+      };
+
+      setStatus(`${label} running`, '');
+
+      try {
+        const headers = {
+          Accept: 'application/json, text/event-stream, text/html, application/pdf, */*',
+          ...(options?.headers || {}),
+        };
+
+        const init = {
+          method,
+          headers,
+          credentials: 'include',
+        };
+
+        if (body !== undefined) {
+          headers['Content-Type'] = 'application/json';
+          init.body = JSON.stringify(body);
+        }
+
+        const response = await fetch(url, init);
+        const responseBody = await readResponseBody(response);
+        const record = {
+          label,
+          method,
+          path,
+          url: url.toString(),
+          request,
+          status: response.status,
+          duration: Math.round(performance.now() - startedAt),
+          ...responseBody,
+        };
+
+        if (responseBody.parsed?.chat_id) {
+          elements.chatId.value = responseBody.parsed.chat_id;
+          updatePayloadPreview();
+        }
+
+        if (label === 'POST Message' && responseBody.parsed) {
+          captureChatResponse(responseBody.parsed);
+        }
+
+        addResponse(record);
+        setStatus(`${label} ${response.status}`, statusClass(response.status));
+        return record;
+      } catch (error) {
+        const record = {
+          label,
+          method,
+          path,
+          url: url.toString(),
+          request,
+          status: 0,
+          duration: Math.round(performance.now() - startedAt),
+          contentType: 'fetch-error',
+          bodyText: error?.message || String(error),
+          parsed: undefined,
+          checks: [{ name: 'fetch completed', passed: false }],
+        };
+        state.responses.unshift(record);
+        renderResponses();
+        setLastStatus(record);
+        setStatus(`${label} failed`, 'bad');
+        return record;
+      }
+    }
+
+    function captureChatResponse(body) {
+      if (body.chat_id) {
+        elements.chatId.value = body.chat_id;
+      }
+
+      const answer = Array.isArray(body.answer) ? body.answer : [];
+      if (answer.length > 0) {
+        const text = answer
+          .map(item => typeof item.content === 'string' ? item.content : pretty(item.content))
+          .join('\n\n');
+        addTranscript('assistant', text, answer);
+      } else if (body.message) {
+        addTranscript('assistant', body.message, []);
+      }
+    }
+
+    function appendSse(event, data) {
+      state.sseEvents.push({
+        event,
+        data,
+        at: new Date().toLocaleTimeString(),
+      });
+      renderSseLog();
+    }
+
+    function parseSseBlock(block) {
+      const lines = block.split('\n');
+      let event = 'message';
+      let data = '';
+
+      lines.forEach(line => {
+        if (line.startsWith('event:')) {
+          event = line.slice(6).trim();
+        }
+        if (line.startsWith('data:')) {
+          data += line.slice(5).trim();
+        }
+      });
+
+      return { event, data };
+    }
+
+    function handleSse(event, data) {
+      appendSse(event, data);
+
+      let parsed;
+      try {
+        parsed = JSON.parse(data);
+      } catch {
+        parsed = undefined;
+      }
+
+      if (event === 'message') {
+        state.streamDraft += parsed?.content ?? data;
+        renderTranscript();
+      }
+
+      if (event === 'message-complete') {
+        const content = parsed?.message || parsed?.content || state.streamDraft;
+        const answer = Array.isArray(parsed?.answer) ? parsed.answer : [];
+        if (content || answer.length) {
+          addTranscript('assistant', content || pretty(answer), answer);
+        }
+        state.streamDraft = '';
+        renderTranscript();
+      }
+
+      if (event === 'done' && parsed?.chat_id) {
+        elements.chatId.value = parsed.chat_id;
+        updatePayloadPreview();
+      }
+
+      if (event === 'error') {
+        addTranscript('system', parsed?.message || data, []);
+        state.streamDraft = '';
+        renderTranscript();
+      }
+    }
+
+    async function streamChatMessage(config = {}) {
+      if (state.streamAbort) return;
+
+      const fromEditor = Boolean(config.requestOptions);
+      const editorOptions = config.requestOptions || {};
+      const query = fromEditor ? (editorOptions.query || {}) : { lang: settings().lang, source: settings().source };
+      const pathParams = fromEditor ? (editorOptions.pathParams || {}) : {};
+      const requestHasBody = fromEditor ? hasBody(editorOptions) : true;
+      const payload = fromEditor
+        ? (requestHasBody ? editorOptions.body : undefined)
+        : buildChatPayload(elements.message.value.trim());
+      const message = typeof payload?.message === 'string'
+        ? payload.message.trim()
+        : (fromEditor ? '' : elements.message.value.trim());
+      if (!fromEditor && !message) return;
+
+      if (message) {
+        addTranscript('user', message, []);
+      }
+      state.streamDraft = '';
+      state.sseEvents = [];
+      renderSseLog();
+
+      const streamPath = config.path || '/api/ai/message/stream';
+      const url = apiUrl(streamPath, query);
+      const startedAt = performance.now();
+      const controller = new AbortController();
+      state.streamAbort = controller;
+      elements.stopStream.disabled = false;
+      elements.streamMessage.disabled = true;
+      setStatus('Stream running', '');
+
+      let bodyText = '';
+      let status = 0;
+      let contentType = '';
+
+      try {
+        const headers = {
+          Accept: 'text/event-stream, application/json, */*',
+        };
+        const init = {
+          method: 'POST',
+          headers,
+          credentials: 'include',
+          signal: controller.signal,
+        };
+
+        if (requestHasBody) {
+          headers['Content-Type'] = 'application/json';
+          init.body = JSON.stringify(payload);
+        }
+
+        const response = await fetch(url, {
+          ...init,
+        });
+
+        status = response.status;
+        contentType = response.headers.get('content-type') || '';
+
+        if (!response.body || !response.ok || !contentType.includes('text/event-stream')) {
+          const responseBody = await readResponseBody(response);
+          addResponse({
+            label: 'Stream Message',
+            method: 'POST',
+            path: streamPath,
+            url: url.toString(),
+            request: { pathParams, query, body: payload },
+            status,
+            duration: Math.round(performance.now() - startedAt),
+            ...responseBody,
+          });
+          setStatus(`Stream ${status}`, statusClass(status));
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split('\n\n');
+          buffer = blocks.pop() || '';
+
+          blocks.forEach(block => {
+            if (!block.trim()) return;
+            const parsedBlock = parseSseBlock(block);
+            bodyText += `${block}\n\n`;
+            handleSse(parsedBlock.event, parsedBlock.data);
+          });
+        }
+
+        addResponse({
+          label: 'Stream Message',
+          method: 'POST',
+          path: streamPath,
+          url: url.toString(),
+          request: { pathParams, query, body: payload },
+          status,
+          duration: Math.round(performance.now() - startedAt),
+          contentType,
+          bodyText: bodyText || '<empty stream>',
+          parsed: undefined,
+        });
+        setStatus(`Stream ${status}`, statusClass(status));
+      } catch (error) {
+        if (error?.name !== 'AbortError') {
+          addTranscript('system', error?.message || String(error), []);
+          setStatus('Stream failed', 'bad');
+        } else {
+          setStatus('Stream stopped', 'warn');
+        }
+      } finally {
+        state.streamAbort = null;
+        state.streamDraft = '';
+        elements.stopStream.disabled = true;
+        elements.streamMessage.disabled = false;
+        renderTranscript();
+      }
+    }
+
+    function currentChatId() {
+      return elements.chatId.value.trim() || 'browser-test-chat';
+    }
+
+    function currentClientId() {
+      return elements.clientId.value.trim() || 'browser-test-client';
+    }
+
+    function installHandlers() {
+      ['baseUrl', 'clientId', 'chatId', 'country', 'provider', 'lang', 'source', 'message'].forEach(id => {
+        elements[id].addEventListener('input', () => {
+          updatePayloadPreview();
+          updateResolvedPathPreview();
+        });
+        elements[id].addEventListener('change', () => {
+          updatePayloadPreview();
+          updateResolvedPathPreview();
+        });
+      });
+
+      elements.applyCookie.addEventListener('click', () => {
+        const uuid = elements.uuidCookie.value.trim();
+        if (uuid) {
+          document.cookie = `uuid=${encodeURIComponent(uuid)}; path=/; SameSite=Lax`;
+        }
+        document.cookie = `client_id=${encodeURIComponent(currentClientId())}; path=/; SameSite=Lax`;
+        setStatus('Cookie set', 'ok');
+      });
+
+      elements.resetState.addEventListener('click', () => {
+        state.transcript = [];
+        state.sseEvents = [];
+        state.streamDraft = '';
+        elements.chatId.value = '';
+        renderTranscript();
+        renderSseLog();
+        updatePayloadPreview();
+        loadGeneratedRequest();
+      });
+
+      elements.clearTranscript.addEventListener('click', () => {
+        state.transcript = [];
+        state.streamDraft = '';
+        renderTranscript();
+        updatePayloadPreview();
+      });
+
+      elements.clearSse.addEventListener('click', () => {
+        state.sseEvents = [];
+        renderSseLog();
+      });
+
+      elements.clearLog.addEventListener('click', () => {
+        state.responses = [];
+        renderResponses();
+        elements.lastStatus.className = 'badge';
+        elements.lastStatus.textContent = 'No responses';
+      });
+
+      elements.copyPayload.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(elements.payloadPreview.textContent);
+        setStatus('Payload copied', 'ok');
+      });
+
+      elements.endpointSelect.addEventListener('change', () => loadGeneratedRequest());
+      elements.loadSelectedRequest.addEventListener('click', () => loadGeneratedRequest());
+      elements.sendSelectedRequest.addEventListener('click', sendSelectedRequest);
+      elements.formatEditors.addEventListener('click', formatEditors);
+
+      ['pathEditor', 'queryEditor', 'bodyEditor'].forEach(id => {
+        elements[id].addEventListener('input', () => {
+          setEditorStatus('Editor changed.', '');
+          updateResolvedPathPreview();
+        });
+      });
+
+      ['usePathEditor', 'useQueryEditor', 'useBodyEditor'].forEach(id => {
+        elements[id].addEventListener('change', () => {
+          setEditorStatus('Request override settings updated.', '');
+          updateResolvedPathPreview();
+        });
+      });
+
+      elements.sendMessage.addEventListener('click', async () => {
+        const message = elements.message.value.trim();
+        if (!message) return;
+        addTranscript('user', message, []);
+        await requestApi('POST Message', 'POST', '/api/ai/message', {
+          query: { lang: settings().lang, source: settings().source },
+          body: buildChatPayload(message),
+        });
+      });
+
+      elements.streamMessage.addEventListener('click', streamChatMessage);
+      elements.stopStream.addEventListener('click', () => {
+        if (state.streamAbort) state.streamAbort.abort();
+      });
+
+      elements.getSuggestions.addEventListener('click', () => requestApi('Suggestions', 'POST', '/api/ai/suggestions', {
+        query: { lang: settings().lang },
+        body: { params: { country: settings().country } },
+      }));
+
+      elements.getAllChats.addEventListener('click', () => requestApi('All Chats', 'POST', '/api/ai/chats', {
+        body: { client_id: currentClientId() },
+      }));
+
+      elements.getClientChats.addEventListener('click', () => requestApi('Client Chats', 'GET', `/api/ai/client/${encodeURIComponent(currentClientId())}/chats`));
+
+      elements.postClientChats.addEventListener('click', () => requestApi('Client Chats POST', 'POST', `/api/ai/client/${encodeURIComponent(currentClientId())}/chats`, {
+        body: { chat_id: currentChatId(), chat_name: 'Browser API test chat' },
+      }));
+
+      elements.getHistory.addEventListener('click', () => requestApi('History', 'POST', '/api/ai/history', {
+        body: { params: { chat_id: currentChatId() }, limit: settings().historyLimit, offset: 0 },
+      }));
+
+      elements.getInfiniteHistory.addEventListener('click', () => requestApi('Infinite History', 'POST', '/api/ai/history/infinite', {
+        body: { params: { chat_id: currentChatId(), limit: settings().historyLimit, offset: 0 } },
+      }));
+
+      elements.shareChat.addEventListener('click', () => requestApi('Share Chat', 'POST', `/api/ai/chats/share/${encodeURIComponent(currentChatId())}`, {
+        body: { is_public: true },
+      }));
+
+      elements.fetchView.addEventListener('click', () => requestApi('Fetch View', 'GET', `/api/view/chat/${encodeURIComponent(currentChatId())}`));
+      elements.fetchPdf.addEventListener('click', () => requestApi('Fetch PDF', 'GET', `/api/view/chat/${encodeURIComponent(currentChatId())}/pdf`));
+
+      elements.openView.addEventListener('click', () => {
+        window.open(apiUrl(`/api/view/chat/${encodeURIComponent(currentChatId())}`).toString(), '_blank', 'noopener');
+      });
+
+      elements.openPdf.addEventListener('click', () => {
+        window.open(apiUrl(`/api/view/chat/${encodeURIComponent(currentChatId())}/pdf`).toString(), '_blank', 'noopener');
+      });
+
+      elements.deleteChat.addEventListener('click', () => requestApi('Delete Chat', 'DELETE', `/api/ai/client/${encodeURIComponent(currentClientId())}/chats/${encodeURIComponent(currentChatId())}`));
+
+      elements.reportMessage.addEventListener('click', () => requestApi('Report Message', 'POST', '/api/ai/report', {
+        body: {
+          params: { chat_id: currentChatId() },
+          answer_index: 0,
+          message: 'Browser API test report',
+        },
+      }));
+
+      elements.reportOffer.addEventListener('click', () => requestApi('Report Offer', 'POST', '/api/ai/offers/report', {
+        body: {
+          offer_id: 'browser-test-offer',
+          description: 'Browser API test report',
+          client_id: currentClientId(),
+          chat_id: currentChatId(),
+        },
+      }));
+
+      elements.chatGreeting.addEventListener('click', () => requestApi('Chat Greeting', 'GET', '/api/chat-greeting'));
+
+      elements.responseLog.addEventListener('click', event => {
+        const button = event.target.closest('[data-toggle-detail]');
+        if (!button) return;
+        const detail = document.getElementById(`detail-${button.dataset.toggleDetail}`);
+        if (detail) detail.hidden = !detail.hidden;
+      });
+    }
+
+    function init() {
+      elements.baseUrl.value = window.location.origin;
+      installHandlers();
+      updatePayloadPreview();
+      loadGeneratedRequest();
+      renderTranscript();
+      renderResponses();
+      renderSseLog();
+    }
+
+    init();
+  </script>
+</body>
+</html>

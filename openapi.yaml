@@ -1,0 +1,771 @@
+openapi: 3.0.0
+info:
+  title: CREZU RAG API
+  version: 1.0.0
+  description: API documentation for CREZU RAG - AI-powered financial advisory platform
+  contact:
+    name: API Support
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://api.example.com
+    description: Production server
+
+tags:
+  - name: AI Inference
+    description: Chat and AI inference endpoints
+  - name: Configuration
+    description: Configuration and reference data endpoints
+  - name: Files
+    description: File management endpoints
+  - name: User Management
+    description: User profile and account endpoints
+  - name: Health
+    description: Health check endpoints
+  - name: Search
+    description: Search endpoints
+
+paths:
+  /api/ai/message:
+    post:
+      tags:
+        - AI Inference
+      summary: Send a message to the AI assistant
+      description: Process a user message and get AI response with safety checks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InferenceRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  chat_id:
+                    type: string
+                  messages:
+                    type: array
+        '400':
+          description: Invalid request
+        '500':
+          description: Server error
+
+  /api/ai/message/stream:
+    post:
+      tags:
+        - AI Inference
+      summary: Stream AI assistant response
+      description: Get streamed response from AI assistant with real-time updates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InferenceRequest'
+      responses:
+        '200':
+          description: Streaming response
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          description: Invalid request
+        '500':
+          description: Server error
+
+  /api/ai/chats:
+    post:
+      tags:
+        - AI Inference
+      summary: Get all chats
+      description: Retrieve list of all chats
+      responses:
+        '200':
+          description: List of chats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  chats:
+                    type: array
+
+  /api/ai/client/{client_id}/chats:
+    get:
+      tags:
+        - AI Inference
+      summary: Get chats for a specific client
+      description: Retrieve all chats belonging to a client (requires authentication)
+      parameters:
+        - name: client_id
+          in: path
+          required: true
+          description: The client ID
+          schema:
+            type: string
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: List of client chats
+        '401':
+          description: Unauthorized
+        '404':
+          description: Client not found
+    post:
+      tags:
+        - AI Inference
+      summary: Create or update chats for a client
+      description: Create new chats or update existing ones for a client (requires authentication)
+      parameters:
+        - name: client_id
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Operation successful
+        '401':
+          description: Unauthorized
+        '404':
+          description: Client not found
+
+  /api/ai/client/{client_id}/chats/{chat_id}:
+    delete:
+      tags:
+        - AI Inference
+      summary: Delete a specific chat
+      description: Delete a chat belonging to a client (requires authentication)
+      parameters:
+        - name: client_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: chat_id
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Chat deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '400':
+          description: Missing chat_id parameter
+        '401':
+          description: Unauthorized
+        '404':
+          description: Chat not found
+
+  /api/ai/history:
+    post:
+      tags:
+        - AI Inference
+      summary: Get chat history
+      description: Retrieve chat history for pagination
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chat_id:
+                  type: string
+                limit:
+                  type: number
+                offset:
+                  type: number
+      responses:
+        '200':
+          description: Chat history retrieved
+
+  /api/ai/history/infinite:
+    post:
+      tags:
+        - AI Inference
+      summary: Get infinite scroll chat history
+      description: Retrieve chat history with infinite scroll pagination
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Chat history retrieved
+
+  /api/ai/suggestions:
+    post:
+      tags:
+        - AI Inference
+      summary: Get chat suggestions
+      description: Get localized chat suggestions based on country
+      parameters:
+        - name: lang
+          in: query
+          description: Language code (optional)
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                params:
+                  type: object
+                  properties:
+                    country:
+                      type: number
+      responses:
+        '200':
+          description: Suggestions retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  suggestions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Suggestion'
+
+  /api/ai/report:
+    post:
+      tags:
+        - AI Inference
+      summary: Report a message
+      description: Report inappropriate messages from the AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Report submitted
+
+  /api/ai/offers/report:
+    post:
+      tags:
+        - AI Inference
+      summary: Report an offer
+      description: Report inappropriate offers presented to user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Offer report submitted
+
+  /api/config:
+    get:
+      tags:
+        - Configuration
+      summary: Get application configuration
+      description: Retrieve application configuration settings
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/countries:
+    get:
+      tags:
+        - Configuration
+      summary: Get list of countries
+      description: Retrieve all supported countries with their codes and IDs
+      responses:
+        '200':
+          description: Countries list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  countries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: number
+                        code:
+                          type: string
+                        name:
+                          type: string
+
+  /api/localization:
+    get:
+      tags:
+        - Configuration
+      summary: Get supported languages
+      description: Retrieve list of supported languages and localization options
+      responses:
+        '200':
+          description: Languages list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  languages:
+                    type: array
+                    items:
+                      type: object
+
+  /api/fields/industries:
+    get:
+      tags:
+        - Configuration
+      summary: Get employment industries
+      description: Retrieve list of employment industry options
+      responses:
+        '200':
+          description: Industries list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  industries:
+                    type: array
+                    items:
+                      type: object
+
+  /api/fields/income-types:
+    get:
+      tags:
+        - Configuration
+      summary: Get income types
+      description: Retrieve list of income type options
+      responses:
+        '200':
+          description: Income types list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  incomeTypes:
+                    type: array
+                    items:
+                      type: object
+
+  /api/offer:
+    get:
+      tags:
+        - Configuration
+      summary: Get offers
+      description: Retrieve available financial offers and products
+      responses:
+        '200':
+          description: Offers retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offers:
+                    type: array
+                    items:
+                      type: object
+
+  /api/files/list:
+    get:
+      tags:
+        - Files
+      summary: List uploaded files
+      description: Retrieve list of uploaded files (requires password authentication)
+      parameters:
+        - name: password
+          in: header
+          description: Password for file access
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Files list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        size:
+                          type: number
+                        uploadedAt:
+                          type: string
+        '401':
+          description: Unauthorized - invalid password
+
+  /api/files/upload:
+    post:
+      tags:
+        - Files
+      summary: Upload a file
+      description: Upload a file to the server (requires password authentication)
+      parameters:
+        - name: password
+          in: header
+          description: Password for file access
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  fileName:
+                    type: string
+        '400':
+          description: Invalid file or request
+        '401':
+          description: Unauthorized - invalid password
+        '413':
+          description: File too large
+
+  /api/health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Check if the API server is running and healthy
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['ok', 'healthy']
+
+  /api/health/mongo:
+    get:
+      tags:
+        - Health
+      summary: MongoDB health check
+      description: Check if MongoDB database connection is healthy
+      responses:
+        '200':
+          description: MongoDB is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['ok', 'healthy']
+
+  /api/client-id:
+    get:
+      tags:
+        - User Management
+      summary: Get client ID
+      description: Get or create a client ID based on cookie UUID
+      responses:
+        '200':
+          description: Client ID retrieved or created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clientId:
+                    type: string
+
+  /api/profile/data:
+    post:
+      tags:
+        - User Management
+      summary: Get user profile data
+      description: Retrieve user profile information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Profile data retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/trial/status:
+    get:
+      tags:
+        - User Management
+      summary: Get trial status
+      description: Check the current user's trial status (requires authentication)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Trial status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isTrialActive:
+                    type: boolean
+                  daysRemaining:
+                    type: number
+
+  /api/trial/eligible:
+    get:
+      tags:
+        - User Management
+      summary: Check trial eligibility
+      description: Check if user is eligible for trial (requires authentication)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Eligibility status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eligible:
+                    type: boolean
+
+  /api/trial/accept:
+    post:
+      tags:
+        - User Management
+      summary: Accept trial offer
+      description: Accept and activate trial for the user (requires authentication)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Trial accepted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /api/account-deletion/request:
+    post:
+      tags:
+        - User Management
+      summary: Request account deletion
+      description: Request deletion of user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Account deletion request submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /api/search:
+    get:
+      tags:
+        - Search
+      summary: Search
+      description: Perform a search query (GET method)
+      parameters:
+        - name: q
+          in: query
+          description: Search query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results retrieved
+    post:
+      tags:
+        - Search
+      summary: Search with body
+      description: Perform a search query (POST method)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                q:
+                  type: string
+      responses:
+        '200':
+          description: Search results retrieved
+
+components:
+  schemas:
+    ChatMessage:
+      type: object
+      properties:
+        index:
+          type: number
+        role:
+          type: string
+          enum: ['system', 'user', 'assistant']
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              content:
+                type: string
+
+    InferenceRequest:
+      type: object
+      required:
+        - message
+        - params
+      properties:
+        message:
+          type: string
+          description: The user message
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        params:
+          type: object
+          required:
+            - country
+          properties:
+            country:
+              oneOf:
+                - type: string
+                - type: number
+              description: Country code or ID
+            provider:
+              oneOf:
+                - type: string
+                - type: number
+            chat_id:
+              type: string
+            client_id:
+              type: string
+            is_guest_chat:
+              type: boolean
+            expflow:
+              type: string
+              nullable: true
+
+    Suggestion:
+      type: object
+      properties:
+        id:
+          type: number
+        title:
+          type: string
+        text:
+          type: string
+        prompt:
+          type: string
+        category:
+          type: string
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: auth
