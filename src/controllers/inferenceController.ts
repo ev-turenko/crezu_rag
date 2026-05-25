@@ -9,7 +9,7 @@ TODO:
 import { Request, Response } from 'express';
 import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
 import { ChatIntent, ChatRole, ContentDataType, DeepInfraModels, LLMProvider } from '../enums/enums.js';
-import { getSortedffersAndCategories, fetchOffersByIds, normalizeOfferForLLM, OriginalOfferData, getResponse } from '../utils/common.js';
+import { getSortedffersAndCategories, fetchOffersByIds, normalizeOfferForLLM, OriginalOfferData, getResponse, getFilteredOffersForCountry } from '../utils/common.js';
 import { marked } from 'marked';
 import z from 'zod';
 import { InferenceRequest } from '../types/types.js';
@@ -588,7 +588,7 @@ export async function processRequest(req: InferenceRequest, res: Response) {
         console.log("STEP 7 - Request received");
         console.log("DEBUG RECORD ", country)
 
-        const offersAndIntents = await getSortedffersAndCategories(country.code);
+        const offersAndIntents = await getFilteredOffersForCountry(country.code);
         const chatIntent = await AIModel.getIntent(chatWithId, [...offersAndIntents.types.map(el => `intent_${el}`), ChatIntent.OTHER, ChatIntent.FINANCIAL_ADVICE, ChatIntent.PRODUCT_COMPARISON]);
 
         console.log("STEP 8 - Request received", chatIntent);

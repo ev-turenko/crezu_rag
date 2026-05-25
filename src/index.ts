@@ -29,6 +29,7 @@ import profileRoutes from './routes/profileRoutes.js';
 import chatGreetingRoutes from './routes/chatGreetingRoutes.js';
 import trialRoutes from './routes/trialRoutes.js';
 import accountDeletionRoutes from './routes/accountDeletionRoutes.js';
+import configRoutesV2 from './routes/v2/configRoutesV2.js';
 
 
 dotenv.config();
@@ -75,6 +76,7 @@ app.use('/api/fields/industries', employmentIndustriesRoutes);
 app.use('/api/fields/income-types', incomeTypesRoutes);
 app.use('/api/offer', offersRoutes);
 app.use('/api/config', configRoutes)
+app.use('/api/v2/config', configRoutesV2)
 app.use('/api/countries', countriesRoutes);
 app.use('/api/localization', languagesRoutes);
 app.use('/api/view', viewChatRoutes);

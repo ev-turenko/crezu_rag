@@ -30,9 +30,14 @@
       box-sizing: border-box;
     }
 
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+    }
+
     body {
       margin: 0;
-      min-height: 100vh;
       background: var(--bg);
       color: var(--text);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -114,9 +119,11 @@
 
     .shell {
       display: grid;
-      grid-template-rows: auto auto 1fr;
+      grid-template-rows: auto auto minmax(0, 1fr);
       gap: 14px;
-      min-height: 100vh;
+      height: 100dvh;
+      min-height: 0;
+      overflow: hidden;
       padding: 18px;
     }
 
@@ -179,12 +186,18 @@
       gap: 10px;
       align-items: end;
       border-bottom: 1px solid var(--line);
+      min-width: 0;
       padding-bottom: 14px;
     }
 
     .settings-actions {
       display: flex;
       gap: 8px;
+      min-width: 0;
+    }
+
+    .settings-actions button {
+      flex: 1 1 0;
     }
 
     .main {
@@ -192,9 +205,12 @@
       grid-template-columns: minmax(360px, 0.94fr) minmax(420px, 1.06fr);
       gap: 14px;
       min-height: 0;
+      overflow: hidden;
     }
 
     .pane {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
       min-width: 0;
       min-height: 0;
       border: 1px solid var(--line);
@@ -219,7 +235,10 @@
 
     .pane-body {
       display: grid;
+      align-content: start;
       gap: 12px;
+      min-height: 0;
+      overflow: auto;
       padding: 12px;
     }
 
@@ -358,8 +377,9 @@
 
     .workspace {
       display: grid;
-      grid-template-rows: minmax(180px, 0.95fr) minmax(240px, 1.05fr);
+      grid-template-rows: minmax(0, 0.95fr) minmax(0, 1.05fr);
       gap: 14px;
+      height: 100%;
       min-height: 0;
     }
 
@@ -371,6 +391,7 @@
     .transcript,
     .log-list {
       display: grid;
+      align-content: start;
       gap: 10px;
       padding: 12px;
     }
@@ -416,10 +437,183 @@
       text-transform: none;
     }
 
+    .message .role > span,
+    .log-row .meta > span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
     .message .content {
-      white-space: pre-wrap;
-      word-break: break-word;
       line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .message .content.plain {
+      white-space: pre-wrap;
+    }
+
+    .rendered-content {
+      display: grid;
+      gap: 8px;
+    }
+
+    .rendered-content p {
+      margin: 0;
+    }
+
+    .rendered-content h1,
+    .rendered-content h2,
+    .rendered-content h3,
+    .rendered-content h4 {
+      margin: 4px 0 0;
+      line-height: 1.25;
+    }
+
+    .rendered-content h1 {
+      font-size: 18px;
+    }
+
+    .rendered-content h2 {
+      font-size: 16px;
+    }
+
+    .rendered-content h3,
+    .rendered-content h4 {
+      font-size: 14px;
+    }
+
+    .rendered-content ul,
+    .rendered-content ol {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    .rendered-content li + li {
+      margin-top: 3px;
+    }
+
+    .rendered-content a {
+      color: var(--accent);
+      font-weight: 650;
+    }
+
+    .rendered-content code {
+      border-radius: 4px;
+      background: rgba(16, 24, 40, 0.08);
+      padding: 1px 4px;
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.9em;
+    }
+
+    .rendered-content pre {
+      white-space: pre;
+    }
+
+    .rendered-content blockquote {
+      margin: 0;
+      border-left: 3px solid var(--line-strong);
+      padding-left: 10px;
+      color: var(--muted);
+    }
+
+    .structured-output {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .result-block {
+      display: grid;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      padding: 10px;
+    }
+
+    .result-type {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .offers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+    }
+
+    .offer-card {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .offer-card-head {
+      display: flex;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .offer-avatar {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      object-fit: contain;
+      background: #fff;
+    }
+
+    .offer-title {
+      min-width: 0;
+      font-weight: 750;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .offer-subtitle,
+    .offer-term {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .offer-headers {
+      display: grid;
+      gap: 5px;
+    }
+
+    .offer-header-row {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: 8px;
+      border-top: 1px solid var(--line);
+      padding-top: 6px;
+      font-size: 12px;
+    }
+
+    .offer-header-row strong,
+    .offer-header-row span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .offer-link {
+      justify-self: start;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 750;
+      text-decoration: none;
+    }
+
+    .offer-link:hover {
+      text-decoration: underline;
     }
 
     .empty {
@@ -465,6 +659,35 @@
       background: #fafbfc;
     }
 
+    .log-detail pre {
+      max-height: 360px;
+    }
+
+    .log-main {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .log-title {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .response-preview {
+      margin-top: 8px;
+    }
+
+    .response-preview pre {
+      max-height: 220px;
+      background: #fff;
+    }
+
     .badge {
       display: inline-flex;
       align-items: center;
@@ -505,12 +728,39 @@
     }
 
     @media (max-width: 1180px) {
+      html,
+      body {
+        height: auto;
+        overflow: auto;
+      }
+
+      .shell {
+        height: auto;
+        min-height: 100dvh;
+        overflow: visible;
+      }
+
       .settings {
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
       .main {
         grid-template-columns: 1fr;
+        overflow: visible;
+      }
+
+      .pane-body {
+        max-height: none;
+        overflow: visible;
+      }
+
+      .workspace {
+        height: auto;
+        grid-template-rows: minmax(280px, auto) minmax(340px, auto);
+      }
+
+      .workspace .pane {
+        min-height: 320px;
       }
     }
 
@@ -1248,6 +1498,162 @@
       })[char]);
     }
 
+    function isSafeHttpUrl(value) {
+      try {
+        const url = new URL(value);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    }
+
+    function renderInlineMarkdown(value) {
+      return escapeHtml(value)
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (_match, label, url) => {
+          if (!isSafeHttpUrl(url)) return label;
+          return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+        })
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    }
+
+    function renderMarkdown(content) {
+      const text = `${content ?? ''}`.trim();
+      if (!text) return '';
+
+      const blocks = text.split(/\n{2,}/);
+      return blocks.map(block => {
+        const lines = block.split('\n');
+        const heading = lines.length === 1 ? lines[0].match(/^(#{1,4})\s+(.+)$/) : null;
+        if (heading) {
+          const level = Math.min(heading[1].length, 4);
+          return `<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`;
+        }
+
+        if (lines.every(line => /^\s*[-*]\s+/.test(line))) {
+          const items = lines
+            .map(line => line.replace(/^\s*[-*]\s+/, ''))
+            .map(line => `<li>${renderInlineMarkdown(line)}</li>`)
+            .join('');
+          return `<ul>${items}</ul>`;
+        }
+
+        if (lines.every(line => /^\s*\d+\.\s+/.test(line))) {
+          const items = lines
+            .map(line => line.replace(/^\s*\d+\.\s+/, ''))
+            .map(line => `<li>${renderInlineMarkdown(line)}</li>`)
+            .join('');
+          return `<ol>${items}</ol>`;
+        }
+
+        if (lines.every(line => /^\s*>\s?/.test(line))) {
+          const quote = lines.map(line => line.replace(/^\s*>\s?/, '')).join('\n');
+          return `<blockquote>${renderInlineMarkdown(quote).replace(/\n/g, '<br>')}</blockquote>`;
+        }
+
+        return `<p>${renderInlineMarkdown(block).replace(/\n/g, '<br>')}</p>`;
+      }).join('');
+    }
+
+    function answerItems(body) {
+      if (Array.isArray(body?.answer)) return body.answer;
+      if (Array.isArray(body?.data)) return body.data;
+      return [];
+    }
+
+    function answerText(items) {
+      return items
+        .map(item => {
+          if (typeof item === 'string') return item;
+          if (!item || item.type === 'app_offers') return '';
+          if (typeof item.content === 'string') return item.content;
+          if (item.content !== undefined) return pretty(item.content);
+          return '';
+        })
+        .filter(Boolean)
+        .join('\n\n');
+    }
+
+    function renderDataItem(item) {
+      if (!item || typeof item !== 'object') return '';
+
+      if (item.type === 'app_offers') {
+        const offers = Array.isArray(item.content) ? item.content : [];
+        if (offers.length === 0) {
+          return `
+            <section class="result-block">
+              <div class="result-type">App offers</div>
+              <div class="empty">No offers available.</div>
+            </section>
+          `;
+        }
+
+        return `
+          <section class="result-block">
+            <div class="result-type">App offers</div>
+            <div class="offers-grid">
+              ${offers.map(renderOfferCard).join('')}
+            </div>
+          </section>
+        `;
+      }
+
+      if (item.type && item.content !== undefined && typeof item.content !== 'string') {
+        return `
+          <section class="result-block">
+            <div class="result-type">${escapeHtml(item.type)}</div>
+            <pre>${escapeHtml(pretty(item.content))}</pre>
+          </section>
+        `;
+      }
+
+      return '';
+    }
+
+    function renderOfferCard(offer) {
+      if (!offer || typeof offer !== 'object') {
+        return `<article class="offer-card"><pre>${escapeHtml(pretty(offer))}</pre></article>`;
+      }
+
+      const title = offer.name || offer.title || `Offer #${offer.id ?? offer.offer_id ?? '-'}`;
+      const bank = typeof offer.bank === 'object' ? offer.bank?.name : offer.bank;
+      const avatar = offer.avatar || offer.logo || offer.image;
+      const headers = Array.isArray(offer.headers) ? offer.headers : [];
+      const url = offer.url && isSafeHttpUrl(offer.url) ? offer.url : '';
+
+      return `
+        <article class="offer-card">
+          <div class="offer-card-head">
+            ${avatar && isSafeHttpUrl(avatar) ? `<img class="offer-avatar" src="${escapeHtml(avatar)}" alt="">` : ''}
+            <div>
+              <div class="offer-title">${escapeHtml(title)}</div>
+              ${bank ? `<div class="offer-subtitle">Bank: ${escapeHtml(bank)}</div>` : ''}
+            </div>
+          </div>
+          ${headers.length ? `
+            <div class="offer-headers">
+              ${headers.map(header => `
+                <div class="offer-header-row">
+                  <span>${escapeHtml(header.title || header.name || '')}</span>
+                  <div>
+                    <strong>${escapeHtml(header.value ?? '')}</strong>
+                    ${header.additional_term ? `<div class="offer-term">${escapeHtml(header.additional_term)}</div>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+          ${url ? `<a class="offer-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open offer</a>` : ''}
+        </article>
+      `;
+    }
+
+    function renderStructuredData(data) {
+      const items = Array.isArray(data) ? data.map(renderDataItem).filter(Boolean) : [];
+      return items.length ? `<div class="structured-output">${items.join('')}</div>` : '';
+    }
+
     function addTranscript(role, content, data) {
       state.transcript.push({
         role,
@@ -1271,7 +1677,10 @@
             <span>${escapeHtml(item.role)}</span>
             <span>${escapeHtml(item.at)}</span>
           </div>
-          <div class="content">${escapeHtml(item.content)}</div>
+          <div class="content ${item.role === 'user' ? 'plain' : 'rendered-content'}">
+            ${item.role === 'user' ? escapeHtml(item.content) : renderMarkdown(item.content)}
+          </div>
+          ${renderStructuredData(item.data)}
         </article>
       `);
 
@@ -1282,7 +1691,7 @@
               <span>assistant stream</span>
               <span>live</span>
             </div>
-            <div class="content">${escapeHtml(state.streamDraft)}</div>
+            <div class="content rendered-content">${renderMarkdown(state.streamDraft)}</div>
           </article>
         `);
       }
@@ -1355,6 +1764,15 @@
       renderResponses();
     }
 
+    function responsePreview(record) {
+      const body = record.parsed ?? record.bodyText;
+      if (body === undefined || body === null || body === '') {
+        return '<div class="empty">Empty response body.</div>';
+      }
+
+      return `<pre>${escapeHtml(pretty(body))}</pre>`;
+    }
+
     function renderResponses() {
       if (state.responses.length === 0) {
         elements.responseLog.innerHTML = '<div class="empty">No API responses yet.</div>';
@@ -1374,8 +1792,8 @@
                 <span>${escapeHtml(record.method)} ${escapeHtml(record.path)}</span>
                 <span>${escapeHtml(record.duration)} ms</span>
               </div>
-              <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <div class="log-main">
+                <div class="log-title">
                   <span class="badge ${tone}">${record.status}</span>
                   <strong>${escapeHtml(record.label)}</strong>
                   <span class="badge">${escapeHtml(record.contentType || 'no content-type')}</span>
@@ -1383,6 +1801,7 @@
                 <button class="secondary" type="button" data-toggle-detail="${index}">Details</button>
               </div>
               <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">${checks}</div>
+              <div class="response-preview">${responsePreview(record)}</div>
             </div>
             <div class="log-detail" id="detail-${index}" hidden>
               <pre>${escapeHtml(pretty({
@@ -1507,12 +1926,10 @@
         elements.chatId.value = body.chat_id;
       }
 
-      const answer = Array.isArray(body.answer) ? body.answer : [];
-      if (answer.length > 0) {
-        const text = answer
-          .map(item => typeof item.content === 'string' ? item.content : pretty(item.content))
-          .join('\n\n');
-        addTranscript('assistant', text, answer);
+      const answer = answerItems(body);
+      const text = answerText(answer);
+      if (text || answer.length > 0) {
+        addTranscript('assistant', text || body.message || '', answer);
       } else if (body.message) {
         addTranscript('assistant', body.message, []);
       }
@@ -1561,9 +1978,9 @@
 
       if (event === 'message-complete') {
         const content = parsed?.message || parsed?.content || state.streamDraft;
-        const answer = Array.isArray(parsed?.answer) ? parsed.answer : [];
+        const answer = answerItems(parsed);
         if (content || answer.length) {
-          addTranscript('assistant', content || pretty(answer), answer);
+          addTranscript('assistant', content || answerText(answer), answer);
         }
         state.streamDraft = '';
         renderTranscript();

@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import axios from 'axios';
 import { DeepInfraModels, DeepSeekModels, LLMProvider } from '../enums/enums.js';
 import z from 'zod';
 import { getAiProvider } from '../models/AiModel.js';
@@ -238,7 +239,7 @@ const OFFER_PID_BY_COUNTRY: Record<string, string> = {
   se: '7878',
 };
 
-function withCountryPid(urlValue: string, countryCode: string): string {
+export function withCountryPid(urlValue: string, countryCode: string): string {
   const pid = OFFER_PID_BY_COUNTRY[countryCode.toLowerCase()];
   if (!pid || !urlValue) {
     return urlValue;
@@ -284,6 +285,158 @@ export function normalizeOfferForLLM(originalData: OriginalOfferData): string {
   }
 
   return JSON.stringify(normalized, null, 2);
+}
+
+// ---------------------------------------------------------------------------
+// CDN feed (cdn.crezu.net) – used for new countries
+// ---------------------------------------------------------------------------
+
+export type CDNOfferRaw = {
+  offer_id: number;
+  name: string;
+  product_type?: string;
+  link: string;
+  image?: string;
+  image_circle?: string;
+  tags?: string[];
+  buttonText?: string;
+  field1_header?: string; field1_value?: string;
+  field2_header?: string; field2_value?: string;
+  field3_header?: string; field3_value?: string;
+  field4_header?: string; field4_value?: string;
+  field5_header?: string; field5_value?: string;
+  field6_header?: string; field6_value?: string;
+  [key: string]: unknown;
+};
+
+// Countries whose offers come from the CDN feed, not from finmatcher.
+export const CDN_FEED_COUNTRIES = new Set(['co', 'de', 'lk', 'my', 'pe', 'vn', 'za', 'ph', 'ua']);
+
+// One or more feed URLs per country.
+// Ukraine has two language-specific feeds; both are fetched and deduplicated.
+const CDN_FEED_URLS: Record<string, string[]> = {
+  co: ['https://cdn.crezu.net/offers_data/configs/co_feed.json'],
+  de: ['https://cdn.crezu.net/offers_data/configs/de_feed.json'],
+  lk: ['https://cdn.crezu.net/offers_data/configs/lk_feed.json'],
+  my: ['https://cdn.crezu.net/offers_data/configs/my_feed.json'],
+  pe: ['https://cdn.crezu.net/offers_data/configs/pe_feed.json'],
+  vn: ['https://cdn.crezu.net/offers_data/configs/vn_feed.json'],
+  za: ['https://cdn.crezu.net/offers_data/configs/za_feed.json'],
+  ph: ['https://cdn.crezu.net/offers_data/configs/ph_feed.json'],
+  ua: [
+    'https://cdn.crezu.net/offers_data/configs/ua_ua_feed.json',
+    'https://cdn.crezu.net/offers_data/configs/ua_ru_feed.json',
+  ],
+};
+
+// SL lead_ids per country – leave empty until configured.
+const CDN_LEAD_IDS: Record<string, string> = {
+  co: '', de: '', lk: '', my: '', pe: '', vn: '', za: '', ph: '', ua: '',
+};
+
+function mapCDNProductType(raw: string | undefined): string {
+  if (!raw) return 'fast_loan';
+  const l = raw.toLowerCase();
+  if (l.includes('credit_card') || l.includes('credit card')) return 'credit_card';
+  if (l.includes('debit')) return 'debit_card';
+  return 'fast_loan';
+}
+
+function buildCDNHeaders(o: CDNOfferRaw): Array<{ title: string; value?: string }> {
+  const pairs: [string | undefined, string | undefined][] = [
+    [o.field1_header, o.field1_value],
+    [o.field2_header, o.field2_value],
+    [o.field3_header, o.field3_value],
+    [o.field4_header, o.field4_value],
+    [o.field5_header, o.field5_value],
+    [o.field6_header, o.field6_value],
+  ];
+  return pairs
+    .filter(([h, v]) => h?.trim() && v?.trim())
+    .map(([h, v]) => ({ title: h!, value: v! }));
+}
+
+function buildCDNParameters(o: CDNOfferRaw): Array<{ offer_parameters: Array<{ tech_id?: string; name: string; verbose_value: string }> }> {
+  const pairs: [string | undefined, string | undefined][] = [
+    [o.field1_header, o.field1_value],
+    [o.field2_header, o.field2_value],
+    [o.field3_header, o.field3_value],
+    [o.field4_header, o.field4_value],
+    [o.field5_header, o.field5_value],
+    [o.field6_header, o.field6_value],
+  ];
+  const params = pairs
+    .filter(([h, v]) => h?.trim() && v?.trim())
+    .map(([h, v], i) => ({ tech_id: `field${i + 1}`, name: h!, verbose_value: v! }));
+  return params.length ? [{ offer_parameters: params }] : [];
+}
+
+export function cdnOfferToOriginal(offer: CDNOfferRaw, countryCode: string, clientId = ''): OriginalOfferData {
+  // Replace {time} / {val} placeholders inline (same logic as processOffer)
+  let field2v = typeof offer.field2_value === 'string' ? offer.field2_value : '';
+  let field4v = typeof offer.field4_value === 'string' ? offer.field4_value : '';
+  if (field2v.includes('{time}')) field2v = field2v.replace('{time}', String(getRandomNumber(5, 25)));
+  if (field4v.includes('{val}'))  field4v = field4v.replace('{val}',  String(getRandomNumber(90, 99)));
+
+  const processed: CDNOfferRaw = { ...offer, field2_value: field2v, field4_value: field4v };
+  const url = (offer.link ?? '').replace('{LEAD_ID}', clientId);
+
+  return {
+    id: offer.offer_id,
+    name: offer.name,
+    offer_type: { type: mapCDNProductType(offer.product_type) },
+    country: { country_code: countryCode },
+    url,
+    bank: { name: offer.name, website: '' },
+    avatar: offer.image_circle || offer.image || '',
+    tags: Array.isArray(offer.tags) ? offer.tags : [],
+    headers: buildCDNHeaders(processed),
+    offer_parameter_categories: buildCDNParameters(processed),
+    rpc: 0,
+    button_text: typeof offer.buttonText === 'string' ? offer.buttonText : null,
+  };
+}
+
+export async function fetchOffersFromCDNFeed(countryCode: string, clientId = ''): Promise<OriginalOfferData[]> {
+  const cc = countryCode.toLowerCase();
+  if (!CDN_FEED_COUNTRIES.has(cc)) return [];
+
+  const feedUrls = CDN_FEED_URLS[cc] ?? [];
+  if (feedUrls.length === 0) return [];
+
+  const leadId = CDN_LEAD_IDS[cc] ?? '';
+
+  try {
+    // Fetch all feed URLs in parallel and deduplicate by offer_id
+    const allRaw = await Promise.all(
+      feedUrls.map(async (configURL) => {
+        if (leadId) {
+          const ordered = await getOrderedOffers({
+            slParams: { lead_id: leadId, page: 'offers', direction: 'swap' },
+            feedParams: { configURL },
+          });
+          if (ordered) return ordered as CDNOfferRaw[];
+        }
+        return await getJSONConfig({ configURL }) as CDNOfferRaw[];
+      })
+    );
+
+    // Flatten and deduplicate by offer_id (first occurrence wins)
+    const seen = new Set<number>();
+    const merged: CDNOfferRaw[] = [];
+    for (const batch of allRaw) {
+      for (const offer of batch) {
+        if (!seen.has(offer.offer_id)) {
+          seen.add(offer.offer_id);
+          merged.push(offer);
+        }
+      }
+    }
+
+    return merged.map(o => cdnOfferToOriginal(o, cc, clientId));
+  } catch {
+    return [];
+  }
 }
 
 export async function getSortedffersAndCategories(countryCode: string = 'mx'): Promise<{ offers: OriginalOfferData[]; types: string[] }> {
@@ -442,32 +595,126 @@ export async function getResponse(
 }
 
 export const countries = [
-  {
-    code: 'mx',
-    id: 2,
-    lang: 'es-mx'
-  },
-  {
-    code: 'es',
-    id: 1,
-    lang: 'es-es'
-  },
-  {
-    code: 'pl',
-    id: 14,
-    lang: 'pl'
-  },
-  {
-    code: 'ro',
-    id: 12,
-    lang: 'ro'
-  },
-  {
-    code: 'se',
-    id: 22,
-    lang: 'se'
-  }
+  { code: 'mx', id: 2,   lang: 'es-mx' },
+  { code: 'es', id: 1,   lang: 'es-es' },
+  { code: 'pl', id: 14,  lang: 'pl'    },
+  { code: 'ro', id: 12,  lang: 'ro'    },
+  { code: 'se', id: 22,  lang: 'se'    },
+  // New countries
+  { code: 'co', id: 100, lang: 'es-co' },
+  { code: 'de', id: 101, lang: 'de'    },
+  { code: 'kz', id: 102, lang: 'ru'    },
+  { code: 'lk', id: 103, lang: 'en'    },
+  { code: 'my', id: 104, lang: 'ms'    },
+  { code: 'pe', id: 105, lang: 'es-pe' },
+  { code: 'ph', id: 106, lang: 'en'    },
+  { code: 'ua', id: 107, lang: 'uk'    },
+  { code: 'vn', id: 108, lang: 'vi'    },
+  { code: 'za', id: 109, lang: 'en'    },
 ]
+
+// Offer types considered "bank cards" – excluded for new countries (except RO).
+export const BANK_CARD_OFFER_TYPES = new Set(['credit_card', 'debit_card', 'bank_card']);
+
+// New countries that should not show bank-card offers.
+export const COUNTRIES_WITHOUT_BANK_CARDS = new Set([
+  'co', 'de', 'kz', 'lk', 'my', 'pe', 'ph', 'ua', 'vn', 'za',
+]);
+
+export async function getFilteredOffersForCountry(countryCode: string): Promise<{ offers: OriginalOfferData[]; types: string[] }> {
+  const result = await getSortedffersAndCategories(countryCode);
+  if (COUNTRIES_WITHOUT_BANK_CARDS.has(countryCode.toLowerCase())) {
+    result.offers = result.offers.filter(
+      o => !BANK_CARD_OFFER_TYPES.has(o.offer_type?.type?.toLowerCase())
+    );
+    result.types = [...new Set(result.offers.map(o => o.offer_type?.type))] as string[];
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// getOrderedOffers – SL-feed ordering + JSON config fetching
+// ---------------------------------------------------------------------------
+
+export type SlParams = {
+  lead_id?: string;
+  custom_endpoint?: string;
+  [key: string]: string | undefined;
+};
+
+export type FeedParams = {
+  configURL: string;
+};
+
+export type OrderedOffersItem = {
+  offer_id: number;
+  [key: string]: unknown;
+};
+
+type OrderedOffersInput = {
+  slParams: SlParams;
+  feedParams: FeedParams;
+};
+
+export const getSLConfig = (slParams: SlParams): Promise<number[]> => {
+  return new Promise((resolve, reject) => {
+    const endpoint = slParams.custom_endpoint || 'https://sl.crezu.com/sl-feed';
+    const paramsToExclude = ['custom_endpoint'];
+    const queryParams: [string, string | undefined][] = Object.entries(slParams).filter(
+      ([key]) => !paramsToExclude.includes(key)
+    );
+    const queryString = queryParams.join('&').split(',').join('=');
+    axios({
+      method: 'GET',
+      url: `${endpoint}?${queryString}`,
+      headers: { 'Content-Type': 'application/json' },
+    })
+      .then(response => resolve(response.data))
+      .catch(() => reject());
+  });
+};
+
+export const getJSONConfig = (feedParams: FeedParams): Promise<OrderedOffersItem[]> => {
+  return new Promise((resolve, reject) => {
+    axios({
+      method: 'GET',
+      url: feedParams.configURL,
+      headers: { 'Content-Type': 'application/json' },
+    })
+      .then(response => resolve(response.data))
+      .catch(e => reject(e));
+  });
+};
+
+export const sortOffers = (slOrder: number[], offers: OrderedOffersItem[]): OrderedOffersItem[] => {
+  const result: OrderedOffersItem[] = [];
+  slOrder.forEach(sl => {
+    offers.forEach(offer => {
+      if (sl === offer.offer_id) {
+        result.push(offer);
+      }
+    });
+  });
+  return result;
+};
+
+export const getOrderedOffers = async ({ slParams, feedParams }: OrderedOffersInput): Promise<OrderedOffersItem[] | null> => {
+  if (!slParams.lead_id && !slParams.custom_endpoint) {
+    console.error('you should pass slParams.lead_id');
+    return null;
+  }
+  if (!feedParams.configURL) {
+    console.error('you should pass feedParams.configURL');
+    return null;
+  }
+  try {
+    const slOrder = await getSLConfig(slParams);
+    const offers = await getJSONConfig(feedParams);
+    return sortOffers(slOrder, offers);
+  } catch {
+    return null;
+  }
+};
 
 
 export const dateGroups = {

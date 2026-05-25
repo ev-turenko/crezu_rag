@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import { ChatRole, ContentDataType, DeepInfraModels, DeepSeekModels, LLMProvider } from '../enums/enums.js';
-import { fetchOffersByIds, getResponse, getSortedffersAndCategories, normalizeOfferForLLM, OriginalOfferData, countries, escapeFilterValue } from '../utils/common.js';
+import { fetchOffersByIds, getResponse, getSortedffersAndCategories, normalizeOfferForLLM, OriginalOfferData, countries, escapeFilterValue, BANK_CARD_OFFER_TYPES, COUNTRIES_WITHOUT_BANK_CARDS, CDN_FEED_COUNTRIES, fetchOffersFromCDNFeed, withCountryPid } from '../utils/common.js';
 import { AIModel, getAiProvider } from '../models/AiModel.js';
 import { InferenceRequest } from '../types/types.js';
 import PocketBase from 'pocketbase';
@@ -301,11 +301,34 @@ async function toolFetchTopRpcOffers(args: Record<string, unknown>, context: Str
     const code = resolveCountryCode(args.country ?? getNested(context.body, 'params.country'));
     const limit = clampNumber(args.limit, 1, 200, 50);
 
-    const { offers } = await getSortedffersAndCategories(code);
-    const top = offers.slice(0, limit);
+    let offers: OriginalOfferData[];
+    let source: string;
 
-    context.pipeline.rawOffers = offers; // keep full list available for relevance filtering
+    if (CDN_FEED_COUNTRIES.has(code.toLowerCase())) {
+        const params = toRecord(context.body.params);
+        const clientId = typeof params.client_id === 'string' ? params.client_id.trim() : '';
+        offers = await fetchOffersFromCDNFeed(code, clientId);
+        source = 'cdn';
+    } else {
+        const { offers: allOffers } = await getSortedffersAndCategories(code);
+        const bankCardFiltered = COUNTRIES_WITHOUT_BANK_CARDS.has(code.toLowerCase());
+        offers = bankCardFiltered
+            ? allOffers.filter(o => !BANK_CARD_OFFER_TYPES.has(o.offer_type?.type?.toLowerCase()))
+            : allOffers;
+        source = 'finmatcher';
+    }
+
+    const top = offers.slice(0, limit);
+    context.pipeline.rawOffers = offers;
     context.pipeline.countryCode = code;
+
+    console.log('[TOOL] fetch_top_rpc_offers', {
+        country: code,
+        source,
+        total: offers.length,
+        limit,
+        top_offers: top.map(o => ({ id: o.id, name: o.name, type: o.offer_type?.type ?? '' })),
+    });
 
     return {
         count: top.length,
@@ -326,8 +349,16 @@ async function toolFetchRelevantOffers(args: Record<string, unknown>, context: S
     // Re-use raw offers already loaded by tool 1, or fetch them now
     let rawOffers = context.pipeline.rawOffers;
     if (rawOffers.length === 0) {
-        const result = await getSortedffersAndCategories(code);
-        rawOffers = result.offers;
+        if (CDN_FEED_COUNTRIES.has(code.toLowerCase())) {
+            const params = toRecord(context.body.params);
+            const clientId = typeof params.client_id === 'string' ? params.client_id.trim() : '';
+            rawOffers = await fetchOffersFromCDNFeed(code, clientId);
+        } else {
+            const result = await getSortedffersAndCategories(code);
+            rawOffers = COUNTRIES_WITHOUT_BANK_CARDS.has(code.toLowerCase())
+                ? result.offers.filter(o => !BANK_CARD_OFFER_TYPES.has(o.offer_type?.type?.toLowerCase()))
+                : result.offers;
+        }
         context.pipeline.rawOffers = rawOffers;
         context.pipeline.countryCode = code;
     }
@@ -338,10 +369,25 @@ async function toolFetchRelevantOffers(args: Record<string, unknown>, context: S
         '';
 
     if (!userIntentSummary) {
-        // No intent – fall back to top-20 by RPC
+        console.log('[TOOL] fetch_relevant_offers – no intent, falling back to top-20 by RPC');
         const top20 = rawOffers.slice(0, 20);
-        const details = await fetchOffersByIds(top20.map(o => o.id), code);
-        context.pipeline.combinedOfferDetails = details as FetchedOffer[];
+        const rawMap = new Map(rawOffers.map(o => [o.id, o]));
+        const details: FetchedOffer[] = top20
+            .map(o => rawMap.get(o.id))
+            .filter((o): o is OriginalOfferData => Boolean(o))
+            .map(o => ({
+                id: o.id,
+                name: o.name,
+                url: withCountryPid(o.url, code),
+                avatar: o.avatar,
+                headers: o.headers,
+                button_text: null,
+            }));
+        context.pipeline.combinedOfferDetails = details;
+        console.log('[TOOL] fetch_relevant_offers result (no-intent fallback)', {
+            ids: top20.map(o => o.id),
+            names: details.map(o => o.name),
+        });
         return details;
     }
 
@@ -349,6 +395,13 @@ async function toolFetchRelevantOffers(args: Record<string, unknown>, context: S
     const availableTypes = explicitType
         ? [explicitType]
         : Array.from(new Set(rawOffers.map(o => normalizeOfferType(o.offer_type?.type)).filter(Boolean))) as string[];
+
+    console.log('[TOOL] fetch_relevant_offers', {
+        country: code,
+        user_intent: userIntentSummary,
+        offer_types_to_score: availableTypes,
+        raw_pool_size: rawOffers.length,
+    });
 
     const idToRpc = new Map<number, number>(rawOffers.map(o => [o.id, o.rpc ?? 0]));
 
@@ -364,8 +417,35 @@ async function toolFetchRelevantOffers(args: Record<string, unknown>, context: S
         .sort((a, b) => (idToRpc.get(b) ?? 0) - (idToRpc.get(a) ?? 0))
         .slice(0, 30);
 
-    const details = await fetchOffersByIds(combinedIds, code);
-    context.pipeline.combinedOfferDetails = details as FetchedOffer[];
+    console.log('[TOOL] fetch_relevant_offers – AI-scored IDs vs top-RPC merge', {
+        ai_relevant_ids: Array.from(relevantIds),
+        top_rpc_ids: topRpcIds,
+        combined_ids_after_merge: combinedIds,
+    });
+
+    // For all countries (CDN and finmatcher), look up offers from the already-fetched
+    // rawOffers map instead of making per-ID HTTP requests back to finmatcher.
+    // withCountryPid is a no-op for CDN countries (no entry in OFFER_PID_BY_COUNTRY).
+    const rawMap = new Map(rawOffers.map(o => [o.id, o]));
+    const details: FetchedOffer[] = combinedIds
+        .map(id => rawMap.get(id))
+        .filter((o): o is OriginalOfferData => Boolean(o))
+        .map(o => ({
+            id: o.id,
+            name: o.name,
+            url: withCountryPid(o.url, code),
+            avatar: o.avatar,
+            headers: o.headers,
+            button_text: (o as Record<string, unknown>).button_text as null ?? null,
+        }));
+
+    context.pipeline.combinedOfferDetails = details;
+
+    console.log('[TOOL] fetch_relevant_offers – fetched offer details', {
+        count: details.length,
+        offers: details.map(o => ({ id: o.id, name: o.name })),
+    });
+
     return details;
 }
 
@@ -396,6 +476,14 @@ async function toolReasonBestOffers(args: Record<string, unknown>, context: Stre
         (typeof context.body.message === 'string' && (context.body.message as string).trim()) ||
         '';
 
+    console.log('[TOOL] reason_best_offers – input', {
+        candidate_count: offers.length,
+        candidate_offers: offers.map(o => ({ id: o.id, name: o.name })),
+        user_intent: userIntent,
+        limit,
+        include_links: includeLinks,
+    });
+
     const { markdown, rankedOffers } = await reasonBestOffersWithAI(
         offers,
         context.pipeline.rawOffers,
@@ -404,7 +492,11 @@ async function toolReasonBestOffers(args: Record<string, unknown>, context: Stre
         includeLinks
     );
 
-    console.log('Reasoning tool output:', { markdown, rankedOfferIds: rankedOffers.map(o => o.offer.id) });
+    console.log('[TOOL] reason_best_offers – output', {
+        ranked_offer_ids: rankedOffers.map(o => o.offer.id),
+        ranked_offer_names: rankedOffers.map(o => o.offer.name),
+        markdown_length: markdown.length,
+    });
 
     context.pipeline.reasonedOffers = rankedOffers;
 
@@ -432,7 +524,6 @@ async function toolFormatAppOffers(args: Record<string, unknown>, context: Strea
         : context.pipeline.combinedOfferDetails;
 
     const subParams = context.pipeline.attributionSubParams;
-    console.log('format_app_offers: attribution sub-params:', subParams ?? 'none');
 
     const formatted: FetchedOffer[] = source.slice(0, limit).map(o => ({
         id: o.id,
@@ -442,6 +533,13 @@ async function toolFormatAppOffers(args: Record<string, unknown>, context: Strea
         headers: o.headers,
         button_text: null,
     }));
+
+    console.log('[TOOL] format_app_offers', {
+        source: context.pipeline.reasonedOffers.length > 0 ? 'reason_best_offers' : 'combined_offer_details',
+        limit,
+        attribution_sub_params: subParams ?? 'none',
+        final_offers: formatted.map(o => ({ id: o.id, name: o.name, url: o.url })),
+    });
 
     context.pipeline.formattedAppOffers = formatted;
     return formatted;
@@ -653,50 +751,43 @@ function resolveRequestLanguage(body: Record<string, unknown>): string {
 }
 
 function buildLanguagePolicyPrompt(language: string): string {
-    if (language === 'es') {
-        return [
-            'LANGUAGE POLICY:',
-            '- Respond in Spanish by default.',
-            '- If the user explicitly asks for another language, follow that request.',
-            '- Keep product names, company names, and URLs unchanged.',
-        ].join('\n');
-    }
+    const LANG_NAMES: Record<string, string> = {
+        es: 'Spanish',
+        pl: 'Polish',
+        sv: 'Swedish',
+        de: 'German',
+        ro: 'Romanian',
+        ru: 'Russian',
+        uk: 'Ukrainian',
+        vi: 'Vietnamese',
+        ms: 'Malay',
+    };
 
-    if (language === 'pl') {
-        return [
-            'LANGUAGE POLICY:',
-            '- Respond in Polish by default.',
-            '- If the user explicitly asks for another language, follow that request.',
-            '- Keep product names, company names, and URLs unchanged.',
-        ].join('\n');
-    }
+    const langName = LANG_NAMES[language];
+    if (!langName) return '';
 
-    if (language === 'sv') {
-        return [
-            'LANGUAGE POLICY:',
-            '- Respond in Swedish by default.',
-            '- If the user explicitly asks for another language, follow that request.',
-            '- Keep product names, company names, and URLs unchanged.',
-        ].join('\n');
-    }
-
-    return '';
+    return [
+        'LANGUAGE POLICY:',
+        `- Respond in ${langName} by default.`,
+        '- If the user explicitly asks for another language, follow that request.',
+        '- Keep product names, company names, and URLs unchanged.',
+    ].join('\n');
 }
 
 function getNoToolsInstruction(language: string): string {
-    if (language === 'es') {
-        return 'En esta solicitud no se ejecutaron herramientas de recuperacion de ofertas. Proporciona orientacion financiera breve y practica, y no inventes ofertas especificas.';
-    }
+    const instructions: Record<string, string> = {
+        es: 'En esta solicitud no se ejecutaron herramientas de recuperacion de ofertas. Proporciona orientacion financiera breve y practica, y no inventes ofertas especificas.',
+        pl: 'W tym zapytaniu nie uruchomiono narzedzi do pobierania ofert. Udziel zwięzłej, praktycznej porady finansowej i nie wymyślaj konkretnych ofert.',
+        sv: 'I denna forfragan korades inga verktyg for att hamta erbjudanden. Ge kort, praktisk finansiell vagledning och hitta inte pa specifika erbjudanden.',
+        de: 'Für diese Anfrage wurden keine Abruf-Tools ausgeführt. Geben Sie kurze, praktische Finanzberatung und erfinden Sie keine spezifischen Angebote.',
+        ro: 'Niciun instrument de recuperare a ofertelor nu a fost rulat pentru această solicitare. Oferiți îndrumare financiară concisă și practică și nu inventați oferte specifice.',
+        ru: 'Для этого запроса не были запущены инструменты получения предложений. Предоставьте краткое практическое финансовое руководство и не придумывайте конкретные предложения.',
+        uk: 'Для цього запиту не були запущені інструменти отримання пропозицій. Надайте коротке практичне фінансове керівництво і не вигадуйте конкретні пропозиції.',
+        vi: 'Không có công cụ truy xuất sản phẩm nào được chạy cho yêu cầu này. Hãy cung cấp hướng dẫn tài chính ngắn gọn, thực tế và không bịa đặt các ưu đãi cụ thể.',
+        ms: 'Tiada alat pengambilan produk yang dijalankan untuk permintaan ini. Berikan panduan kewangan yang ringkas dan praktikal serta jangan reka tawaran tertentu.',
+    };
 
-    if (language === 'pl') {
-        return 'W tym zapytaniu nie uruchomiono narzedzi do pobierania ofert. Udziel zwięzłej, praktycznej porady finansowej i nie wymyślaj konkretnych ofert.';
-    }
-
-    if (language === 'sv') {
-        return 'I denna forfragan korades inga verktyg for att hamta erbjudanden. Ge kort, praktisk finansiell vagledning och hitta inte pa specifika erbjudanden.';
-    }
-
-    return 'No product retrieval tools were run for this request. Provide concise, practical financial guidance and do not invent specific offers.';
+    return instructions[language] ?? 'No product retrieval tools were run for this request. Provide concise, practical financial guidance and do not invent specific offers.';
 }
 
 /**
@@ -880,6 +971,60 @@ const THINKING_STEPS_BY_LANG: Record<string, ThinkingStepTemplates> = {
         findingBest:       ['Preparing your best-match recommendations...', 'Selecting top products for you...', 'Finalizing recommendations...', 'Ranking best-fit offers...'],
         browsingSources:   ['Cross-checking terms and eligibility criteria...', 'Reviewing provider conditions...', 'Checking eligibility requirements...', 'Validating offer details...'],
     },
+    // German
+    de: {
+        searchingData:     ['Suche nach Angeboten und Zinssätzen...', 'Lade verfügbare Finanzprodukte...', 'Rufe Produktdatenbank ab...', 'Suche nach den besten Optionen...'],
+        checkingSource:    (n) => `Validiere Anbieterfeed ${n}...`,
+        checkingResults:   ['Bewerte Angebote nach Ihrer Anfrage...', 'Analysiere Angebotsrelevanz...', 'Prüfe Produkteignung...', 'Vergleiche Angebote mit Ihren Bedürfnissen...'],
+        comparingResults:  ['Vergleiche Genehmigungschancen, Kosten und Vorteile...', 'Analysiere Zinsen und Gebühren...', 'Bewerte Konditionen und Anforderungen...', 'Wäge Vorteile jeder Option ab...'],
+        findingBest:       ['Bereite die besten Empfehlungen vor...', 'Wähle die besten Optionen für Sie aus...', 'Finalisiere Empfehlungen...', 'Sortiere am besten passende Angebote...'],
+        browsingSources:   ['Überprüfe Konditionen und Eligibilitätskriterien...', 'Prüfe Anbieterdetails...', 'Verifiziere Zulassungsvoraussetzungen...', 'Validiere Angebotsdetails...'],
+    },
+    // Romanian
+    ro: {
+        searchingData:     ['Caut oferte și rate...', 'Încarc produse financiare disponibile...', 'Accesez baza de date de produse...', 'Caut cele mai bune opțiuni...'],
+        checkingSource:    (n) => `Validez sursa furnizorului ${n}...`,
+        checkingResults:   ['Evaluez ofertele pentru cererea ta...', 'Analizez relevanța ofertelor...', 'Verific compatibilitatea produselor...', 'Compar ofertele cu nevoile tale...'],
+        comparingResults:  ['Compar șansele de aprobare, costurile și beneficiile...', 'Analizez dobânzile și comisioanele...', 'Evaluez termenii și condițiile...', 'Compar avantajele fiecărei opțiuni...'],
+        findingBest:       ['Pregătesc cele mai bune recomandări...', 'Selectez cele mai bune opțiuni pentru tine...', 'Finalizez recomandările personalizate...', 'Ordonez ofertele cele mai potrivite...'],
+        browsingSources:   ['Verific condițiile și criteriile de eligibilitate...', 'Revizuiesc detaliile furnizorilor...', 'Verific cerințele de eligibilitate...', 'Validez detaliile ofertelor...'],
+    },
+    // Russian (used for Kazakhstan)
+    ru: {
+        searchingData:     ['Ищу предложения и ставки...', 'Загружаю финансовые продукты...', 'Получаю базу данных...', 'Ищу лучшие варианты...'],
+        checkingSource:    (n) => `Проверяю источник провайдера ${n}...`,
+        checkingResults:   ['Оцениваю предложения по вашему запросу...', 'Анализирую релевантность предложений...', 'Проверяю соответствие продуктов...', 'Сравниваю предложения с вашими потребностями...'],
+        comparingResults:  ['Сравниваю шансы одобрения, расходы и преимущества...', 'Анализирую процентные ставки и комиссии...', 'Оцениваю условия и требования...', 'Взвешиваю преимущества каждого варианта...'],
+        findingBest:       ['Готовлю лучшие рекомендации...', 'Выбираю лучшие варианты для вас...', 'Финализирую рекомендации...', 'Ранжирую наиболее подходящие предложения...'],
+        browsingSources:   ['Проверяю условия и критерии...', 'Изучаю детали каждого провайдера...', 'Проверяю требования к участию...', 'Валидирую детали предложений...'],
+    },
+    // Ukrainian
+    uk: {
+        searchingData:     ['Шукаю пропозиції та ставки...', 'Завантажую фінансові продукти...', 'Отримую базу даних...', 'Шукаю найкращі варіанти...'],
+        checkingSource:    (n) => `Перевіряю джерело постачальника ${n}...`,
+        checkingResults:   ['Оцінюю пропозиції за вашим запитом...', 'Аналізую релевантність пропозицій...', 'Перевіряю відповідність продуктів...', 'Порівнюю пропозиції з вашими потребами...'],
+        comparingResults:  ['Порівнюю шанси схвалення, витрати та переваги...', 'Аналізую відсоткові ставки та комісії...', 'Оцінюю умови та вимоги...', 'Зважую переваги кожного варіанту...'],
+        findingBest:       ['Готую найкращі рекомендації...', 'Вибираю найкращі варіанти для вас...', 'Фіналізую рекомендації...', 'Ранжую найбільш підходящі пропозиції...'],
+        browsingSources:   ['Перевіряю умови та критерії...', 'Вивчаю деталі кожного постачальника...', 'Перевіряю вимоги до участі...', 'Валідую деталі пропозицій...'],
+    },
+    // Vietnamese
+    vi: {
+        searchingData:     ['Tìm kiếm ưu đãi và lãi suất...', 'Tải sản phẩm tài chính có sẵn...', 'Truy cập cơ sở dữ liệu...', 'Tìm kiếm các lựa chọn tốt nhất...'],
+        checkingSource:    (n) => `Xác thực nguồn cung cấp ${n}...`,
+        checkingResults:   ['Đánh giá ưu đãi theo yêu cầu của bạn...', 'Phân tích mức độ phù hợp của ưu đãi...', 'Kiểm tra sự phù hợp sản phẩm...', 'So sánh ưu đãi với nhu cầu của bạn...'],
+        comparingResults:  ['So sánh tỷ lệ phê duyệt, chi phí và lợi ích...', 'Phân tích lãi suất và phí...', 'Đánh giá điều khoản và điều kiện...', 'Cân nhắc ưu điểm của từng lựa chọn...'],
+        findingBest:       ['Chuẩn bị những khuyến nghị tốt nhất...', 'Chọn các lựa chọn phù hợp nhất cho bạn...', 'Hoàn thiện khuyến nghị...', 'Xếp hạng các ưu đãi phù hợp nhất...'],
+        browsingSources:   ['Kiểm tra điều khoản và tiêu chí đủ điều kiện...', 'Xem xét chi tiết của từng nhà cung cấp...', 'Xác minh yêu cầu đủ điều kiện...', 'Xác thực chi tiết ưu đãi...'],
+    },
+    // Malay
+    ms: {
+        searchingData:     ['Mencari tawaran dan kadar faedah...', 'Memuatkan produk kewangan...', 'Mengakses pangkalan data...', 'Mencari pilihan terbaik...'],
+        checkingSource:    (n) => `Mengesahkan sumber pembekal ${n}...`,
+        checkingResults:   ['Menilai tawaran mengikut permintaan anda...', 'Menganalisis kesesuaian tawaran...', 'Memeriksa padanan produk...', 'Membandingkan tawaran dengan keperluan anda...'],
+        comparingResults:  ['Membandingkan peluang kelulusan, kos dan manfaat...', 'Menganalisis kadar faedah dan yuran...', 'Menilai terma dan syarat...', 'Menimbang kelebihan setiap pilihan...'],
+        findingBest:       ['Menyediakan cadangan terbaik anda...', 'Memilih pilihan terbaik untuk anda...', 'Memuktamadkan cadangan...', 'Mengurutkan tawaran yang paling sesuai...'],
+        browsingSources:   ['Menyemak terma dan kriteria kelayakan...', 'Menyemak butiran pembekal...', 'Mengesahkan keperluan kelayakan...', 'Mengesahkan butiran tawaran...'],
+    },
 };
 
 /** Map country codes to language keys */
@@ -893,6 +1038,15 @@ const COUNTRY_TO_LANG: Record<string, string> = {
     fr: 'fr', be: 'fr',
     de: 'de', at: 'de', ch: 'de',
     it: 'it',
+    // New countries
+    ro: 'ro',
+    kz: 'ru',
+    ua: 'uk',
+    vn: 'vi',
+    my: 'ms',
+    lk: 'en',
+    ph: 'en',
+    za: 'en',
 };
 
 function getThinkingSteps(countryCode: string): ThinkingStepTemplates {
