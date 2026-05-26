@@ -26,15 +26,9 @@
       --soft-yellow: #fff6df;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html,
-    body {
-      height: 100%;
-      overflow: hidden;
-    }
+    html, body { height: 100%; overflow: hidden; }
 
     body {
       margin: 0;
@@ -43,12 +37,7 @@
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    button,
-    input,
-    select,
-    textarea {
-      font: inherit;
-    }
+    button, input, select, textarea { font: inherit; }
 
     button {
       min-height: 36px;
@@ -61,24 +50,11 @@
       white-space: nowrap;
     }
 
-    button.secondary {
-      background: #fff;
-      color: var(--accent);
-    }
+    button.secondary { background: #fff; color: var(--accent); }
+    button.danger { border-color: var(--bad); background: var(--bad); }
+    button:disabled { cursor: not-allowed; opacity: 0.58; }
 
-    button.danger {
-      border-color: var(--bad);
-      background: var(--bad);
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.58;
-    }
-
-    input,
-    select,
-    textarea {
+    input, select, textarea {
       width: 100%;
       border: 1px solid var(--line);
       border-radius: 6px;
@@ -136,21 +112,9 @@
       padding-bottom: 14px;
     }
 
-    .title {
-      min-width: 0;
-    }
-
-    .title h1 {
-      margin: 0;
-      font-size: 22px;
-      line-height: 1.2;
-    }
-
-    .title p {
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    .title { min-width: 0; }
+    .title h1 { margin: 0; font-size: 22px; line-height: 1.2; }
+    .title p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 
     .status-pill {
       display: inline-flex;
@@ -165,40 +129,21 @@
       white-space: nowrap;
     }
 
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--line-strong);
-    }
-
-    .dot.ok {
-      background: var(--ok);
-    }
-
-    .dot.bad {
-      background: var(--bad);
-    }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--line-strong); }
+    .dot.ok { background: var(--ok); }
+    .dot.bad { background: var(--bad); }
 
     .settings {
       display: grid;
-      grid-template-columns: minmax(260px, 2fr) repeat(4, minmax(100px, 1fr)) minmax(160px, 1fr);
+      grid-template-columns: minmax(240px, 2fr) repeat(3, minmax(90px, 1fr)) minmax(140px, 1fr) minmax(160px, 1fr);
       gap: 10px;
       align-items: end;
       border-bottom: 1px solid var(--line);
-      min-width: 0;
       padding-bottom: 14px;
     }
 
-    .settings-actions {
-      display: flex;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .settings-actions button {
-      flex: 1 1 0;
-    }
+    .settings-actions { display: flex; gap: 8px; }
+    .settings-actions button { flex: 1 1 0; }
 
     .main {
       display: grid;
@@ -219,6 +164,11 @@
       overflow: hidden;
     }
 
+    /* Transcript pane has 3 rows: header, live-status, scroll */
+    #transcriptPane {
+      grid-template-rows: auto auto minmax(0, 1fr);
+    }
+
     .pane-header {
       display: flex;
       align-items: center;
@@ -228,9 +178,19 @@
       padding: 11px 12px;
     }
 
-    .pane-header h2 {
-      margin: 0;
-      font-size: 15px;
+    .pane-header h2 { margin: 0; font-size: 15px; }
+
+    .pane-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .pane-header-actions button {
+      min-height: 28px;
+      padding: 4px 9px;
+      font-size: 12px;
     }
 
     .pane-body {
@@ -242,17 +202,63 @@
       padding: 12px;
     }
 
-    .two-col {
+    /* ── Live status panel ────────────────────────────── */
+
+    .live-status {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 7px;
+      border-bottom: 1px solid var(--line);
+      background: var(--soft-blue);
+      padding: 8px 12px;
     }
 
-    .actions {
+    .thinking-step {
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-style: italic;
+      min-height: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .thinking-step::before {
+      content: '💭';
+      font-style: normal;
+    }
+
+    .tool-pipeline {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 5px;
     }
+
+    .tool-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 650;
+      background: #fff;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .tool-chip.done   { border-color: var(--ok);   background: var(--soft-green); color: var(--ok);   }
+    .tool-chip.running{ border-color: var(--accent);background: var(--soft-blue);  color: var(--accent);}
+    .tool-chip.error  { border-color: var(--bad);  background: var(--soft-red);   color: var(--bad);  }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin 0.85s linear infinite; }
+
+    /* ── Rest of layout ─────────────────────────────── */
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
     .endpoint-grid {
       display: grid;
@@ -267,10 +273,7 @@
       white-space: normal;
     }
 
-    .request-preview {
-      display: grid;
-      gap: 8px;
-    }
+    .request-preview { display: grid; gap: 8px; }
 
     .request-editor {
       display: grid;
@@ -281,15 +284,8 @@
       padding: 10px;
     }
 
-    .request-editor .actions {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .request-editor .actions button {
-      width: 100%;
-      white-space: normal;
-    }
+    .request-editor .actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .request-editor .actions button { width: 100%; white-space: normal; }
 
     .path-preview {
       min-width: 0;
@@ -304,76 +300,23 @@
       overflow-wrap: anywhere;
     }
 
-    .path-preview.bad {
-      border-color: var(--bad);
-      background: var(--soft-red);
-      color: var(--bad);
-    }
+    .path-preview.bad { border-color: var(--bad); background: var(--soft-red); color: var(--bad); }
 
-    .editor-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
+    .editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-    .editor-panel {
-      display: grid;
-      gap: 6px;
-      min-width: 0;
-    }
+    .editor-panel { display: grid; gap: 6px; min-width: 0; }
+    .editor-panel textarea { min-height: 96px; font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12px; line-height: 1.45; }
+    .editor-panel.body-panel { grid-column: 1 / -1; }
+    .editor-panel.body-panel textarea { min-height: 180px; }
 
-    .editor-panel textarea {
-      min-height: 96px;
-      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size: 12px;
-      line-height: 1.45;
-    }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; font-weight: 600; text-transform: none; }
+    .checkbox-row input { width: auto; }
 
-    .editor-panel.body-panel {
-      grid-column: 1 / -1;
-    }
+    .editor-status { min-height: 18px; color: var(--muted); font-size: 12px; }
+    .editor-status.ok  { color: var(--ok);  }
+    .editor-status.bad { color: var(--bad); }
 
-    .editor-panel.body-panel textarea {
-      min-height: 180px;
-    }
-
-    .checkbox-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 600;
-      text-transform: none;
-    }
-
-    .checkbox-row input {
-      width: auto;
-    }
-
-    .editor-status {
-      min-height: 18px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .editor-status.ok {
-      color: var(--ok);
-    }
-
-    .editor-status.bad {
-      color: var(--bad);
-    }
-
-    .preview-title {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 650;
-      text-transform: uppercase;
-    }
+    .preview-title { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 12px; font-weight: 650; text-transform: uppercase; }
 
     .workspace {
       display: grid;
@@ -383,43 +326,21 @@
       min-height: 0;
     }
 
-    .scroll {
-      overflow: auto;
-      min-height: 0;
-    }
+    .scroll { overflow: auto; min-height: 0; }
 
-    .transcript,
-    .log-list {
+    .transcript, .log-list {
       display: grid;
       align-content: start;
       gap: 10px;
       padding: 12px;
     }
 
-    .message {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 10px;
-      background: #fff;
-    }
+    .message { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #fff; }
+    .message.user      { border-color: #b6d7f3; background: var(--soft-blue);   }
+    .message.assistant { border-color: #bee2cc; background: var(--soft-green);  }
+    .message.system    { border-color: #f3d99b; background: var(--soft-yellow); }
 
-    .message.user {
-      border-color: #b6d7f3;
-      background: var(--soft-blue);
-    }
-
-    .message.assistant {
-      border-color: #bee2cc;
-      background: var(--soft-green);
-    }
-
-    .message.system {
-      border-color: #f3d99b;
-      background: var(--soft-yellow);
-    }
-
-    .message .role,
-    .log-row .meta {
+    .message .role, .log-row .meta {
       display: flex;
       justify-content: space-between;
       gap: 10px;
@@ -429,290 +350,65 @@
       font-weight: 700;
     }
 
-    .message .role {
-      text-transform: uppercase;
-    }
+    .message .role { text-transform: uppercase; }
 
-    .log-row .meta {
-      text-transform: none;
-    }
+    .message .role > span, .log-row .meta > span { min-width: 0; overflow-wrap: anywhere; }
 
-    .message .role > span,
-    .log-row .meta > span {
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
+    .message .content { line-height: 1.45; overflow-wrap: anywhere; }
+    .message .content.plain { white-space: pre-wrap; }
 
-    .message .content {
-      line-height: 1.45;
-      overflow-wrap: anywhere;
-    }
+    .rendered-content { display: grid; gap: 8px; }
+    .rendered-content p { margin: 0; }
+    .rendered-content h1, .rendered-content h2, .rendered-content h3, .rendered-content h4 { margin: 4px 0 0; line-height: 1.25; }
+    .rendered-content h1 { font-size: 18px; }
+    .rendered-content h2 { font-size: 16px; }
+    .rendered-content h3, .rendered-content h4 { font-size: 14px; }
+    .rendered-content ul, .rendered-content ol { margin: 0; padding-left: 22px; }
+    .rendered-content li + li { margin-top: 3px; }
+    .rendered-content a { color: var(--accent); font-weight: 650; }
+    .rendered-content code { border-radius: 4px; background: rgba(16,24,40,0.08); padding: 1px 4px; font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 0.9em; }
+    .rendered-content pre { white-space: pre; }
+    .rendered-content blockquote { margin: 0; border-left: 3px solid var(--line-strong); padding-left: 10px; color: var(--muted); }
 
-    .message .content.plain {
-      white-space: pre-wrap;
-    }
+    .structured-output { display: grid; gap: 10px; margin-top: 10px; }
 
-    .rendered-content {
-      display: grid;
-      gap: 8px;
-    }
+    .result-block { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfe; padding: 10px; }
+    .result-type { color: var(--muted); font-size: 11px; font-weight: 750; text-transform: uppercase; }
 
-    .rendered-content p {
-      margin: 0;
-    }
+    .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
 
-    .rendered-content h1,
-    .rendered-content h2,
-    .rendered-content h3,
-    .rendered-content h4 {
-      margin: 4px 0 0;
-      line-height: 1.25;
-    }
+    .offer-card { display: grid; gap: 8px; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 10px; }
+    .offer-card-head { display: flex; gap: 9px; min-width: 0; }
+    .offer-avatar { width: 42px; height: 42px; flex: 0 0 42px; border: 1px solid var(--line); border-radius: 7px; object-fit: contain; background: #fff; }
+    .offer-title { min-width: 0; font-weight: 750; line-height: 1.25; overflow-wrap: anywhere; }
+    .offer-subtitle, .offer-term { color: var(--muted); font-size: 12px; line-height: 1.35; }
+    .offer-headers { display: grid; gap: 5px; }
+    .offer-header-row { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 8px; border-top: 1px solid var(--line); padding-top: 6px; font-size: 12px; }
+    .offer-header-row strong, .offer-header-row span { min-width: 0; overflow-wrap: anywhere; }
+    .offer-link { justify-self: start; color: var(--accent); font-size: 12px; font-weight: 750; text-decoration: none; }
+    .offer-link:hover { text-decoration: underline; }
 
-    .rendered-content h1 {
-      font-size: 18px;
-    }
+    .empty { border: 1px dashed var(--line-strong); border-radius: 8px; padding: 18px; color: var(--muted); text-align: center; }
 
-    .rendered-content h2 {
-      font-size: 16px;
-    }
+    .log-row { border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; }
+    .log-row.ok   { border-left: 4px solid var(--ok);   }
+    .log-row.warn { border-left: 4px solid var(--warn);  }
+    .log-row.bad  { border-left: 4px solid var(--bad);   }
+    .log-row button { min-height: 30px; padding: 5px 9px; font-size: 12px; }
 
-    .rendered-content h3,
-    .rendered-content h4 {
-      font-size: 14px;
-    }
+    .log-summary { padding: 10px; }
+    .log-detail { border-top: 1px solid var(--line); padding: 10px; background: #fafbfc; }
+    .log-detail pre { max-height: 360px; }
+    .log-main { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .log-title { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0; }
 
-    .rendered-content ul,
-    .rendered-content ol {
-      margin: 0;
-      padding-left: 22px;
-    }
+    .response-preview { margin-top: 8px; }
+    .response-preview pre { max-height: 220px; background: #fff; }
 
-    .rendered-content li + li {
-      margin-top: 3px;
-    }
-
-    .rendered-content a {
-      color: var(--accent);
-      font-weight: 650;
-    }
-
-    .rendered-content code {
-      border-radius: 4px;
-      background: rgba(16, 24, 40, 0.08);
-      padding: 1px 4px;
-      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size: 0.9em;
-    }
-
-    .rendered-content pre {
-      white-space: pre;
-    }
-
-    .rendered-content blockquote {
-      margin: 0;
-      border-left: 3px solid var(--line-strong);
-      padding-left: 10px;
-      color: var(--muted);
-    }
-
-    .structured-output {
-      display: grid;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .result-block {
-      display: grid;
-      gap: 8px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fbfcfe;
-      padding: 10px;
-    }
-
-    .result-type {
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 750;
-      text-transform: uppercase;
-    }
-
-    .offers-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 8px;
-    }
-
-    .offer-card {
-      display: grid;
-      gap: 8px;
-      min-width: 0;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-      padding: 10px;
-    }
-
-    .offer-card-head {
-      display: flex;
-      gap: 9px;
-      min-width: 0;
-    }
-
-    .offer-avatar {
-      width: 42px;
-      height: 42px;
-      flex: 0 0 42px;
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      object-fit: contain;
-      background: #fff;
-    }
-
-    .offer-title {
-      min-width: 0;
-      font-weight: 750;
-      line-height: 1.25;
-      overflow-wrap: anywhere;
-    }
-
-    .offer-subtitle,
-    .offer-term {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.35;
-    }
-
-    .offer-headers {
-      display: grid;
-      gap: 5px;
-    }
-
-    .offer-header-row {
-      display: grid;
-      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-      gap: 8px;
-      border-top: 1px solid var(--line);
-      padding-top: 6px;
-      font-size: 12px;
-    }
-
-    .offer-header-row strong,
-    .offer-header-row span {
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-
-    .offer-link {
-      justify-self: start;
-      color: var(--accent);
-      font-size: 12px;
-      font-weight: 750;
-      text-decoration: none;
-    }
-
-    .offer-link:hover {
-      text-decoration: underline;
-    }
-
-    .empty {
-      border: 1px dashed var(--line-strong);
-      border-radius: 8px;
-      padding: 18px;
-      color: var(--muted);
-      text-align: center;
-    }
-
-    .log-row {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-      overflow: hidden;
-    }
-
-    .log-row.ok {
-      border-left: 4px solid var(--ok);
-    }
-
-    .log-row.warn {
-      border-left: 4px solid var(--warn);
-    }
-
-    .log-row.bad {
-      border-left: 4px solid var(--bad);
-    }
-
-    .log-row button {
-      min-height: 30px;
-      padding: 5px 9px;
-      font-size: 12px;
-    }
-
-    .log-summary {
-      padding: 10px;
-    }
-
-    .log-detail {
-      border-top: 1px solid var(--line);
-      padding: 10px;
-      background: #fafbfc;
-    }
-
-    .log-detail pre {
-      max-height: 360px;
-    }
-
-    .log-main {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-
-    .log-title {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-      min-width: 0;
-    }
-
-    .response-preview {
-      margin-top: 8px;
-    }
-
-    .response-preview pre {
-      max-height: 220px;
-      background: #fff;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      border-radius: 999px;
-      padding: 3px 8px;
-      font-size: 12px;
-      font-weight: 700;
-      background: var(--code-bg);
-      color: var(--muted);
-    }
-
-    .badge.ok {
-      background: var(--soft-green);
-      color: var(--ok);
-    }
-
-    .badge.bad {
-      background: var(--soft-red);
-      color: var(--bad);
-    }
-
-    .badge.warn {
-      background: var(--soft-yellow);
-      color: var(--warn);
-    }
+    .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 8px; font-size: 12px; font-weight: 700; background: var(--code-bg); color: var(--muted); }
+    .badge.ok   { background: var(--soft-green);  color: var(--ok);   }
+    .badge.bad  { background: var(--soft-red);    color: var(--bad);  }
+    .badge.warn { background: var(--soft-yellow); color: var(--warn); }
 
     .sse-log {
       max-height: 170px;
@@ -727,68 +423,42 @@
       white-space: pre-wrap;
     }
 
+    .preset-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .preset-row button {
+      min-height: 28px;
+      padding: 3px 9px;
+      font-size: 12px;
+      background: #fff;
+      color: var(--muted);
+      border-color: var(--line);
+    }
+
+    .preset-row button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
     @media (max-width: 1180px) {
-      html,
-      body {
-        height: auto;
-        overflow: auto;
-      }
-
-      .shell {
-        height: auto;
-        min-height: 100dvh;
-        overflow: visible;
-      }
-
-      .settings {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-
-      .main {
-        grid-template-columns: 1fr;
-        overflow: visible;
-      }
-
-      .pane-body {
-        max-height: none;
-        overflow: visible;
-      }
-
-      .workspace {
-        height: auto;
-        grid-template-rows: minmax(280px, auto) minmax(340px, auto);
-      }
-
-      .workspace .pane {
-        min-height: 320px;
-      }
+      html, body { height: auto; overflow: auto; }
+      .shell { height: auto; min-height: 100dvh; overflow: visible; }
+      .settings { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .main { grid-template-columns: 1fr; overflow: visible; }
+      .pane-body { max-height: none; overflow: visible; }
+      .workspace { height: auto; grid-template-rows: minmax(280px, auto) minmax(340px, auto); }
+      .workspace .pane { min-height: 320px; }
     }
 
     @media (max-width: 720px) {
-      .shell {
-        padding: 12px;
-      }
-
-      .topbar,
-      .pane-header {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-
-      .settings,
-      .two-col,
-      .editor-grid,
-      .endpoint-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .settings-actions {
-        flex-wrap: wrap;
-      }
-
-      .request-editor .actions {
-        grid-template-columns: 1fr;
-      }
+      .shell { padding: 12px; }
+      .topbar, .pane-header { align-items: flex-start; flex-direction: column; }
+      .settings, .two-col, .editor-grid, .endpoint-grid { grid-template-columns: 1fr; }
+      .settings-actions { flex-wrap: wrap; }
+      .request-editor .actions { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -821,24 +491,50 @@
       <label>
         Country
         <select id="country">
-          <option value="2">MX - 2</option>
-          <option value="1">ES - 1</option>
-          <option value="14">PL - 14</option>
-          <option value="22">SE - 22</option>
+          <optgroup label="Original">
+            <option value="mx">🇲🇽 Mexico (MX)</option>
+            <option value="es">🇪🇸 Spain (ES)</option>
+            <option value="pl">🇵🇱 Poland (PL)</option>
+            <option value="ro">🇷🇴 Romania (RO)</option>
+            <option value="se">🇸🇪 Sweden (SE)</option>
+          </optgroup>
+          <optgroup label="New">
+            <option value="co">🇨🇴 Colombia (CO)</option>
+            <option value="de">🇩🇪 Germany (DE)</option>
+            <option value="kz">🇰🇿 Kazakhstan (KZ)</option>
+            <option value="lk">🇱🇰 Sri Lanka (LK)</option>
+            <option value="my">🇲🇾 Malaysia (MY)</option>
+            <option value="pe">🇵🇪 Peru (PE)</option>
+            <option value="ph">🇵🇭 Philippines (PH)</option>
+            <option value="ua">🇺🇦 Ukraine (UA)</option>
+            <option value="vn">🇻🇳 Vietnam (VN)</option>
+            <option value="za">🇿🇦 South Africa (ZA)</option>
+          </optgroup>
         </select>
-      </label>
-      <label>
-        Provider
-        <input id="provider" value="373" autocomplete="off">
       </label>
       <label>
         Language
         <select id="lang">
           <option value="es-mx">es-mx</option>
           <option value="es-es">es-es</option>
+          <option value="es-co">es-co</option>
+          <option value="es-pe">es-pe</option>
           <option value="en">en</option>
           <option value="pl">pl</option>
-          <option value="se">se</option>
+          <option value="sv">sv (SE)</option>
+          <option value="de">de</option>
+          <option value="ro">ro</option>
+          <option value="ru">ru (KZ)</option>
+          <option value="uk">uk (UA)</option>
+          <option value="vi">vi (VN)</option>
+          <option value="ms">ms (MY)</option>
+        </select>
+      </label>
+      <label>
+        Source
+        <select id="source">
+          <option value="app">app</option>
+          <option value="web">web</option>
         </select>
       </label>
       <label>
@@ -852,6 +548,7 @@
     </section>
 
     <main class="main">
+      <!-- ── Left pane: Request builder ─────────────────────── -->
       <section class="pane">
         <div class="pane-header">
           <h2>Requests</h2>
@@ -860,27 +557,31 @@
         <div class="pane-body">
           <label>
             Message
-            <textarea id="message">I need a 5000 MXN loan for 3 months</textarea>
+            <textarea id="message">I need a quick loan</textarea>
           </label>
+
+          <div class="preset-row" id="presetRow">
+            <button type="button" data-preset="I need a quick loan">💸 Quick loan</button>
+            <button type="button" data-preset="I want a credit card">💳 Credit card</button>
+            <button type="button" data-preset="Help me open a bank account">🏦 Bank account</button>
+            <button type="button" data-preset="What are the best mortgage rates?">🏠 Mortgage</button>
+          </div>
 
           <div class="two-col">
             <label>
-              Source
-              <select id="source">
-                <option value="app">app</option>
-                <option value="web">web</option>
-              </select>
-            </label>
-            <label>
               History limit
               <input id="historyLimit" type="number" min="1" max="50" value="20">
+            </label>
+            <label>
+              Provider
+              <input id="provider" value="373" autocomplete="off">
             </label>
           </div>
 
           <div class="actions">
             <button id="sendMessage" type="button">POST Message</button>
-            <button id="streamMessage" type="button">Stream Message</button>
-            <button id="stopStream" type="button" class="danger" disabled>Stop Stream</button>
+            <button id="streamMessage" type="button">▶ Stream Message</button>
+            <button id="stopStream" type="button" class="danger" disabled>■ Stop</button>
           </div>
 
           <div class="endpoint-grid">
@@ -890,11 +591,11 @@
             <button id="postClientChats" type="button" class="secondary">Client Chats POST</button>
             <button id="getHistory" type="button" class="secondary">History</button>
             <button id="getInfiniteHistory" type="button" class="secondary">Infinite History</button>
-            <button id="shareChat" type="button" class="secondary">Share Chat</button>
-            <button id="fetchView" type="button" class="secondary">Fetch View</button>
-            <button id="fetchPdf" type="button" class="secondary">Fetch PDF</button>
-            <button id="openView" type="button" class="secondary">Open View</button>
-            <button id="openPdf" type="button" class="secondary">Open PDF</button>
+            <button id="shareChat" type="button" class="secondary">🔗 Share Chat</button>
+            <button id="fetchView" type="button" class="secondary">📄 Fetch View</button>
+            <button id="fetchPdf" type="button" class="secondary">📥 Fetch PDF</button>
+            <button id="openView" type="button" class="secondary">🌐 Open View</button>
+            <button id="openPdf" type="button" class="secondary">🌐 Open PDF</button>
             <button id="deleteChat" type="button" class="danger">Delete Chat</button>
             <button id="reportMessage" type="button" class="secondary">Report Message</button>
             <button id="reportOffer" type="button" class="secondary">Report Offer</button>
@@ -972,12 +673,25 @@
         </div>
       </section>
 
+      <!-- ── Right workspace: Transcript + Response log ─────── -->
       <section class="workspace">
-        <section class="pane">
+        <section class="pane" id="transcriptPane">
           <div class="pane-header">
             <h2>Transcript</h2>
-            <button id="clearTranscript" type="button" class="secondary">Clear</button>
+            <div class="pane-header-actions">
+              <button id="quickShare" type="button" class="secondary" title="Share current chat">🔗 Share</button>
+              <button id="quickView"  type="button" class="secondary" title="Open chat view in new tab">📄 View</button>
+              <button id="quickPdf"   type="button" class="secondary" title="Open PDF in new tab">📥 PDF</button>
+              <button id="clearTranscript" type="button" class="secondary">Clear</button>
+            </div>
           </div>
+
+          <!-- Live tool + thinking status — shown during/after streaming -->
+          <div id="liveStatus" class="live-status" hidden>
+            <div id="thinkingStep" class="thinking-step" hidden></div>
+            <div id="toolPipeline" class="tool-pipeline"></div>
+          </div>
+
           <div class="scroll">
             <div id="transcript" class="transcript">
               <div class="empty">No chat messages yet.</div>
@@ -1001,6 +715,26 @@
   </div>
 
   <script>
+    // ── Country → language auto-sync map ──────────────────────
+    const COUNTRY_LANG_MAP = {
+      mx: 'es-mx',
+      es: 'es-es',
+      pl: 'pl',
+      ro: 'ro',
+      se: 'sv',
+      co: 'es-co',
+      de: 'de',
+      kz: 'ru',
+      lk: 'en',
+      my: 'ms',
+      pe: 'es-pe',
+      ph: 'en',
+      ua: 'uk',
+      vn: 'vi',
+      za: 'en',
+    };
+
+    // ── App state ─────────────────────────────────────────────
     const state = {
       transcript: [],
       responses: [],
@@ -1012,61 +746,104 @@
     const $ = id => document.getElementById(id);
 
     const elements = {
-      activeTarget: $('activeTarget'),
-      applyCookie: $('applyCookie'),
-      baseUrl: $('baseUrl'),
-      bodyEditor: $('bodyEditor'),
-      chatGreeting: $('chatGreeting'),
-      chatId: $('chatId'),
-      clearLog: $('clearLog'),
-      clearSse: $('clearSse'),
-      clearTranscript: $('clearTranscript'),
-      clientId: $('clientId'),
-      copyPayload: $('copyPayload'),
-      country: $('country'),
-      deleteChat: $('deleteChat'),
-      editorStatus: $('editorStatus'),
-      endpointSelect: $('endpointSelect'),
-      fetchPdf: $('fetchPdf'),
-      fetchView: $('fetchView'),
-      formatEditors: $('formatEditors'),
-      getAllChats: $('getAllChats'),
-      getClientChats: $('getClientChats'),
-      getHistory: $('getHistory'),
-      getInfiniteHistory: $('getInfiniteHistory'),
-      getSuggestions: $('getSuggestions'),
-      historyLimit: $('historyLimit'),
-      lang: $('lang'),
-      lastStatus: $('lastStatus'),
-      loadSelectedRequest: $('loadSelectedRequest'),
-      message: $('message'),
-      openPdf: $('openPdf'),
-      openView: $('openView'),
-      pathEditor: $('pathEditor'),
-      payloadPreview: $('payloadPreview'),
-      postClientChats: $('postClientChats'),
-      provider: $('provider'),
-      reportMessage: $('reportMessage'),
-      reportOffer: $('reportOffer'),
-      resetState: $('resetState'),
-      resolvedPathPreview: $('resolvedPathPreview'),
-      responseLog: $('responseLog'),
-      sendMessage: $('sendMessage'),
-      sendSelectedRequest: $('sendSelectedRequest'),
-      shareChat: $('shareChat'),
-      source: $('source'),
-      sseLog: $('sseLog'),
-      statusDot: $('statusDot'),
-      statusText: $('statusText'),
-      stopStream: $('stopStream'),
-      streamMessage: $('streamMessage'),
-      transcript: $('transcript'),
-      queryEditor: $('queryEditor'),
-      useBodyEditor: $('useBodyEditor'),
-      usePathEditor: $('usePathEditor'),
-      useQueryEditor: $('useQueryEditor'),
-      uuidCookie: $('uuidCookie'),
+      activeTarget:         $('activeTarget'),
+      applyCookie:          $('applyCookie'),
+      baseUrl:              $('baseUrl'),
+      bodyEditor:           $('bodyEditor'),
+      chatGreeting:         $('chatGreeting'),
+      chatId:               $('chatId'),
+      clearLog:             $('clearLog'),
+      clearSse:             $('clearSse'),
+      clearTranscript:      $('clearTranscript'),
+      clientId:             $('clientId'),
+      copyPayload:          $('copyPayload'),
+      country:              $('country'),
+      deleteChat:           $('deleteChat'),
+      editorStatus:         $('editorStatus'),
+      endpointSelect:       $('endpointSelect'),
+      fetchPdf:             $('fetchPdf'),
+      fetchView:            $('fetchView'),
+      formatEditors:        $('formatEditors'),
+      getAllChats:           $('getAllChats'),
+      getClientChats:       $('getClientChats'),
+      getHistory:           $('getHistory'),
+      getInfiniteHistory:   $('getInfiniteHistory'),
+      getSuggestions:       $('getSuggestions'),
+      historyLimit:         $('historyLimit'),
+      lang:                 $('lang'),
+      lastStatus:           $('lastStatus'),
+      liveStatus:           $('liveStatus'),
+      loadSelectedRequest:  $('loadSelectedRequest'),
+      message:              $('message'),
+      openPdf:              $('openPdf'),
+      openView:             $('openView'),
+      pathEditor:           $('pathEditor'),
+      payloadPreview:       $('payloadPreview'),
+      postClientChats:      $('postClientChats'),
+      presetRow:            $('presetRow'),
+      provider:             $('provider'),
+      quickPdf:             $('quickPdf'),
+      quickShare:           $('quickShare'),
+      quickView:            $('quickView'),
+      reportMessage:        $('reportMessage'),
+      reportOffer:          $('reportOffer'),
+      resetState:           $('resetState'),
+      resolvedPathPreview:  $('resolvedPathPreview'),
+      responseLog:          $('responseLog'),
+      sendMessage:          $('sendMessage'),
+      sendSelectedRequest:  $('sendSelectedRequest'),
+      shareChat:            $('shareChat'),
+      source:               $('source'),
+      sseLog:               $('sseLog'),
+      statusDot:            $('statusDot'),
+      statusText:           $('statusText'),
+      stopStream:           $('stopStream'),
+      streamMessage:        $('streamMessage'),
+      thinkingStep:         $('thinkingStep'),
+      toolPipeline:         $('toolPipeline'),
+      transcript:           $('transcript'),
+      queryEditor:          $('queryEditor'),
+      useBodyEditor:        $('useBodyEditor'),
+      usePathEditor:        $('usePathEditor'),
+      useQueryEditor:       $('useQueryEditor'),
+      uuidCookie:           $('uuidCookie'),
     };
+
+    // ── Live status helpers ────────────────────────────────────
+
+    function updateThinkingStep(label) {
+      if (!label) {
+        elements.thinkingStep.hidden = true;
+        elements.thinkingStep.textContent = '';
+      } else {
+        elements.thinkingStep.hidden = false;
+        elements.thinkingStep.textContent = label;
+      }
+    }
+
+    function updateToolPipeline(tools) {
+      if (!tools || tools.length === 0) return;
+      elements.liveStatus.hidden = false;
+      const icons = { done: '✓', running: '⟳', error: '✗', queued: '○' };
+      elements.toolPipeline.innerHTML = tools
+        .map(t => {
+          const icon = icons[t.status] ?? '○';
+          const spin  = t.status === 'running' ? ' <span class="spin">⟳</span>' : ` ${icon}`;
+          const label = t.status === 'running'
+            ? `<span class="spin">⟳</span> ${escapeHtml(t.name)}`
+            : `${icon} ${escapeHtml(t.name)}`;
+          return `<span class="tool-chip ${escapeHtml(t.status)}">${label}</span>`;
+        })
+        .join('');
+    }
+
+    function resetLiveStatus() {
+      elements.liveStatus.hidden = true;
+      elements.toolPipeline.innerHTML = '';
+      updateThinkingStep('');
+    }
+
+    // ── URL / settings helpers ─────────────────────────────────
 
     function normalizeBaseUrl(value) {
       const trimmed = value.trim();
@@ -1086,13 +863,13 @@
 
     function settings() {
       return {
-        baseUrl: normalizeBaseUrl(elements.baseUrl.value),
-        chatId: elements.chatId.value.trim(),
-        clientId: elements.clientId.value.trim() || 'browser-test-client',
-        country: Number(elements.country.value),
-        provider: elements.provider.value.trim() || '373',
-        lang: elements.lang.value,
-        source: elements.source.value,
+        baseUrl:      normalizeBaseUrl(elements.baseUrl.value),
+        chatId:       elements.chatId.value.trim(),
+        clientId:     elements.clientId.value.trim() || 'browser-test-client',
+        country:      elements.country.value,   // string code e.g. 'mx'
+        provider:     elements.provider.value.trim() || '373',
+        lang:         elements.lang.value,
+        source:       elements.source.value,
         historyLimit: Math.max(1, Number(elements.historyLimit.value) || 20),
       };
     }
@@ -1100,27 +877,24 @@
     function buildChatPayload(messageOverride) {
       const current = settings();
       const params = {
-        country: current.country,
-        provider: current.provider,
-        client_id: current.clientId,
+        country:       current.country,
+        provider:      current.provider,
+        client_id:     current.clientId,
         is_guest_chat: true,
       };
 
-      if (current.chatId) {
-        params.chat_id = current.chatId;
-      }
+      if (current.chatId) params.chat_id = current.chatId;
 
       return {
-        message: messageOverride ?? elements.message.value,
-        messages: state.transcript.map(item => ({
-          role: item.role,
-          content: item.content,
-        })),
-        source: current.source,
+        message:       messageOverride ?? elements.message.value,
+        messages:      state.transcript.map(item => ({ role: item.role, content: item.content })),
+        source:        current.source,
         content_types: ['markdown', 'app_offers'],
         params,
       };
     }
+
+    // ── Endpoint builder ───────────────────────────────────────
 
     function resolvePath(pathTemplate, pathParams = {}) {
       return pathTemplate.replace(/\{([^}]+)\}/g, (match, key) => {
@@ -1134,13 +908,8 @@
 
     function endpoint(definition) {
       const pathTemplate = definition.pathTemplate || definition.path;
-      const pathParams = definition.pathParams || {};
-      return {
-        ...definition,
-        pathTemplate,
-        pathParams,
-        path: resolvePath(pathTemplate, pathParams),
-      };
+      const pathParams   = definition.pathParams || {};
+      return { ...definition, pathTemplate, pathParams, path: resolvePath(pathTemplate, pathParams) };
     }
 
     function buildEndpointRequest(key, messageOverride) {
@@ -1150,159 +919,62 @@
       switch (key) {
         case 'postMessage':
           return endpoint({
-            label: 'POST Message',
-            method: 'POST',
-            path: '/api/ai/message',
-            options: {
-              query: { lang: current.lang, source: current.source },
-              body: buildChatPayload(message),
-            },
+            label: 'POST Message', method: 'POST', path: '/api/ai/message',
+            options: { query: { lang: current.lang, source: current.source }, body: buildChatPayload(message) },
           });
         case 'streamMessage':
           return endpoint({
-            label: 'Stream Message',
-            method: 'POST',
-            path: '/api/ai/message/stream',
-            options: {
-              query: { lang: current.lang, source: current.source },
-              body: buildChatPayload(message),
-            },
+            label: 'Stream Message', method: 'POST', path: '/api/ai/message/stream',
+            options: { query: { lang: current.lang, source: current.source }, body: buildChatPayload(message) },
           });
         case 'suggestions':
           return endpoint({
-            label: 'Suggestions',
-            method: 'POST',
-            path: '/api/ai/suggestions',
-            options: {
-              query: { lang: current.lang },
-              body: { params: { country: current.country } },
-            },
+            label: 'Suggestions', method: 'POST', path: '/api/ai/suggestions',
+            options: { query: { lang: current.lang }, body: { params: { country: current.country } } },
           });
         case 'allChats':
-          return endpoint({
-            label: 'All Chats',
-            method: 'POST',
-            path: '/api/ai/chats',
-            options: { body: { client_id: currentClientId() } },
-          });
+          return endpoint({ label: 'All Chats', method: 'POST', path: '/api/ai/chats', options: { body: { client_id: currentClientId() } } });
         case 'clientChatsGet':
-          return endpoint({
-            label: 'Client Chats',
-            method: 'GET',
-            pathTemplate: '/api/ai/client/{client_id}/chats',
-            pathParams: { client_id: currentClientId() },
-            options: {},
-          });
+          return endpoint({ label: 'Client Chats', method: 'GET', pathTemplate: '/api/ai/client/{client_id}/chats', pathParams: { client_id: currentClientId() }, options: {} });
         case 'clientChatsPost':
-          return endpoint({
-            label: 'Client Chats POST',
-            method: 'POST',
-            pathTemplate: '/api/ai/client/{client_id}/chats',
-            pathParams: { client_id: currentClientId() },
-            options: { body: { chat_id: currentChatId(), chat_name: 'Browser API test chat' } },
-          });
+          return endpoint({ label: 'Client Chats POST', method: 'POST', pathTemplate: '/api/ai/client/{client_id}/chats', pathParams: { client_id: currentClientId() }, options: { body: { chat_id: currentChatId(), chat_name: 'Browser API test chat' } } });
         case 'history':
-          return endpoint({
-            label: 'History',
-            method: 'POST',
-            path: '/api/ai/history',
-            options: { body: { params: { chat_id: currentChatId() }, limit: current.historyLimit, offset: 0 } },
-          });
+          return endpoint({ label: 'History', method: 'POST', path: '/api/ai/history', options: { body: { params: { chat_id: currentChatId() }, limit: current.historyLimit, offset: 0 } } });
         case 'infiniteHistory':
-          return endpoint({
-            label: 'Infinite History',
-            method: 'POST',
-            path: '/api/ai/history/infinite',
-            options: { body: { params: { chat_id: currentChatId(), limit: current.historyLimit, offset: 0 } } },
-          });
+          return endpoint({ label: 'Infinite History', method: 'POST', path: '/api/ai/history/infinite', options: { body: { params: { chat_id: currentChatId(), limit: current.historyLimit, offset: 0 } } } });
         case 'shareChat':
-          return endpoint({
-            label: 'Share Chat',
-            method: 'POST',
-            pathTemplate: '/api/ai/chats/share/{chat_id}',
-            pathParams: { chat_id: currentChatId() },
-            options: { body: { is_public: true } },
-          });
+          return endpoint({ label: 'Share Chat', method: 'POST', pathTemplate: '/api/ai/chats/share/{chat_id}', pathParams: { chat_id: currentChatId() }, options: { body: { is_public: true } } });
         case 'fetchView':
-          return endpoint({
-            label: 'Fetch View',
-            method: 'GET',
-            pathTemplate: '/api/view/chat/{chat_id}',
-            pathParams: { chat_id: currentChatId() },
-            options: {},
-          });
+          return endpoint({ label: 'Fetch View', method: 'GET', pathTemplate: '/api/view/chat/{chat_id}', pathParams: { chat_id: currentChatId() }, options: {} });
         case 'fetchPdf':
-          return endpoint({
-            label: 'Fetch PDF',
-            method: 'GET',
-            pathTemplate: '/api/view/chat/{chat_id}/pdf',
-            pathParams: { chat_id: currentChatId() },
-            options: {},
-          });
+          return endpoint({ label: 'Fetch PDF', method: 'GET', pathTemplate: '/api/view/chat/{chat_id}/pdf', pathParams: { chat_id: currentChatId() }, options: {} });
         case 'deleteChat':
-          return endpoint({
-            label: 'Delete Chat',
-            method: 'DELETE',
-            pathTemplate: '/api/ai/client/{client_id}/chats/{chat_id}',
-            pathParams: { client_id: currentClientId(), chat_id: currentChatId() },
-            options: {},
-          });
+          return endpoint({ label: 'Delete Chat', method: 'DELETE', pathTemplate: '/api/ai/client/{client_id}/chats/{chat_id}', pathParams: { client_id: currentClientId(), chat_id: currentChatId() }, options: {} });
         case 'reportMessage':
-          return endpoint({
-            label: 'Report Message',
-            method: 'POST',
-            path: '/api/ai/report',
-            options: {
-              body: {
-                params: { chat_id: currentChatId() },
-                answer_index: 0,
-                message: 'Browser API test report',
-              },
-            },
-          });
+          return endpoint({ label: 'Report Message', method: 'POST', path: '/api/ai/report', options: { body: { params: { chat_id: currentChatId() }, answer_index: 0, message: 'Browser API test report' } } });
         case 'reportOffer':
-          return endpoint({
-            label: 'Report Offer',
-            method: 'POST',
-            path: '/api/ai/offers/report',
-            options: {
-              body: {
-                offer_id: 'browser-test-offer',
-                description: 'Browser API test report',
-                client_id: currentClientId(),
-                chat_id: currentChatId(),
-              },
-            },
-          });
+          return endpoint({ label: 'Report Offer', method: 'POST', path: '/api/ai/offers/report', options: { body: { offer_id: 'browser-test-offer', description: 'Browser API test report', client_id: currentClientId(), chat_id: currentChatId() } } });
         case 'chatGreeting':
-          return endpoint({
-            label: 'Chat Greeting',
-            method: 'GET',
-            path: '/api/chat-greeting',
-            options: {},
-          });
+          return endpoint({ label: 'Chat Greeting', method: 'GET', path: '/api/chat-greeting', options: {} });
         default:
           throw new Error(`Unknown endpoint: ${key}`);
       }
     }
 
+    // ── Editor helpers ─────────────────────────────────────────
+
     function setEditorStatus(message, tone) {
       elements.editorStatus.textContent = message;
-      elements.editorStatus.className = `editor-status ${tone || ''}`.trim();
+      elements.editorStatus.className   = `editor-status ${tone || ''}`.trim();
     }
 
     function parseEditorJson(raw, label, emptyValue, quiet = false) {
       const trimmed = raw.trim();
-      if (!trimmed) {
-        return { ok: true, value: emptyValue };
-      }
-
+      if (!trimmed) return { ok: true, value: emptyValue };
       try {
         return { ok: true, value: JSON.parse(trimmed) };
       } catch (error) {
-        if (!quiet) {
-          setEditorStatus(`${label} JSON is invalid: ${error.message}`, 'bad');
-        }
+        if (!quiet) setEditorStatus(`${label} JSON is invalid: ${error.message}`, 'bad');
         return { ok: false };
       }
     }
@@ -1313,52 +985,39 @@
 
     function loadGeneratedRequest(key = elements.endpointSelect.value) {
       const definition = buildEndpointRequest(key);
-      const options = definition.options || {};
+      const options    = definition.options || {};
       const pathParams = definition.pathParams || {};
-      const query = options.query || {};
+      const query      = options.query || {};
       const hasRequestBody = hasBody(options);
 
-      elements.pathEditor.value = pretty(pathParams);
-      elements.queryEditor.value = pretty(query || {});
-      elements.bodyEditor.value = hasRequestBody ? pretty(options.body) : '';
-      elements.usePathEditor.checked = Object.keys(pathParams).length > 0;
+      elements.pathEditor.value    = pretty(pathParams);
+      elements.queryEditor.value   = pretty(query || {});
+      elements.bodyEditor.value    = hasRequestBody ? pretty(options.body) : '';
+      elements.usePathEditor.checked  = Object.keys(pathParams).length > 0;
       elements.useQueryEditor.checked = Object.keys(query).length > 0;
-      elements.useBodyEditor.checked = hasRequestBody;
+      elements.useBodyEditor.checked  = hasRequestBody;
       updateResolvedPathPreview(definition);
       setEditorStatus(`${definition.method} ${definition.path} loaded`, 'ok');
     }
 
     function editorPathParams(definition, quiet = false) {
-      if (!elements.usePathEditor.checked) {
-        return { ok: true, value: definition.pathParams || {} };
-      }
-
-      const parsedPathParams = parseEditorJson(elements.pathEditor.value, 'Path params', {}, quiet);
-      if (!parsedPathParams.ok) return parsedPathParams;
-
-      if (!parsedPathParams.value || typeof parsedPathParams.value !== 'object' || Array.isArray(parsedPathParams.value)) {
-        if (!quiet) {
-          setEditorStatus('Path params must be a JSON object.', 'bad');
-        }
+      if (!elements.usePathEditor.checked) return { ok: true, value: definition.pathParams || {} };
+      const parsed = parseEditorJson(elements.pathEditor.value, 'Path params', {}, quiet);
+      if (!parsed.ok) return parsed;
+      if (!parsed.value || typeof parsed.value !== 'object' || Array.isArray(parsed.value)) {
+        if (!quiet) setEditorStatus('Path params must be a JSON object.', 'bad');
         return { ok: false };
       }
-
-      return parsedPathParams;
+      return parsed;
     }
 
     function resolveEditorPath(definition, quiet = false) {
       const parsedPathParams = editorPathParams(definition, quiet);
       if (!parsedPathParams.ok) return null;
-
       try {
-        return {
-          path: resolvePath(definition.pathTemplate, parsedPathParams.value),
-          pathParams: parsedPathParams.value,
-        };
+        return { path: resolvePath(definition.pathTemplate, parsedPathParams.value), pathParams: parsedPathParams.value };
       } catch (error) {
-        if (!quiet) {
-          setEditorStatus(error.message, 'bad');
-        }
+        if (!quiet) setEditorStatus(error.message, 'bad');
         return null;
       }
     }
@@ -1366,31 +1025,25 @@
     function updateResolvedPathPreview(definition = buildEndpointRequest(elements.endpointSelect.value)) {
       const resolved = resolveEditorPath(definition, true);
       if (!resolved) {
-        elements.resolvedPathPreview.className = 'path-preview bad';
+        elements.resolvedPathPreview.className   = 'path-preview bad';
         elements.resolvedPathPreview.textContent = `Resolved path: ${definition.pathTemplate}`;
         return;
       }
-
-      elements.resolvedPathPreview.className = 'path-preview';
+      elements.resolvedPathPreview.className   = 'path-preview';
       elements.resolvedPathPreview.textContent = `Resolved path: ${resolved.path}`;
     }
 
     function editorRequestOptions(generatedOptions = {}) {
       const options = {};
-
-      if (generatedOptions.headers) {
-        options.headers = generatedOptions.headers;
-      }
+      if (generatedOptions.headers) options.headers = generatedOptions.headers;
 
       if (elements.useQueryEditor.checked) {
         const parsedQuery = parseEditorJson(elements.queryEditor.value, 'Query params', {});
         if (!parsedQuery.ok) return null;
-
         if (!parsedQuery.value || typeof parsedQuery.value !== 'object' || Array.isArray(parsedQuery.value)) {
           setEditorStatus('Query params must be a JSON object.', 'bad');
           return null;
         }
-
         options.query = parsedQuery.value;
       } else if (generatedOptions.query) {
         options.query = generatedOptions.query;
@@ -1399,9 +1052,7 @@
       if (elements.useBodyEditor.checked) {
         const parsedBody = parseEditorJson(elements.bodyEditor.value, 'Body', undefined);
         if (!parsedBody.ok) return null;
-        if (parsedBody.value !== undefined) {
-          options.body = parsedBody.value;
-        }
+        if (parsedBody.value !== undefined) options.body = parsedBody.value;
       } else if (hasBody(generatedOptions)) {
         options.body = generatedOptions.body;
       }
@@ -1417,7 +1068,6 @@
         setEditorStatus('Path params must be a JSON object.', 'bad');
         return;
       }
-
       elements.pathEditor.value = pretty(parsedPathParams.value);
 
       const parsedQuery = parseEditorJson(elements.queryEditor.value, 'Query params', {});
@@ -1426,7 +1076,6 @@
         setEditorStatus('Query params must be a JSON object.', 'bad');
         return;
       }
-
       elements.queryEditor.value = pretty(parsedQuery.value);
 
       if (elements.bodyEditor.value.trim()) {
@@ -1441,7 +1090,7 @@
 
     async function sendSelectedRequest() {
       const definition = buildEndpointRequest(elements.endpointSelect.value);
-      const resolved = resolveEditorPath(definition);
+      const resolved   = resolveEditorPath(definition);
       if (!resolved) return;
 
       const options = editorRequestOptions(definition.options || {});
@@ -1454,20 +1103,18 @@
       }
 
       if (definition.label === 'POST Message') {
-        const message = typeof options.body?.message === 'string'
-          ? options.body.message.trim()
-          : '';
-        if (message) {
-          addTranscript('user', message, []);
-        }
+        const message = typeof options.body?.message === 'string' ? options.body.message.trim() : '';
+        if (message) addTranscript('user', message, []);
       }
 
       await requestApi(definition.label, definition.method, resolved.path, options);
     }
 
+    // ── Status / badge helpers ─────────────────────────────────
+
     function setStatus(label, tone) {
       elements.statusText.textContent = label;
-      elements.statusDot.className = `dot ${tone || ''}`.trim();
+      elements.statusDot.className    = `dot ${tone || ''}`.trim();
     }
 
     function statusClass(status) {
@@ -1478,9 +1125,11 @@
 
     function setLastStatus(record) {
       const tone = statusClass(record.status);
-      elements.lastStatus.className = `badge ${tone}`;
+      elements.lastStatus.className   = `badge ${tone}`;
       elements.lastStatus.textContent = `${record.status} ${record.label}`;
     }
+
+    // ── Rendering ──────────────────────────────────────────────
 
     function pretty(value) {
       if (value === undefined) return '';
@@ -1489,22 +1138,14 @@
     }
 
     function escapeHtml(value) {
-      return `${value ?? ''}`.replace(/[&<>"']/g, char => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;',
-      })[char]);
+      return `${value ?? ''}`.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
     }
 
     function isSafeHttpUrl(value) {
       try {
         const url = new URL(value);
         return url.protocol === 'http:' || url.protocol === 'https:';
-      } catch {
-        return false;
-      }
+      } catch { return false; }
     }
 
     function renderInlineMarkdown(value) {
@@ -1521,44 +1162,30 @@
     function renderMarkdown(content) {
       const text = `${content ?? ''}`.trim();
       if (!text) return '';
-
       const blocks = text.split(/\n{2,}/);
       return blocks.map(block => {
-        const lines = block.split('\n');
+        const lines   = block.split('\n');
         const heading = lines.length === 1 ? lines[0].match(/^(#{1,4})\s+(.+)$/) : null;
         if (heading) {
           const level = Math.min(heading[1].length, 4);
           return `<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`;
         }
-
         if (lines.every(line => /^\s*[-*]\s+/.test(line))) {
-          const items = lines
-            .map(line => line.replace(/^\s*[-*]\s+/, ''))
-            .map(line => `<li>${renderInlineMarkdown(line)}</li>`)
-            .join('');
-          return `<ul>${items}</ul>`;
+          return `<ul>${lines.map(l => `<li>${renderInlineMarkdown(l.replace(/^\s*[-*]\s+/, ''))}</li>`).join('')}</ul>`;
         }
-
         if (lines.every(line => /^\s*\d+\.\s+/.test(line))) {
-          const items = lines
-            .map(line => line.replace(/^\s*\d+\.\s+/, ''))
-            .map(line => `<li>${renderInlineMarkdown(line)}</li>`)
-            .join('');
-          return `<ol>${items}</ol>`;
+          return `<ol>${lines.map(l => `<li>${renderInlineMarkdown(l.replace(/^\s*\d+\.\s+/, ''))}</li>`).join('')}</ol>`;
         }
-
         if (lines.every(line => /^\s*>\s?/.test(line))) {
-          const quote = lines.map(line => line.replace(/^\s*>\s?/, '')).join('\n');
-          return `<blockquote>${renderInlineMarkdown(quote).replace(/\n/g, '<br>')}</blockquote>`;
+          return `<blockquote>${renderInlineMarkdown(lines.map(l => l.replace(/^\s*>\s?/, '')).join('\n')).replace(/\n/g, '<br>')}</blockquote>`;
         }
-
         return `<p>${renderInlineMarkdown(block).replace(/\n/g, '<br>')}</p>`;
       }).join('');
     }
 
     function answerItems(body) {
       if (Array.isArray(body?.answer)) return body.answer;
-      if (Array.isArray(body?.data)) return body.data;
+      if (Array.isArray(body?.data))   return body.data;
       return [];
     }
 
@@ -1581,22 +1208,13 @@
       if (item.type === 'app_offers') {
         const offers = Array.isArray(item.content) ? item.content : [];
         if (offers.length === 0) {
-          return `
-            <section class="result-block">
-              <div class="result-type">App offers</div>
-              <div class="empty">No offers available.</div>
-            </section>
-          `;
+          return `<section class="result-block"><div class="result-type">App offers</div><div class="empty">No offers available.</div></section>`;
         }
-
         return `
           <section class="result-block">
-            <div class="result-type">App offers</div>
-            <div class="offers-grid">
-              ${offers.map(renderOfferCard).join('')}
-            </div>
-          </section>
-        `;
+            <div class="result-type">App offers (${offers.length})</div>
+            <div class="offers-grid">${offers.map(renderOfferCard).join('')}</div>
+          </section>`;
       }
 
       if (item.type && item.content !== undefined && typeof item.content !== 'string') {
@@ -1604,8 +1222,7 @@
           <section class="result-block">
             <div class="result-type">${escapeHtml(item.type)}</div>
             <pre>${escapeHtml(pretty(item.content))}</pre>
-          </section>
-        `;
+          </section>`;
       }
 
       return '';
@@ -1616,37 +1233,35 @@
         return `<article class="offer-card"><pre>${escapeHtml(pretty(offer))}</pre></article>`;
       }
 
-      const title = offer.name || offer.title || `Offer #${offer.id ?? offer.offer_id ?? '-'}`;
-      const bank = typeof offer.bank === 'object' ? offer.bank?.name : offer.bank;
-      const avatar = offer.avatar || offer.logo || offer.image;
+      const title   = offer.name || offer.title || `Offer #${offer.id ?? offer.offer_id ?? '-'}`;
+      const bank    = typeof offer.bank === 'object' ? offer.bank?.name : offer.bank;
+      const avatar  = offer.avatar || offer.logo || offer.image;
       const headers = Array.isArray(offer.headers) ? offer.headers : [];
-      const url = offer.url && isSafeHttpUrl(offer.url) ? offer.url : '';
+      const url     = offer.url && isSafeHttpUrl(offer.url) ? offer.url : '';
+      const btn     = offer.button_text;
 
       return `
         <article class="offer-card">
           <div class="offer-card-head">
-            ${avatar && isSafeHttpUrl(avatar) ? `<img class="offer-avatar" src="${escapeHtml(avatar)}" alt="">` : ''}
+            ${avatar && isSafeHttpUrl(avatar) ? `<img class="offer-avatar" src="${escapeHtml(avatar)}" alt="" loading="lazy">` : ''}
             <div>
               <div class="offer-title">${escapeHtml(title)}</div>
-              ${bank ? `<div class="offer-subtitle">Bank: ${escapeHtml(bank)}</div>` : ''}
+              ${bank ? `<div class="offer-subtitle">${escapeHtml(bank)}</div>` : ''}
             </div>
           </div>
           ${headers.length ? `
             <div class="offer-headers">
-              ${headers.map(header => `
+              ${headers.map(h => `
                 <div class="offer-header-row">
-                  <span>${escapeHtml(header.title || header.name || '')}</span>
+                  <span>${escapeHtml(h.title || h.name || '')}</span>
                   <div>
-                    <strong>${escapeHtml(header.value ?? '')}</strong>
-                    ${header.additional_term ? `<div class="offer-term">${escapeHtml(header.additional_term)}</div>` : ''}
+                    <strong>${escapeHtml(h.value ?? '')}</strong>
+                    ${h.additional_term ? `<div class="offer-term">${escapeHtml(h.additional_term)}</div>` : ''}
                   </div>
-                </div>
-              `).join('')}
-            </div>
-          ` : ''}
-          ${url ? `<a class="offer-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open offer</a>` : ''}
-        </article>
-      `;
+                </div>`).join('')}
+            </div>` : ''}
+          ${url ? `<a class="offer-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(btn || 'Open offer →')}</a>` : ''}
+        </article>`;
     }
 
     function renderStructuredData(data) {
@@ -1681,19 +1296,14 @@
             ${item.role === 'user' ? escapeHtml(item.content) : renderMarkdown(item.content)}
           </div>
           ${renderStructuredData(item.data)}
-        </article>
-      `);
+        </article>`);
 
       if (state.streamDraft) {
         rows.push(`
           <article class="message assistant">
-            <div class="role">
-              <span>assistant stream</span>
-              <span>live</span>
-            </div>
+            <div class="role"><span>assistant stream</span><span>live</span></div>
             <div class="content rendered-content">${renderMarkdown(state.streamDraft)}</div>
-          </article>
-        `);
+          </article>`);
       }
 
       elements.transcript.innerHTML = rows.join('');
@@ -1705,7 +1315,6 @@
         elements.sseLog.textContent = 'No stream events.';
         return;
       }
-
       elements.sseLog.textContent = state.sseEvents
         .map(entry => `[${entry.at}] ${entry.event}\n${entry.data}`)
         .join('\n\n');
@@ -1714,45 +1323,20 @@
 
     function updatePayloadPreview() {
       elements.payloadPreview.textContent = pretty(buildChatPayload());
-      elements.activeTarget.textContent = `Target: ${normalizeBaseUrl(elements.baseUrl.value)}`;
+      elements.activeTarget.textContent   = `Target: ${normalizeBaseUrl(elements.baseUrl.value)}`;
     }
 
     function responseChecks(record) {
       const checks = [];
-      const body = record.parsed;
+      const body   = record.parsed;
 
-      if (record.contentType.includes('application/json')) {
-        checks.push({ name: 'JSON body', passed: body !== undefined });
-      }
-
-      if (record.status >= 400 && body && typeof body === 'object') {
-        checks.push({
-          name: 'error/message field',
-          passed: Boolean(body.error || body.message || body.details || body.errors),
-        });
-      }
-
-      if (record.label === 'Suggestions' && record.status === 200) {
-        checks.push({ name: 'success=true', passed: body?.success === true });
-        checks.push({ name: 'suggestions array', passed: Array.isArray(body?.suggestions) });
-      }
-
-      if (record.label === 'All Chats' && record.status === 200) {
-        checks.push({ name: 'success=true', passed: body?.success === true });
-        checks.push({ name: 'chats array', passed: Array.isArray(body?.chats) });
-      }
-
-      if (record.label === 'History' && record.status === 200) {
-        checks.push({ name: 'messages array', passed: Array.isArray(body?.messages) });
-      }
-
-      if (record.label === 'Infinite History' && record.status === 200) {
-        checks.push({ name: 'pagination object', passed: Boolean(body?.pagination) });
-      }
-
-      if (record.label === 'Chat Greeting' && record.status === 200) {
-        checks.push({ name: 'null greeting accepted', passed: record.bodyText === 'null' });
-      }
+      if (record.contentType.includes('application/json')) checks.push({ name: 'JSON body', passed: body !== undefined });
+      if (record.status >= 400 && body && typeof body === 'object') checks.push({ name: 'error/message field', passed: Boolean(body.error || body.message || body.details || body.errors) });
+      if (record.label === 'Suggestions'      && record.status === 200) { checks.push({ name: 'success=true', passed: body?.success === true }); checks.push({ name: 'suggestions array', passed: Array.isArray(body?.suggestions) }); }
+      if (record.label === 'All Chats'        && record.status === 200) { checks.push({ name: 'success=true', passed: body?.success === true }); checks.push({ name: 'chats array', passed: Array.isArray(body?.chats) }); }
+      if (record.label === 'History'          && record.status === 200) checks.push({ name: 'messages array', passed: Array.isArray(body?.messages) });
+      if (record.label === 'Infinite History' && record.status === 200) checks.push({ name: 'pagination object', passed: Boolean(body?.pagination) });
+      if (record.label === 'Chat Greeting'    && record.status === 200) checks.push({ name: 'null greeting accepted', passed: record.bodyText === 'null' });
 
       return checks;
     }
@@ -1766,10 +1350,7 @@
 
     function responsePreview(record) {
       const body = record.parsed ?? record.bodyText;
-      if (body === undefined || body === null || body === '') {
-        return '<div class="empty">Empty response body.</div>';
-      }
-
+      if (body === undefined || body === null || body === '') return '<div class="empty">Empty response body.</div>';
       return `<pre>${escapeHtml(pretty(body))}</pre>`;
     }
 
@@ -1780,7 +1361,7 @@
       }
 
       elements.responseLog.innerHTML = state.responses.map((record, index) => {
-        const tone = statusClass(record.status);
+        const tone   = statusClass(record.status);
         const checks = record.checks.length
           ? record.checks.map(item => `<span class="badge ${item.passed ? 'ok' : 'bad'}">${escapeHtml(item.name)}</span>`).join(' ')
           : '<span class="badge">No data checks</span>';
@@ -1804,115 +1385,55 @@
               <div class="response-preview">${responsePreview(record)}</div>
             </div>
             <div class="log-detail" id="detail-${index}" hidden>
-              <pre>${escapeHtml(pretty({
-                url: record.url,
-                request: record.request,
-                response: {
-                  status: record.status,
-                  contentType: record.contentType,
-                  body: record.parsed ?? record.bodyText,
-                },
-                checks: record.checks,
-              }))}</pre>
+              <pre>${escapeHtml(pretty({ url: record.url, request: record.request, response: { status: record.status, contentType: record.contentType, body: record.parsed ?? record.bodyText }, checks: record.checks }))}</pre>
             </div>
-          </article>
-        `;
+          </article>`;
       }).join('');
     }
+
+    // ── Fetch helpers ──────────────────────────────────────────
 
     async function readResponseBody(response) {
       const contentType = response.headers.get('content-type') || '';
       if (contentType.includes('application/pdf') || contentType.includes('application/octet-stream')) {
         const buffer = await response.arrayBuffer();
-        return {
-          contentType,
-          bodyText: `<binary ${buffer.byteLength} bytes>`,
-          parsed: undefined,
-        };
+        return { contentType, bodyText: `<binary ${buffer.byteLength} bytes>`, parsed: undefined };
       }
-
       const bodyText = await response.text();
       let parsed;
       if (contentType.includes('application/json') && bodyText) {
-        try {
-          parsed = JSON.parse(bodyText);
-        } catch {
-          parsed = undefined;
-        }
+        try { parsed = JSON.parse(bodyText); } catch { parsed = undefined; }
       }
-
       return { contentType, bodyText, parsed };
     }
 
     async function requestApi(label, method, path, options) {
       const startedAt = performance.now();
-      const query = options?.query || {};
-      const body = options && Object.prototype.hasOwnProperty.call(options, 'body') ? options.body : undefined;
-      const url = apiUrl(path, query);
-      const request = {
-        pathParams: options?.pathParams || {},
-        query,
-        body,
-      };
+      const query     = options?.query || {};
+      const body      = options && Object.prototype.hasOwnProperty.call(options, 'body') ? options.body : undefined;
+      const url       = apiUrl(path, query);
+      const request   = { pathParams: options?.pathParams || {}, query, body };
 
       setStatus(`${label} running`, '');
 
       try {
-        const headers = {
-          Accept: 'application/json, text/event-stream, text/html, application/pdf, */*',
-          ...(options?.headers || {}),
-        };
+        const headers = { Accept: 'application/json, text/event-stream, text/html, application/pdf, */*', ...(options?.headers || {}) };
+        const init    = { method, headers, credentials: 'include' };
+        if (body !== undefined) { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(body); }
 
-        const init = {
-          method,
-          headers,
-          credentials: 'include',
-        };
-
-        if (body !== undefined) {
-          headers['Content-Type'] = 'application/json';
-          init.body = JSON.stringify(body);
-        }
-
-        const response = await fetch(url, init);
+        const response     = await fetch(url, init);
         const responseBody = await readResponseBody(response);
-        const record = {
-          label,
-          method,
-          path,
-          url: url.toString(),
-          request,
-          status: response.status,
-          duration: Math.round(performance.now() - startedAt),
-          ...responseBody,
-        };
+        const record       = { label, method, path, url: url.toString(), request, status: response.status, duration: Math.round(performance.now() - startedAt), ...responseBody };
 
-        if (responseBody.parsed?.chat_id) {
-          elements.chatId.value = responseBody.parsed.chat_id;
-          updatePayloadPreview();
-        }
-
-        if (label === 'POST Message' && responseBody.parsed) {
-          captureChatResponse(responseBody.parsed);
-        }
+        if (responseBody.parsed?.chat_id) { elements.chatId.value = responseBody.parsed.chat_id; updatePayloadPreview(); }
+        if (label === 'POST Message' && responseBody.parsed) captureChatResponse(responseBody.parsed);
+        if (label === 'Share Chat'   && responseBody.parsed) handleShareResponse(responseBody.parsed);
 
         addResponse(record);
         setStatus(`${label} ${response.status}`, statusClass(response.status));
         return record;
       } catch (error) {
-        const record = {
-          label,
-          method,
-          path,
-          url: url.toString(),
-          request,
-          status: 0,
-          duration: Math.round(performance.now() - startedAt),
-          contentType: 'fetch-error',
-          bodyText: error?.message || String(error),
-          parsed: undefined,
-          checks: [{ name: 'fetch completed', passed: false }],
-        };
+        const record = { label, method, path, url: url.toString(), request, status: 0, duration: Math.round(performance.now() - startedAt), contentType: 'fetch-error', bodyText: error?.message || String(error), parsed: undefined, checks: [{ name: 'fetch completed', passed: false }] };
         state.responses.unshift(record);
         renderResponses();
         setLastStatus(record);
@@ -1922,42 +1443,36 @@
     }
 
     function captureChatResponse(body) {
-      if (body.chat_id) {
-        elements.chatId.value = body.chat_id;
-      }
-
+      if (body.chat_id) elements.chatId.value = body.chat_id;
       const answer = answerItems(body);
-      const text = answerText(answer);
-      if (text || answer.length > 0) {
-        addTranscript('assistant', text || body.message || '', answer);
-      } else if (body.message) {
-        addTranscript('assistant', body.message, []);
+      const text   = answerText(answer);
+      if (text || answer.length > 0) addTranscript('assistant', text || body.message || '', answer);
+      else if (body.message) addTranscript('assistant', body.message, []);
+    }
+
+    function handleShareResponse(body) {
+      const shareUrl = body.share_url || body.url || body.link;
+      if (shareUrl) {
+        addTranscript('system', `✓ Chat shared — ${shareUrl}`, []);
+        setStatus('Chat shared', 'ok');
       }
     }
 
+    // ── SSE handling ───────────────────────────────────────────
+
     function appendSse(event, data) {
-      state.sseEvents.push({
-        event,
-        data,
-        at: new Date().toLocaleTimeString(),
-      });
+      state.sseEvents.push({ event, data, at: new Date().toLocaleTimeString() });
       renderSseLog();
     }
 
     function parseSseBlock(block) {
-      const lines = block.split('\n');
-      let event = 'message';
-      let data = '';
-
+      const lines  = block.split('\n');
+      let event    = 'message';
+      let data     = '';
       lines.forEach(line => {
-        if (line.startsWith('event:')) {
-          event = line.slice(6).trim();
-        }
-        if (line.startsWith('data:')) {
-          data += line.slice(5).trim();
-        }
+        if (line.startsWith('event:')) event = line.slice(6).trim();
+        if (line.startsWith('data:'))  data += line.slice(5).trim();
       });
-
       return { event, data };
     }
 
@@ -1965,30 +1480,38 @@
       appendSse(event, data);
 
       let parsed;
-      try {
-        parsed = JSON.parse(data);
-      } catch {
-        parsed = undefined;
+      try { parsed = JSON.parse(data); } catch { parsed = undefined; }
+
+      if (event === 'tool-usage') {
+        updateToolPipeline(parsed?.tools ?? []);
+        return;
+      }
+
+      if (event === 'thinking-step') {
+        updateThinkingStep(parsed?.label ?? data);
+        return;
       }
 
       if (event === 'message') {
         state.streamDraft += parsed?.content ?? data;
         renderTranscript();
+        return;
       }
 
       if (event === 'message-complete') {
+        updateThinkingStep('');   // clear ticker, keep pipeline chips
         const content = parsed?.message || parsed?.content || state.streamDraft;
-        const answer = answerItems(parsed);
-        if (content || answer.length) {
-          addTranscript('assistant', content || answerText(answer), answer);
-        }
+        const answer  = answerItems(parsed);
+        if (content || answer.length) addTranscript('assistant', content || answerText(answer), answer);
         state.streamDraft = '';
         renderTranscript();
+        return;
       }
 
       if (event === 'done' && parsed?.chat_id) {
         elements.chatId.value = parsed.chat_id;
         updatePayloadPreview();
+        return;
       }
 
       if (event === 'error') {
@@ -1998,113 +1521,74 @@
       }
     }
 
+    // ── Streaming ──────────────────────────────────────────────
+
     async function streamChatMessage(config = {}) {
       if (state.streamAbort) return;
 
-      const fromEditor = Boolean(config.requestOptions);
-      const editorOptions = config.requestOptions || {};
-      const query = fromEditor ? (editorOptions.query || {}) : { lang: settings().lang, source: settings().source };
-      const pathParams = fromEditor ? (editorOptions.pathParams || {}) : {};
+      const fromEditor     = Boolean(config.requestOptions);
+      const editorOptions  = config.requestOptions || {};
+      const query          = fromEditor ? (editorOptions.query || {}) : { lang: settings().lang, source: settings().source };
+      const pathParams     = fromEditor ? (editorOptions.pathParams || {}) : {};
       const requestHasBody = fromEditor ? hasBody(editorOptions) : true;
-      const payload = fromEditor
-        ? (requestHasBody ? editorOptions.body : undefined)
-        : buildChatPayload(elements.message.value.trim());
-      const message = typeof payload?.message === 'string'
-        ? payload.message.trim()
-        : (fromEditor ? '' : elements.message.value.trim());
+      const payload        = fromEditor ? (requestHasBody ? editorOptions.body : undefined) : buildChatPayload(elements.message.value.trim());
+      const message        = typeof payload?.message === 'string' ? payload.message.trim() : (fromEditor ? '' : elements.message.value.trim());
       if (!fromEditor && !message) return;
 
-      if (message) {
-        addTranscript('user', message, []);
-      }
+      if (message) addTranscript('user', message, []);
       state.streamDraft = '';
-      state.sseEvents = [];
+      state.sseEvents   = [];
+      resetLiveStatus();
       renderSseLog();
 
       const streamPath = config.path || '/api/ai/message/stream';
-      const url = apiUrl(streamPath, query);
-      const startedAt = performance.now();
+      const url        = apiUrl(streamPath, query);
+      const startedAt  = performance.now();
       const controller = new AbortController();
       state.streamAbort = controller;
-      elements.stopStream.disabled = false;
+      elements.stopStream.disabled   = false;
       elements.streamMessage.disabled = true;
       setStatus('Stream running', '');
 
-      let bodyText = '';
-      let status = 0;
+      let bodyText    = '';
+      let status      = 0;
       let contentType = '';
 
       try {
-        const headers = {
-          Accept: 'text/event-stream, application/json, */*',
-        };
-        const init = {
-          method: 'POST',
-          headers,
-          credentials: 'include',
-          signal: controller.signal,
-        };
+        const headers = { Accept: 'text/event-stream, application/json, */*' };
+        const init    = { method: 'POST', headers, credentials: 'include', signal: controller.signal };
+        if (requestHasBody) { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(payload); }
 
-        if (requestHasBody) {
-          headers['Content-Type'] = 'application/json';
-          init.body = JSON.stringify(payload);
-        }
-
-        const response = await fetch(url, {
-          ...init,
-        });
-
-        status = response.status;
+        const response = await fetch(url, init);
+        status      = response.status;
         contentType = response.headers.get('content-type') || '';
 
         if (!response.body || !response.ok || !contentType.includes('text/event-stream')) {
           const responseBody = await readResponseBody(response);
-          addResponse({
-            label: 'Stream Message',
-            method: 'POST',
-            path: streamPath,
-            url: url.toString(),
-            request: { pathParams, query, body: payload },
-            status,
-            duration: Math.round(performance.now() - startedAt),
-            ...responseBody,
-          });
+          addResponse({ label: 'Stream Message', method: 'POST', path: streamPath, url: url.toString(), request: { pathParams, query, body: payload }, status, duration: Math.round(performance.now() - startedAt), ...responseBody });
           setStatus(`Stream ${status}`, statusClass(status));
           return;
         }
 
-        const reader = response.body.getReader();
+        const reader  = response.body.getReader();
         const decoder = new TextDecoder();
-        let buffer = '';
+        let   buffer  = '';
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-
           buffer += decoder.decode(value, { stream: true });
           const blocks = buffer.split('\n\n');
           buffer = blocks.pop() || '';
-
           blocks.forEach(block => {
             if (!block.trim()) return;
-            const parsedBlock = parseSseBlock(block);
+            const parsed = parseSseBlock(block);
             bodyText += `${block}\n\n`;
-            handleSse(parsedBlock.event, parsedBlock.data);
+            handleSse(parsed.event, parsed.data);
           });
         }
 
-        addResponse({
-          label: 'Stream Message',
-          method: 'POST',
-          path: streamPath,
-          url: url.toString(),
-          request: { pathParams, query, body: payload },
-          status,
-          duration: Math.round(performance.now() - startedAt),
-          contentType,
-          bodyText: bodyText || '<empty stream>',
-          parsed: undefined,
-        });
+        addResponse({ label: 'Stream Message', method: 'POST', path: streamPath, url: url.toString(), request: { pathParams, query, body: payload }, status, duration: Math.round(performance.now() - startedAt), contentType, bodyText: bodyText || '<empty stream>', parsed: undefined });
         setStatus(`Stream ${status}`, statusClass(status));
       } catch (error) {
         if (error?.name !== 'AbortError') {
@@ -2116,46 +1600,63 @@
       } finally {
         state.streamAbort = null;
         state.streamDraft = '';
-        elements.stopStream.disabled = true;
+        elements.stopStream.disabled   = true;
         elements.streamMessage.disabled = false;
         renderTranscript();
       }
     }
 
-    function currentChatId() {
-      return elements.chatId.value.trim() || 'browser-test-chat';
+    // ── Misc helpers ───────────────────────────────────────────
+
+    function currentChatId()    { return elements.chatId.value.trim()  || 'browser-test-chat'; }
+    function currentClientId()  { return elements.clientId.value.trim() || 'browser-test-client'; }
+
+    function openInNewTab(path) {
+      window.open(apiUrl(path).toString(), '_blank', 'noopener');
     }
 
-    function currentClientId() {
-      return elements.clientId.value.trim() || 'browser-test-client';
-    }
+    // ── Event wiring ───────────────────────────────────────────
 
     function installHandlers() {
+      // Settings change → update preview
       ['baseUrl', 'clientId', 'chatId', 'country', 'provider', 'lang', 'source', 'message'].forEach(id => {
-        elements[id].addEventListener('input', () => {
-          updatePayloadPreview();
-          updateResolvedPathPreview();
-        });
-        elements[id].addEventListener('change', () => {
-          updatePayloadPreview();
-          updateResolvedPathPreview();
-        });
+        elements[id].addEventListener('input',  () => { updatePayloadPreview(); updateResolvedPathPreview(); });
+        elements[id].addEventListener('change', () => { updatePayloadPreview(); updateResolvedPathPreview(); });
       });
 
+      // Country change → auto-sync language
+      elements.country.addEventListener('change', () => {
+        const lang = COUNTRY_LANG_MAP[elements.country.value];
+        if (lang) {
+          const opt = elements.lang.querySelector(`option[value="${lang}"]`);
+          if (opt) elements.lang.value = lang;
+        }
+        updatePayloadPreview();
+        updateResolvedPathPreview();
+      });
+
+      // Message presets
+      elements.presetRow.addEventListener('click', e => {
+        const btn = e.target.closest('[data-preset]');
+        if (!btn) return;
+        elements.message.value = btn.dataset.preset;
+        updatePayloadPreview();
+      });
+
+      // Cookie / reset
       elements.applyCookie.addEventListener('click', () => {
         const uuid = elements.uuidCookie.value.trim();
-        if (uuid) {
-          document.cookie = `uuid=${encodeURIComponent(uuid)}; path=/; SameSite=Lax`;
-        }
+        if (uuid) document.cookie = `uuid=${encodeURIComponent(uuid)}; path=/; SameSite=Lax`;
         document.cookie = `client_id=${encodeURIComponent(currentClientId())}; path=/; SameSite=Lax`;
         setStatus('Cookie set', 'ok');
       });
 
       elements.resetState.addEventListener('click', () => {
         state.transcript = [];
-        state.sseEvents = [];
+        state.sseEvents  = [];
         state.streamDraft = '';
         elements.chatId.value = '';
+        resetLiveStatus();
         renderTranscript();
         renderSseLog();
         updatePayloadPreview();
@@ -2163,21 +1664,18 @@
       });
 
       elements.clearTranscript.addEventListener('click', () => {
-        state.transcript = [];
+        state.transcript  = [];
         state.streamDraft = '';
+        resetLiveStatus();
         renderTranscript();
         updatePayloadPreview();
       });
 
-      elements.clearSse.addEventListener('click', () => {
-        state.sseEvents = [];
-        renderSseLog();
-      });
-
+      elements.clearSse.addEventListener('click', () => { state.sseEvents = []; renderSseLog(); });
       elements.clearLog.addEventListener('click', () => {
         state.responses = [];
         renderResponses();
-        elements.lastStatus.className = 'badge';
+        elements.lastStatus.className   = 'badge';
         elements.lastStatus.textContent = 'No responses';
       });
 
@@ -2186,99 +1684,58 @@
         setStatus('Payload copied', 'ok');
       });
 
+      // Editor controls
       elements.endpointSelect.addEventListener('change', () => loadGeneratedRequest());
       elements.loadSelectedRequest.addEventListener('click', () => loadGeneratedRequest());
       elements.sendSelectedRequest.addEventListener('click', sendSelectedRequest);
       elements.formatEditors.addEventListener('click', formatEditors);
-
       ['pathEditor', 'queryEditor', 'bodyEditor'].forEach(id => {
-        elements[id].addEventListener('input', () => {
-          setEditorStatus('Editor changed.', '');
-          updateResolvedPathPreview();
-        });
+        elements[id].addEventListener('input', () => { setEditorStatus('Editor changed.', ''); updateResolvedPathPreview(); });
       });
-
       ['usePathEditor', 'useQueryEditor', 'useBodyEditor'].forEach(id => {
-        elements[id].addEventListener('change', () => {
-          setEditorStatus('Request override settings updated.', '');
-          updateResolvedPathPreview();
-        });
+        elements[id].addEventListener('change', () => { setEditorStatus('Request override settings updated.', ''); updateResolvedPathPreview(); });
       });
 
+      // Chat actions
       elements.sendMessage.addEventListener('click', async () => {
         const message = elements.message.value.trim();
         if (!message) return;
         addTranscript('user', message, []);
         await requestApi('POST Message', 'POST', '/api/ai/message', {
           query: { lang: settings().lang, source: settings().source },
-          body: buildChatPayload(message),
+          body:  buildChatPayload(message),
         });
       });
 
       elements.streamMessage.addEventListener('click', streamChatMessage);
-      elements.stopStream.addEventListener('click', () => {
-        if (state.streamAbort) state.streamAbort.abort();
+      elements.stopStream.addEventListener('click', () => { if (state.streamAbort) state.streamAbort.abort(); });
+
+      // Quick export / share (header buttons in transcript pane)
+      elements.quickShare.addEventListener('click', () => {
+        const id = currentChatId();
+        requestApi('Share Chat', 'POST', `/api/ai/chats/share/${encodeURIComponent(id)}`, { body: { is_public: true } });
       });
+      elements.quickView.addEventListener('click', () => openInNewTab(`/api/view/chat/${encodeURIComponent(currentChatId())}`));
+      elements.quickPdf.addEventListener('click',  () => openInNewTab(`/api/view/chat/${encodeURIComponent(currentChatId())}/pdf`));
 
-      elements.getSuggestions.addEventListener('click', () => requestApi('Suggestions', 'POST', '/api/ai/suggestions', {
-        query: { lang: settings().lang },
-        body: { params: { country: settings().country } },
-      }));
-
-      elements.getAllChats.addEventListener('click', () => requestApi('All Chats', 'POST', '/api/ai/chats', {
-        body: { client_id: currentClientId() },
-      }));
-
+      // Endpoint grid buttons
+      elements.getSuggestions.addEventListener('click', () => requestApi('Suggestions', 'POST', '/api/ai/suggestions', { query: { lang: settings().lang }, body: { params: { country: settings().country } } }));
+      elements.getAllChats.addEventListener('click',    () => requestApi('All Chats', 'POST', '/api/ai/chats', { body: { client_id: currentClientId() } }));
       elements.getClientChats.addEventListener('click', () => requestApi('Client Chats', 'GET', `/api/ai/client/${encodeURIComponent(currentClientId())}/chats`));
-
-      elements.postClientChats.addEventListener('click', () => requestApi('Client Chats POST', 'POST', `/api/ai/client/${encodeURIComponent(currentClientId())}/chats`, {
-        body: { chat_id: currentChatId(), chat_name: 'Browser API test chat' },
-      }));
-
-      elements.getHistory.addEventListener('click', () => requestApi('History', 'POST', '/api/ai/history', {
-        body: { params: { chat_id: currentChatId() }, limit: settings().historyLimit, offset: 0 },
-      }));
-
-      elements.getInfiniteHistory.addEventListener('click', () => requestApi('Infinite History', 'POST', '/api/ai/history/infinite', {
-        body: { params: { chat_id: currentChatId(), limit: settings().historyLimit, offset: 0 } },
-      }));
-
-      elements.shareChat.addEventListener('click', () => requestApi('Share Chat', 'POST', `/api/ai/chats/share/${encodeURIComponent(currentChatId())}`, {
-        body: { is_public: true },
-      }));
-
+      elements.postClientChats.addEventListener('click',() => requestApi('Client Chats POST', 'POST', `/api/ai/client/${encodeURIComponent(currentClientId())}/chats`, { body: { chat_id: currentChatId(), chat_name: 'Browser API test chat' } }));
+      elements.getHistory.addEventListener('click',         () => requestApi('History', 'POST', '/api/ai/history', { body: { params: { chat_id: currentChatId() }, limit: settings().historyLimit, offset: 0 } }));
+      elements.getInfiniteHistory.addEventListener('click', () => requestApi('Infinite History', 'POST', '/api/ai/history/infinite', { body: { params: { chat_id: currentChatId(), limit: settings().historyLimit, offset: 0 } } }));
+      elements.shareChat.addEventListener('click',          () => requestApi('Share Chat', 'POST', `/api/ai/chats/share/${encodeURIComponent(currentChatId())}`, { body: { is_public: true } }));
       elements.fetchView.addEventListener('click', () => requestApi('Fetch View', 'GET', `/api/view/chat/${encodeURIComponent(currentChatId())}`));
-      elements.fetchPdf.addEventListener('click', () => requestApi('Fetch PDF', 'GET', `/api/view/chat/${encodeURIComponent(currentChatId())}/pdf`));
-
-      elements.openView.addEventListener('click', () => {
-        window.open(apiUrl(`/api/view/chat/${encodeURIComponent(currentChatId())}`).toString(), '_blank', 'noopener');
-      });
-
-      elements.openPdf.addEventListener('click', () => {
-        window.open(apiUrl(`/api/view/chat/${encodeURIComponent(currentChatId())}/pdf`).toString(), '_blank', 'noopener');
-      });
-
+      elements.fetchPdf.addEventListener('click',  () => requestApi('Fetch PDF',  'GET', `/api/view/chat/${encodeURIComponent(currentChatId())}/pdf`));
+      elements.openView.addEventListener('click',  () => openInNewTab(`/api/view/chat/${encodeURIComponent(currentChatId())}`));
+      elements.openPdf.addEventListener('click',   () => openInNewTab(`/api/view/chat/${encodeURIComponent(currentChatId())}/pdf`));
       elements.deleteChat.addEventListener('click', () => requestApi('Delete Chat', 'DELETE', `/api/ai/client/${encodeURIComponent(currentClientId())}/chats/${encodeURIComponent(currentChatId())}`));
+      elements.reportMessage.addEventListener('click', () => requestApi('Report Message', 'POST', '/api/ai/report', { body: { params: { chat_id: currentChatId() }, answer_index: 0, message: 'Browser API test report' } }));
+      elements.reportOffer.addEventListener('click',   () => requestApi('Report Offer', 'POST', '/api/ai/offers/report', { body: { offer_id: 'browser-test-offer', description: 'Browser API test report', client_id: currentClientId(), chat_id: currentChatId() } }));
+      elements.chatGreeting.addEventListener('click',  () => requestApi('Chat Greeting', 'GET', '/api/chat-greeting'));
 
-      elements.reportMessage.addEventListener('click', () => requestApi('Report Message', 'POST', '/api/ai/report', {
-        body: {
-          params: { chat_id: currentChatId() },
-          answer_index: 0,
-          message: 'Browser API test report',
-        },
-      }));
-
-      elements.reportOffer.addEventListener('click', () => requestApi('Report Offer', 'POST', '/api/ai/offers/report', {
-        body: {
-          offer_id: 'browser-test-offer',
-          description: 'Browser API test report',
-          client_id: currentClientId(),
-          chat_id: currentChatId(),
-        },
-      }));
-
-      elements.chatGreeting.addEventListener('click', () => requestApi('Chat Greeting', 'GET', '/api/chat-greeting'));
-
+      // Response log toggle
       elements.responseLog.addEventListener('click', event => {
         const button = event.target.closest('[data-toggle-detail]');
         if (!button) return;

@@ -250,6 +250,7 @@ export function getConfigV2() {
             privacyLink: getPrivacyLink(countryCode),
             searchEndpoint: 'https://ai.finmatcher.com/api/search',
             isfe,
+            wvss: true,
             localizationEndpoint: 'https://ai.finmatcher.com/api/localization',
             maestra: {
                 domain: 'api.maestra.io',
