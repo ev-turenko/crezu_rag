@@ -223,7 +223,7 @@ export function getConfig() {
         const finalConfig = {
             client_id: client_id,
             version: appBuildNumber,
-            wvss: true,
+            wvss: false,
             finalScreen, // chat | offers
             offersScreenPolicy: 'with_offers', // with offers | empty, where empty means that initially no offers will be shown to the user before initial requests
             feedDisclaimer: feedDisclaimerByLang[normalizedLang],
