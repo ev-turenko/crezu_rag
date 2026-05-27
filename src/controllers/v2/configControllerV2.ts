@@ -251,7 +251,7 @@ export function getConfigV2() {
             searchEndpoint: 'https://ai.finmatcher.com/api/search',
             isfe,
             wvss: true,
-            localizationEndpoint: 'https://ai.finmatcher.com/api/localization',
+            localizationEndpoint: 'https://ai.finmatcher.com/api/v2/localization',
             maestra: {
                 domain: 'api.maestra.io',
                 endpointIos: '',
