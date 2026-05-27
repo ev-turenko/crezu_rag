@@ -81,6 +81,7 @@ app.use('/api/v2/config', configRoutesV2)
 app.use('/api/v2/countries', countriesRoutesV2)
 app.use('/api/countries', countriesRoutes);
 app.use('/api/localization', languagesRoutes);
+app.use('/api/v2/localization', countriesRoutesV2);
 app.use('/api/view', viewChatRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/geoip', geoipRoutes);
