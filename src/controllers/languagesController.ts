@@ -10,8 +10,6 @@ export function getLanguages() {
                 { code: 'es' },
                 { code: 'pl' },
                 { code: 'sv' },
-                { code: 'vi' },
-                { code: 'uk' },
             ],
             countries: [...COUNTRIES_CONFIG]
         });

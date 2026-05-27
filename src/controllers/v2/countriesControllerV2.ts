@@ -15,7 +15,7 @@ export const COUNTRIES_CONFIG_V2 = [
     },
     {
         provider: null,
-        country_code: 'sk',
+        country_code: 'lk',
         country_id: '10'
     },
     {
