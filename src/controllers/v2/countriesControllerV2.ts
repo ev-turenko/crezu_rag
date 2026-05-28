@@ -43,6 +43,16 @@ export const COUNTRIES_CONFIG_V2 = [
         country_code: 'za',
         country_id: '17'
     },
+    {
+        provider: null,
+        country_code: 'co',
+        country_id: '6'
+    },
+    {
+        provider: null,
+        country_code: 'kz',
+        country_id: '8'
+    },
 ];
 
 export function getCountriesV2() {

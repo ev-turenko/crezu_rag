@@ -601,16 +601,16 @@ export const countries = [
   { code: 'ro', id: 12,  lang: 'ro'    },
   { code: 'se', id: 22,  lang: 'se'    },
   // New countries
-  { code: 'co', id: 100, lang: 'es-co' },
-  { code: 'de', id: 101, lang: 'de'    },
-  { code: 'kz', id: 102, lang: 'ru'    },
-  { code: 'lk', id: 103, lang: 'en'    },
-  { code: 'my', id: 104, lang: 'ms'    },
-  { code: 'pe', id: 105, lang: 'es-pe' },
-  { code: 'ph', id: 106, lang: 'en'    },
-  { code: 'ua', id: 107, lang: 'uk'    },
-  { code: 'vn', id: 108, lang: 'vi'    },
-  { code: 'za', id: 109, lang: 'en'    },
+  { code: 'co', id: 6, lang: 'es-co' },
+  { code: 'de', id: 21, lang: 'de'    },
+  { code: 'kz', id: 8, lang: 'ru'    },
+  { code: 'lk', id: 10, lang: 'en'    },
+  { code: 'my', id: 20, lang: 'ms'    },
+  { code: 'pe', id: 5, lang: 'es-pe' },
+  { code: 'ph', id: 3, lang: 'en'    },
+  { code: 'ua', id: 7, lang: 'uk'    },
+  { code: 'vn', id: 9, lang: 'vi'    },
+  { code: 'za', id: 17, lang: 'en'    },
 ]
 
 // Offer types considered "bank cards" – excluded for new countries (except RO).
