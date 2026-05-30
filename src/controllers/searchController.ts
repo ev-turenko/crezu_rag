@@ -1,6 +1,6 @@
 import { InferenceRequest } from "../types/types.js";
 import { Response } from "express";
-import { getResponse } from "../utils/common.js";
+import { getResponse, CDN_FEED_COUNTRIES, fetchOffersFromCDNFeed } from "../utils/common.js";
 import { LLMProvider, DeepSeekModels } from "../enums/enums.js";
 import z from "zod";
 
@@ -87,6 +87,10 @@ async function getOfferType(query: string, countryCode: string | undefined = und
     if (countryCode === "se") {
         return 'fast_loan';
     }
+    // CDN feed countries only carry fast_loan offers
+    if (countryCode && CDN_FEED_COUNTRIES.has(countryCode)) {
+        return 'fast_loan';
+    }
 
     const allTypes = ['not_related', ...possibleOfferTypes] as [string, ...string[]];
 
@@ -134,7 +138,8 @@ export function handleSearch() {
 
 
 
-            const offerType = await getOfferType(query, `${countryCode}`.toLowerCase());
+            const countryCodeLower = `${countryCode}`.toLowerCase();
+            const offerType = await getOfferType(query, countryCodeLower);
 
             if (!offerType) {
                 return res.status(200).json({
@@ -149,7 +154,22 @@ export function handleSearch() {
                 });
             }
 
-            const categories = await getOfferCategories(`${countryCode}`.toLowerCase(), offerType);
+            // CDN feed countries: bypass finmatcher API and return offers directly from CDN
+            if (CDN_FEED_COUNTRIES.has(countryCodeLower)) {
+                const offers = await fetchOffersFromCDNFeed(countryCodeLower);
+                return res.status(200).json({
+                    total: offers.length,
+                    items: offers,
+                    page: 1,
+                    size: offers.length,
+                    success: true,
+                    error: null,
+                    classified_offer_type: offerType,
+                    best_fit_categories: []
+                });
+            }
+
+            const categories = await getOfferCategories(countryCodeLower, offerType);
             const bestFitCategories = await getBestFitCategory(query, categories);
             console.log('Classified offer type:', offerType);
             console.log('Best fit categories:', bestFitCategories);
@@ -176,7 +196,7 @@ export function handleSearch() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    country_code: `${countryCode}`.toLowerCase(),
+                    country_code: countryCodeLower,
                     offer_type: offerType,
                     sorting: { field: 'popular', order: 'desc' },
                     bank_ids: [],
