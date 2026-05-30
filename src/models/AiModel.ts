@@ -345,6 +345,120 @@ export class AIModel {
         id: 13,
         category: 'debt',
       },
+      // German (de)
+      {
+        langs: ['de'],
+        title: 'Kredite',
+        text: 'Finden Sie das beste Darlehen',
+        prompt:
+          'Ich brauche einen Kredit, hilf mir, das beste Darlehen zu finden, basierend auf allem, was du weißt',
+        id: 14,
+        category: 'loan',
+      },
+      {
+        langs: ['de'],
+        title: 'Wie man Schulden bezahlt',
+        text: 'Erfahren Sie, wie Sie Schulden verwalten und bezahlen',
+        prompt:
+          'Erzähl mir von den effizientesten Strategien zur Schuldenrückzahlung',
+        id: 15,
+        category: 'debt',
+      },
+      // Ukrainian (uk)
+      {
+        langs: ['uk'],
+        title: 'Кредити',
+        text: 'Знайдіть найкращий кредит',
+        prompt:
+          'Мені потрібен кредит, допоможи мені знайти найкращий варіант, виходячи з усього, що ти знаєш',
+        id: 16,
+        category: 'loan',
+      },
+      {
+        langs: ['uk'],
+        title: 'Як погасити борги',
+        text: 'Дізнайтесь, як керувати та погашати борги',
+        prompt:
+          'Розкажи мені про найефективніші стратегії погашення кредитів',
+        id: 17,
+        category: 'debt',
+      },
+      // Vietnamese (vi / vn)
+      {
+        langs: ['vi', 'vn'],
+        title: 'Vay tiền',
+        text: 'Tìm khoản vay tốt nhất',
+        prompt:
+          'Tôi cần một khoản vay, hãy giúp tôi tìm khoản vay tốt nhất dựa trên tất cả những gì bạn biết',
+        id: 18,
+        category: 'loan',
+      },
+      {
+        langs: ['vi', 'vn'],
+        title: 'Cách trả nợ',
+        text: 'Tìm hiểu cách quản lý và trả nợ',
+        prompt:
+          'Cho tôi biết về các chiến lược hiệu quả nhất để trả nợ',
+        id: 19,
+        category: 'debt',
+      },
+      // Malay (ms)
+      {
+        langs: ['ms'],
+        title: 'Pinjaman',
+        text: 'Cari pinjaman terbaik',
+        prompt:
+          'Saya memerlukan pinjaman, tolong bantu saya mencari pinjaman terbaik berdasarkan semua yang anda tahu',
+        id: 20,
+        category: 'loan',
+      },
+      {
+        langs: ['ms'],
+        title: 'Cara membayar hutang',
+        text: 'Ketahui cara mengurus dan membayar hutang anda',
+        prompt:
+          'Ceritakan kepada saya tentang strategi paling berkesan untuk membayar pinjaman',
+        id: 21,
+        category: 'debt',
+      },
+      // Filipino (fil)
+      {
+        langs: ['fil'],
+        title: 'Mga Pautang',
+        text: 'Hanapin ang pinakamahusay na pautang',
+        prompt:
+          'Kailangan ko ng pautang, tulungan mo akong mahanap ang pinakamahusay na pautang batay sa lahat ng iyong alam',
+        id: 22,
+        category: 'loan',
+      },
+      {
+        langs: ['fil'],
+        title: 'Paano magbayad ng utang',
+        text: 'Alamin kung paano pamahalaan at bayaran ang iyong mga utang',
+        prompt:
+          'Sabihin mo sa akin ang tungkol sa pinaka-epektibong mga estratehiya para sa pagbabayad ng mga pautang',
+        id: 23,
+        category: 'debt',
+      },
+      // Sinhala (si)
+      {
+        langs: ['si'],
+        title: 'ණය',
+        text: 'හොඳම ණය සොයාගන්න',
+        prompt:
+          'මට ණයක් අවශ්‍යයි, ඔබ දන්නා සියල්ල මත පදනම්ව හොඳම ණය සොයාගැනීමට මට උදව් කරන්න',
+        id: 24,
+        category: 'loan',
+      },
+      {
+        langs: ['si'],
+        title: 'ණය ගෙවන්නේ කෙසේද',
+        text: 'ඔබේ ණය කළමනාකරණය කිරීමට සහ ගෙවීමට ඉගෙන ගන්න',
+        prompt:
+          'ණය ගෙවීම සඳහා වඩාත් කාර්යක්ෂම උපාය මාර්ග ගැන මට කියන්න',
+        id: 25,
+        category: 'debt',
+      },
     ];
     const result = [];
     const filtered = options.filter(option => option.langs.includes(lang));

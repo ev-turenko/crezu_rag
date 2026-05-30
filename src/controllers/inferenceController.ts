@@ -229,6 +229,11 @@ export async function getSuggestions(req: Request, res: Response) {
                 code: 'se',
                 id: 22,
                 lang: 'se'
+            },
+            {
+                code: 'vn',
+                id: 9,
+                lang: 'vi'
             }
         ]
         const langParam = (req.query.lang as string) || countries.filter(country => country.id === body.params.country)[0].lang;
