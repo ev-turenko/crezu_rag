@@ -240,7 +240,8 @@ export async function getSuggestions(req: Request, res: Response) {
         const suggestions = await AIModel.getSuggestions(langParam);
         return res.status(200).json({
             success: true,
-            suggestions: suggestions
+            suggestions: suggestions,
+            camera_option_available: true
         });
     } catch (error) {
         console.error('Error fetching suggestions:', error);

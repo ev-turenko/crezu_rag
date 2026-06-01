@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { getAiProvider } from '../models/AiModel.js';
-import { LLMProvider, DeepSeekModels } from '../enums/enums.js';
+import { LLMProvider, DeepInfraModels } from '../enums/enums.js';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
@@ -24,10 +24,10 @@ export const analyzeImage = async (req: Request, res: Response): Promise<void> =
         : 'Extract the text from the image and convert it into a financial question ready to copy & paste. Reply in the language of the text in the image. Do not add any additional commentary, just provide the question.';
 
     try {
-        const ai = getAiProvider(LLMProvider.DEEPSEEK);
+        const ai = getAiProvider(LLMProvider.DEEPINFRA);
 
         const completion = await ai.chat.completions.create({
-            model: DeepSeekModels.GEMMA_4_31B_IT,
+            model: DeepInfraModels.GEMMA_4_31B_IT,
             messages: [
                 {
                     role: 'user',

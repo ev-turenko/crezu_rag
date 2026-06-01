@@ -41,10 +41,10 @@ export enum LLMProvider {
 export enum DeepInfraModels {
     LLAMA4_SCOUT_17B = 'meta-llama/Llama-4-Scout-17B-16E-Instruct',
     LLAMA4_MAVERICK_17B = 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
+    GEMMA_4_31B_IT = 'gemma-4-31B-it',
 }
 
 export enum DeepSeekModels {
     CHAT = 'deepseek-chat',
     REASONER = 'deepseek-reasoner',
-    GEMMA_4_31B_IT = 'gemma-4-31B-it',
 }
