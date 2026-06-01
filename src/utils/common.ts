@@ -311,6 +311,10 @@ export type CDNOfferRaw = {
   field4_header?: string; field4_value?: string;
   field5_header?: string; field5_value?: string;
   field6_header?: string; field6_value?: string;
+  nbu1_link?: string;
+  nbu2_link?: string;
+  nbu1_header?: string;
+  nbu2_header?: string;
   [key: string]: unknown;
 };
 
@@ -399,6 +403,10 @@ export function cdnOfferToOriginal(offer: CDNOfferRaw, countryCode: string, clie
     offer_parameter_categories: buildCDNParameters(processed),
     rpc: 0,
     button_text: typeof offer.buttonText === 'string' ? offer.buttonText : null,
+    ...(typeof offer.nbu1_link === 'string' && offer.nbu1_link ? { nbu1_link: offer.nbu1_link } : {}),
+    ...(typeof offer.nbu2_link === 'string' && offer.nbu2_link ? { nbu2_link: offer.nbu2_link } : {}),
+    ...(typeof offer.nbu1_header === 'string' && offer.nbu1_header ? { nbu1_header: offer.nbu1_header } : {}),
+    ...(typeof offer.nbu2_header === 'string' && offer.nbu2_header ? { nbu2_header: offer.nbu2_header } : {}),
   };
 }
 

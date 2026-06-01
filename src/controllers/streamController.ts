@@ -33,6 +33,10 @@ type FetchedOffer = {
     avatar?: string;
     headers: unknown[];
     button_text: null;
+    nbu1_link?: string;
+    nbu2_link?: string;
+    nbu1_header?: string;
+    nbu2_header?: string;
 };
 
 /** Offer ranked/selected by the reasoning tool */
@@ -544,6 +548,10 @@ async function toolFormatAppOffers(args: Record<string, unknown>, context: Strea
             })
             : o.headers,
         button_text: null,
+        ...(typeof o.nbu1_link === 'string' && o.nbu1_link ? { nbu1_link: o.nbu1_link } : {}),
+        ...(typeof o.nbu2_link === 'string' && o.nbu2_link ? { nbu2_link: o.nbu2_link } : {}),
+        ...(typeof o.nbu1_header === 'string' && o.nbu1_header ? { nbu1_header: o.nbu1_header } : {}),
+        ...(typeof o.nbu2_header === 'string' && o.nbu2_header ? { nbu2_header: o.nbu2_header } : {}),
     }));
 
     console.log('[TOOL] format_app_offers', {
