@@ -224,11 +224,11 @@
  *     tags:
  *       - AI Inference
  *     summary: Get chat suggestions
- *     description: Get localized chat suggestions based on country
+ *     description: Get localized chat suggestions based on the requested language, falling back to country
  *     parameters:
  *       - name: lang
  *         in: query
- *         description: Language code (optional)
+ *         description: Language code (optional). Use ru to request Russian suggestions for any country.
  *         schema:
  *           type: string
  *     requestBody:

@@ -9,7 +9,7 @@ TODO:
 import { Request, Response } from 'express';
 import { AIModel, ChatDbRecord, ChatProperties } from '../models/AiModel.js';
 import { ChatIntent, ChatRole, ContentDataType, DeepInfraModels, LLMProvider } from '../enums/enums.js';
-import { getSortedffersAndCategories, fetchOffersByIds, normalizeOfferForLLM, OriginalOfferData, getResponse, getFilteredOffersForCountry } from '../utils/common.js';
+import { getSortedffersAndCategories, fetchOffersByIds, normalizeOfferForLLM, OriginalOfferData, getResponse, getFilteredOffersForCountry, countries as supportedCountries } from '../utils/common.js';
 import { marked } from 'marked';
 import z from 'zod';
 import { InferenceRequest } from '../types/types.js';
@@ -184,6 +184,36 @@ const failedToSummarizeTranslations = {
     'se': "Misslyckades med att sammanfatta chatten. Vänligen starta en ny chatt."
 }
 
+function getQueryString(value: Request['query'][string]): string | undefined {
+    if (Array.isArray(value)) {
+        return value.find((item): item is string => typeof item === 'string');
+    }
+    return typeof value === 'string' ? value : undefined;
+}
+
+function normalizeSuggestionLang(rawLang: string | undefined): string | undefined {
+    if (!rawLang) return undefined;
+
+    const lang = rawLang.trim().toLowerCase().replace('_', '-');
+    if (!lang) return undefined;
+
+    if (lang.startsWith('ru')) return 'ru';
+    if (lang.startsWith('sv')) return 'sv';
+
+    return lang;
+}
+
+function getCountrySuggestionLang(countryParam: string | number | null | undefined): string | undefined {
+    if (countryParam === null || countryParam === undefined) return undefined;
+
+    const countryValue = `${countryParam}`.trim().toLowerCase();
+    if (!countryValue) return undefined;
+
+    return supportedCountries.find(country =>
+        `${country.id}` === countryValue || country.code === countryValue
+    )?.lang;
+}
+
 export async function getAllChats(req: Request, res: Response) {
     try {
         const client_id = req.body.client_id;
@@ -204,39 +234,9 @@ export async function getAllChats(req: Request, res: Response) {
 export async function getSuggestions(req: Request, res: Response) {
     const body = req.body;
     try {
-        const countries = [
-            {
-                code: 'mx',
-                id: 2,
-                lang: 'es-mx'
-            },
-            {
-                code: 'es',
-                id: 1,
-                lang: 'es-es'
-            },
-            {
-                code: 'pl',
-                id: 14,
-                lang: 'pl'
-            },
-            {
-                code: 'ro',
-                id: 12,
-                lang: 'ro'
-            },
-            {
-                code: 'se',
-                id: 22,
-                lang: 'se'
-            },
-            {
-                code: 'vn',
-                id: 9,
-                lang: 'vi'
-            }
-        ]
-        const langParam = (req.query.lang as string) || countries.filter(country => country.id === body.params.country)[0].lang;
+        const requestedLang = normalizeSuggestionLang(getQueryString(req.query.lang));
+        const countryLang = normalizeSuggestionLang(getCountrySuggestionLang(body?.params?.country));
+        const langParam = requestedLang || countryLang || 'en';
         const suggestions = await AIModel.getSuggestions(langParam);
         return res.status(200).json({
             success: true,

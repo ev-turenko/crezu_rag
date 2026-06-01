@@ -161,12 +161,14 @@ const API_CASES = [
   {
     method: 'POST',
     path: '/api/ai/suggestions',
-    name: 'returns localized chat suggestions',
+    name: 'returns requested-language chat suggestions',
+    query: { lang: 'ru' },
     ...json({ params: { country: 2 } }),
     expectedStatuses: [200],
     checks: [jsonObject, successFlagIsTrue, check('suggestions is an array', ({ parsed: body }) => {
       assert.equal(body.success, true);
       assert.ok(Array.isArray(body.suggestions));
+      assert.ok(body.suggestions.some(suggestion => suggestion.title === 'Кредиты'));
     })],
   },
   {

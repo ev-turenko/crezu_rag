@@ -364,6 +364,25 @@ export class AIModel {
         id: 15,
         category: 'debt',
       },
+      // Russian (ru)
+      {
+        langs: ['ru'],
+        title: 'Кредиты',
+        text: 'Найдите лучший кредит',
+        prompt:
+          'Мне нужен кредит, помоги мне найти лучший вариант, исходя из всего, что ты знаешь',
+        id: 26,
+        category: 'loan',
+      },
+      {
+        langs: ['ru'],
+        title: 'Как погасить долги',
+        text: 'Узнайте, как управлять долгами и погашать их',
+        prompt:
+          'Расскажи мне о самых эффективных стратегиях погашения кредитов',
+        id: 27,
+        category: 'debt',
+      },
       // Ukrainian (uk)
       {
         langs: ['uk'],
@@ -460,9 +479,14 @@ export class AIModel {
         category: 'debt',
       },
     ];
-    const result = [];
-    const filtered = options.filter(option => option.langs.includes(lang));
-    const seen = new Set();
+    const result: Suggestion[] = [];
+    const normalizedLang = lang.trim().toLowerCase().replace('_', '-');
+    const filtered = options.filter(option =>
+      option.langs.some(optionLang =>
+        normalizedLang === optionLang || normalizedLang.startsWith(`${optionLang}-`)
+      )
+    );
+    const seen = new Set<string>();
     for (const option of filtered) {
       if (!seen.has(option.category)) {
         seen.add(option.category);
