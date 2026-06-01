@@ -70,6 +70,7 @@ export function getCountriesV2() {
                 { code: 'ms' },
                 { code: 'fil' },
                 { code: 'si' },
+                { code: 'ru' },
             ],
             data: [...COUNTRIES_CONFIG_V2]
         });
