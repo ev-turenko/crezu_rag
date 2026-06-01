@@ -78,7 +78,7 @@ function getTermsLink(countryCode: string): string {
     if (code === 'es') return 'https://finmatcher.com/es/terminos-y-condiciones/';
     if (code === 'pl') return 'https://finmatcher.com/pl/terms-and-conditions/';
     if (code === 'sv' || code === 'se') return 'https://finmatcher.se/anvandarvillkor/';
-    return `https://finmatcher.com/${code}/terms-and-conditions/`;
+    return `https://ai.finmatcher.com/${code}/terms-and-conditions/`;
 }
 
 function getPrivacyLink(countryCode: string): string {
@@ -87,7 +87,7 @@ function getPrivacyLink(countryCode: string): string {
     if (code === 'es') return 'https://finmatcher.com/es/politica-de-privacidad/';
     if (code === 'pl') return 'https://finmatcher.com/pl/polityka-prywatnosci/';
     if (code === 'sv' || code === 'se') return 'https://finmatcher.se/integritetspolicy/';
-    return `https://finmatcher.com/${code}/privacy-policy/`;
+    return `https://ai.finmatcher.com/legal/${code}/privacy-policy/`;
 }
 
 // ---------------------------------------------------------------------------
