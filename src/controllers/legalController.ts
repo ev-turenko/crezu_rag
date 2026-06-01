@@ -98,7 +98,7 @@ ${body}
 function enTemplate(d: CountryPolicyData): string {
     return pageWrapper('en', 'Privacy Policy – Finmatcher', `
 <h1>PRIVACY POLICY</h1>
-<p class="version">Version 2, August 4, 2025</p>
+<p class="version">Version 1, May 30, 2026</p>
 
 <h2>1. INTRODUCTION</h2>
 <p>ADSKI values your privacy and is committed to the responsible processing of your personal data. This Privacy Policy outlines the basic principles and terms governing how we handle your personal data, as well as the security measures we have implemented.</p>
@@ -176,7 +176,7 @@ function enTemplate(d: CountryPolicyData): string {
 function esTemplate(d: CountryPolicyData): string {
     return pageWrapper('es', 'Política de Privacidad – Finmatcher', `
 <h1>AVISO DE PRIVACIDAD</h1>
-<p class="version">Versión 2, 4 de agosto de 2025</p>
+<p class="version">Versión 1, 30 de mayo de 2026</p>
 
 <h2>1. INTRODUCCIÓN</h2>
 <p>ADSKI valora su privacidad y se compromete con el tratamiento responsable de sus datos personales. Este Aviso de Privacidad describe los principios y términos básicos que rigen el manejo de sus datos personales, así como las medidas de seguridad que hemos implementado.</p>
@@ -254,7 +254,7 @@ function esTemplate(d: CountryPolicyData): string {
 function deTemplate(d: CountryPolicyData): string {
     return pageWrapper('de', 'Datenschutzerklärung – Finmatcher', `
 <h1>DATENSCHUTZERKLÄRUNG</h1>
-<p class="version">Version 2, 4. August 2025</p>
+<p class="version">Version 1, 30. Mai 2026</p>
 
 <h2>1. EINLEITUNG</h2>
 <p>ADSKI legt großen Wert auf den Schutz Ihrer Privatsphäre und ist bestrebt, Ihre personenbezogenen Daten verantwortungsbewusst zu verarbeiten. Diese Datenschutzerklärung beschreibt die grundlegenden Prinzipien und Bedingungen für den Umgang mit Ihren personenbezogenen Daten sowie die von uns implementierten Sicherheitsmaßnahmen.</p>
@@ -332,7 +332,7 @@ function deTemplate(d: CountryPolicyData): string {
 function ruTemplate(d: CountryPolicyData): string {
     return pageWrapper('ru', 'Политика конфиденциальности – Finmatcher', `
 <h1>ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ</h1>
-<p class="version">Версия 2, 4 августа 2025 г.</p>
+<p class="version">Версия 1, 30 мая 2026 г.</p>
 
 <h2>1. ВВЕДЕНИЕ</h2>
 <p>ADSKI ценит вашу конфиденциальность и обеспечивает ответственную обработку персональных данных. Настоящая Политика конфиденциальности описывает основные принципы и условия обработки ваших персональных данных, а также реализованные меры безопасности.</p>
@@ -410,7 +410,7 @@ function ruTemplate(d: CountryPolicyData): string {
 function msTemplate(d: CountryPolicyData): string {
     return pageWrapper('ms', 'Dasar Privasi – Finmatcher', `
 <h1>DASAR PRIVASI</h1>
-<p class="version">Versi 2, 4 Ogos 2025</p>
+<p class="version">Versi 1, 30 Mei 2026</p>
 
 <h2>1. PENGENALAN</h2>
 <p>ADSKI menghargai privasi anda dan komited untuk memproses data peribadi anda secara bertanggungjawab. Dasar Privasi ini menggariskan prinsip dan terma asas yang mengawal pengendalian data peribadi anda, serta langkah keselamatan yang telah kami laksanakan.</p>
@@ -488,7 +488,7 @@ function msTemplate(d: CountryPolicyData): string {
 function roTemplate(d: CountryPolicyData): string {
     return pageWrapper('ro', 'Politică de Confidențialitate – Finmatcher', `
 <h1>POLITICĂ DE CONFIDENȚIALITATE</h1>
-<p class="version">Versiunea 2, 4 august 2025</p>
+<p class="version">Versiunea 1, 30 mai 2026</p>
 
 <h2>1. INTRODUCERE</h2>
 <p>ADSKI acordă o importanță deosebită confidențialității dumneavoastră și se angajează să prelucreze responsabil datele dumneavoastră cu caracter personal. Această Politică de Confidențialitate descrie principiile și condițiile de bază care reglementează prelucrarea datelor dumneavoastră, precum și măsurile de securitate implementate.</p>
@@ -566,7 +566,7 @@ function roTemplate(d: CountryPolicyData): string {
 function ukTemplate(d: CountryPolicyData): string {
     return pageWrapper('uk', 'Політика конфіденційності – Finmatcher', `
 <h1>ПОЛІТИКА КОНФІДЕНЦІЙНОСТІ</h1>
-<p class="version">Версія 2, 4 серпня 2025 р.</p>
+<p class="version">Версія 1, 30 травня 2026 р.</p>
 
 <h2>1. ВСТУП</h2>
 <p>ADSKI цінує вашу конфіденційність і зобов'язується відповідально обробляти ваші персональні дані. Ця Політика конфіденційності описує основні принципи та умови обробки ваших персональних даних, а також запроваджені заходи безпеки.</p>
@@ -644,7 +644,7 @@ function ukTemplate(d: CountryPolicyData): string {
 function viTemplate(d: CountryPolicyData): string {
     return pageWrapper('vi', 'Chính sách Bảo mật – Finmatcher', `
 <h1>CHÍNH SÁCH BẢO MẬT</h1>
-<p class="version">Phiên bản 2, ngày 4 tháng 8 năm 2025</p>
+<p class="version">Phiên bản 1, ngày 30 tháng 5 năm 2026</p>
 
 <h2>1. GIỚI THIỆU</h2>
 <p>ADSKI coi trọng sự riêng tư của bạn và cam kết xử lý dữ liệu cá nhân của bạn một cách có trách nhiệm. Chính sách Bảo mật này mô tả các nguyên tắc và điều khoản cơ bản chi phối việc xử lý dữ liệu cá nhân của bạn, cũng như các biện pháp bảo mật chúng tôi đã triển khai.</p>
