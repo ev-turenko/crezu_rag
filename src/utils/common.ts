@@ -9,6 +9,11 @@ import PocketBase from 'pocketbase';
 export const escapeFilterValue = (value: string): string =>
   value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
+/** Remove all HTML tags from a string, returning plain text. */
+export function stripHtml(value: string): string {
+  return value.replace(/<[^>]*>/g, '');
+}
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'function' | 'tool' | 'developer';
   content: string;
@@ -353,7 +358,7 @@ function buildCDNHeaders(o: CDNOfferRaw): Array<{ title: string; value?: string 
   ];
   return pairs
     .filter(([h, v]) => h?.trim() && v?.trim())
-    .map(([h, v]) => ({ title: h!, value: v! }));
+    .map(([h, v]) => ({ title: stripHtml(h!), value: stripHtml(v!) }));
 }
 
 function buildCDNParameters(o: CDNOfferRaw): Array<{ offer_parameters: Array<{ tech_id?: string; name: string; verbose_value: string }> }> {

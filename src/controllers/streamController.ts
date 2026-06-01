@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import { ChatRole, ContentDataType, DeepInfraModels, DeepSeekModels, LLMProvider } from '../enums/enums.js';
-import { fetchOffersByIds, getResponse, getSortedffersAndCategories, normalizeOfferForLLM, OriginalOfferData, countries, escapeFilterValue, BANK_CARD_OFFER_TYPES, COUNTRIES_WITHOUT_BANK_CARDS, CDN_FEED_COUNTRIES, fetchOffersFromCDNFeed, withCountryPid } from '../utils/common.js';
+import { fetchOffersByIds, getResponse, getSortedffersAndCategories, normalizeOfferForLLM, OriginalOfferData, countries, escapeFilterValue, BANK_CARD_OFFER_TYPES, COUNTRIES_WITHOUT_BANK_CARDS, CDN_FEED_COUNTRIES, fetchOffersFromCDNFeed, withCountryPid, stripHtml } from '../utils/common.js';
 import { AIModel, getAiProvider } from '../models/AiModel.js';
 import { InferenceRequest } from '../types/types.js';
 import PocketBase from 'pocketbase';
@@ -530,7 +530,19 @@ async function toolFormatAppOffers(args: Record<string, unknown>, context: Strea
         name: o.name,
         url: appendSubParams(o.url, subParams),
         avatar: o.avatar,
-        headers: o.headers,
+        headers: Array.isArray(o.headers)
+            ? o.headers.map((h: unknown) => {
+                if (h && typeof h === 'object') {
+                    const header = h as Record<string, unknown>;
+                    return {
+                        ...header,
+                        ...(typeof header.title === 'string' ? { title: stripHtml(header.title) } : {}),
+                        ...(typeof header.value === 'string' ? { value: stripHtml(header.value) } : {}),
+                    };
+                }
+                return h;
+            })
+            : o.headers,
         button_text: null,
     }));
 
