@@ -319,13 +319,14 @@ export type CDNOfferRaw = {
 };
 
 // Countries whose offers come from the CDN feed, not from finmatcher.
-export const CDN_FEED_COUNTRIES = new Set(['co', 'de', 'lk', 'my', 'pe', 'vn', 'za', 'ph', 'ua']);
+export const CDN_FEED_COUNTRIES = new Set(['co', 'de', 'kz', 'lk', 'my', 'pe', 'vn', 'za', 'ph', 'ua']);
 
 // One or more feed URLs per country.
 // Ukraine has two language-specific feeds; both are fetched and deduplicated.
 const CDN_FEED_URLS: Record<string, string[]> = {
   co: ['https://cdn.crezu.net/offers_data/configs/co_feed.json'],
   de: ['https://cdn.crezu.net/offers_data/configs/de_feed.json'],
+  kz: ['https://cdn.crezu.net/offers_data/configs/kz_ru_feed.json'],
   lk: ['https://cdn.crezu.net/offers_data/configs/lk_feed.json'],
   my: ['https://cdn.crezu.net/offers_data/configs/my_feed.json'],
   pe: ['https://cdn.crezu.net/offers_data/configs/pe_feed.json'],
