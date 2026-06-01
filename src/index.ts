@@ -33,6 +33,7 @@ import configRoutesV2 from './routes/v2/configRoutesV2.js';
 import countriesRoutesV2 from './routes/v2/countriesRoutesV2.js';
 import legalRoutes from './routes/legalRoutes.js';
 import termsRoutes from './routes/termsRoutes.js';
+import imageRoutes from './routes/imageRoutes.js';
 
 
 dotenv.config();
@@ -98,6 +99,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/chat-greeting', chatGreetingRoutes);
 app.use('/api/trial', trialRoutes);
 app.use('/api/account-deletion', accountDeletionRoutes);
+app.use('/api/image', imageRoutes);
 app.use('/legal', legalRoutes);
 app.use('/', termsRoutes);
 

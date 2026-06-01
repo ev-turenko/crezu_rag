@@ -46,4 +46,5 @@ export enum DeepInfraModels {
 export enum DeepSeekModels {
     CHAT = 'deepseek-chat',
     REASONER = 'deepseek-reasoner',
+    GEMMA_4_31B_IT = 'gemma-4-31B-it',
 }
