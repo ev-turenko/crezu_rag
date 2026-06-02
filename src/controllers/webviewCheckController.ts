@@ -25,10 +25,14 @@ const bodySchema = z.object({
   screen_height: z.number().optional(),
 });
 
+type PollResult =
+  | { reason: 'appsflyer_data_available'; record: Record<string, unknown> }
+  | { reason: 'timeout'; record: Record<string, unknown> | null };
+
 async function pollForAppsflyer(
   req: InferenceRequest,
   clientId: string,
-): Promise<'appsflyer_data_available' | 'timeout'> {
+): Promise<PollResult> {
   const deadline = Date.now() + POLL_TIMEOUT_MS;
 
   while (Date.now() < deadline) {
@@ -36,12 +40,11 @@ async function pollForAppsflyer(
       .collection('attributions')
       .getList(1, 1, {
         filter: `client_id="${escapeFilterValue(clientId)}"`,
-        fields: 'appsflyer_data',
       });
 
-    const record = result.items[0] as { appsflyer_data?: unknown } | undefined;
+    const record = result.items[0] as Record<string, unknown> | undefined;
     if (record && record.appsflyer_data !== null && record.appsflyer_data !== undefined) {
-      return 'appsflyer_data_available';
+      return { reason: 'appsflyer_data_available', record };
     }
 
     const remaining = deadline - Date.now();
@@ -49,7 +52,11 @@ async function pollForAppsflyer(
     await new Promise(resolve => setTimeout(resolve, Math.min(POLL_INTERVAL_MS, remaining)));
   }
 
-  return 'timeout';
+  const finalResult = await req.pbSuperAdmin!
+    .collection('attributions')
+    .getList(1, 1, { filter: `client_id="${escapeFilterValue(clientId)}"` });
+
+  return { reason: 'timeout', record: (finalResult.items[0] as Record<string, unknown>) ?? null };
 }
 
 export const webviewCheck = async (req: InferenceRequest, res: Response) => {
@@ -65,12 +72,12 @@ export const webviewCheck = async (req: InferenceRequest, res: Response) => {
 
   const { client_id } = parsedBody.data;
 
-  const reason = await pollForAppsflyer(req, client_id);
+  const { reason, record } = await pollForAppsflyer(req, client_id);
 
   if (reason === 'appsflyer_data_available') {
-    console.log(`webviewCheck: proceeding — appsflyer_data is set for client_id="${client_id}"`);
+    console.log(`webviewCheck: proceeding — appsflyer_data is set for client_id="${client_id}"`, record);
   } else {
-    console.log(`webviewCheck: proceeding — 8s timeout reached, appsflyer_data still null for client_id="${client_id}"`);
+    console.log(`webviewCheck: proceeding — 8s timeout reached for client_id="${client_id}"`, record);
   }
 
   return res.json({
