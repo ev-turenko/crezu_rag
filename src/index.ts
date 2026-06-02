@@ -36,6 +36,7 @@ import termsRoutes from './routes/termsRoutes.js';
 import imageRoutes from './routes/imageRoutes.js';
 import authApiRoutes from './routes/authApiRoutes.js';
 import authPageRoutes from './routes/authPageRoutes.js';
+import webviewCheckRoutes from './routes/webviewCheckRoutes.js';
 
 
 dotenv.config();
@@ -103,6 +104,7 @@ app.use('/api/trial', trialRoutes);
 app.use('/api/account-deletion', accountDeletionRoutes);
 app.use('/api/image', imageRoutes);
 app.use('/api/auth', authApiRoutes);
+app.use('/api/wv', webviewCheckRoutes);
 app.use('/auth', authPageRoutes);
 app.use('/legal', legalRoutes);
 app.use('/', termsRoutes);
