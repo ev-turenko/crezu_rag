@@ -121,11 +121,11 @@ const appsflyerPayloadSchema = z.object({
 });
 
 const OFERWALL_CAMPAIGN = [
-    'oferwall_uacMXacc3980Cr130_alp',
-    'oferwall_uacMXacc2562Cr123_alp',
-    'oferwall_uacMXacc3980Cr105_alp',
-    'oferwall_uacMXacc2562Cr92_alp',
-    '**_alp',
+    // 'oferwall_uacMXacc3980Cr130_alp',
+    // 'oferwall_uacMXacc2562Cr123_alp',
+    // 'oferwall_uacMXacc3980Cr105_alp',
+    // 'oferwall_uacMXacc2562Cr92_alp',
+    // '**_alp',
 ];
 
 function matchesCampaign(_value: string): boolean {
@@ -245,14 +245,16 @@ export function getConfigV2() {
         ]);
 
         const offerwall = offerwallCampaign && countryAllowed;
-        const finalScreen = offerwall ? 'offers' : 'chat';
-        const isfe = !offerwall;
+        // const finalScreen = offerwall ? 'offers' : 'chat';
+        const finalScreen = 'chat';
+        // const isfe = !offerwall;
+        const isfe = true;
 
         const finalConfig = {
             client_id,
             version: appBuildNumber,
             finalScreen,
-            offersScreenPolicy: 'with_offers',
+            offersScreenPolicy: 'empty',
             feedDisclaimer: feedDisclaimerByLang[normalizedLang],
             supportedLanguages: getSupportedLanguages(countryCode),
             regScreens: ['auth2', 'auth3', 'auth4', 'auth5'],

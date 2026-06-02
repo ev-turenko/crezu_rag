@@ -220,8 +220,9 @@ export function getConfig() {
         
         console.log('Determined offerwall status CLIENT ID', client_id, { offerwall, offerwallCampaign, countryAllowed, userAgent, ip });
 
-        const finalScreen = offerwall ? 'offers' : 'chat';
-        const isfe = !offerwall;
+        // const finalScreen = offerwall ? 'offers' : 'chat';
+        const finalScreen = 'chat';
+        const isfe = true;
 
         console.log('Final screen decision CLIENT ID', client_id);
 
