@@ -349,6 +349,26 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
     res.status(200).json({ success: true, recovery_codes: newPlainCodes });
 }
 
+// ─── Callback redirect (server-side 302 → deep link) ────────────────────────
+//
+// Browsers don't recognise `finmatcher_global` as a valid URI scheme (underscores
+// are forbidden by RFC 3986), so client-side `window.location.href = deepLink`
+// resolves as a relative path.  A server-issued 302 is handled at the OS level —
+// Chrome Custom Tab / SFSafariViewController intercept it and open the app.
+
+export function authCallback(req: Request, res: Response): void {
+    const apiKey = req.query.api_key as string | undefined;
+    const screen = (req.query.screen as string | undefined) ?? 'ai_chat';
+
+    if (!apiKey) {
+        res.status(400).send('Missing api_key parameter.');
+        return;
+    }
+
+    const deepLink = `finmatcher_global://?api_key=${encodeURIComponent(apiKey)}&screen=${encodeURIComponent(screen)}`;
+    res.redirect(302, deepLink);
+}
+
 // ─── Internal helper used by clientIdController ───────────────────────────────
 
 export async function lookupUserByApiKey(

@@ -450,9 +450,16 @@ input:focus{border-color:#3b82f6;background:#fff}
 var t=${tJson};
 var countryCode="${countryCode}";
 var apiBase="${apiBase}";
-var currentDeepLink="";
+var currentApiKey="";   // stored after login/register; used by continueToApp
 var currentCodes=[];
 var codesContext="register";
+
+// Navigate via server-side 302 redirect so the OS intercepts the custom scheme.
+// Direct client-side assignment (window.location.href = "finmatcher_global://...")
+// fails because browsers reject custom schemes with underscores as relative paths.
+function goToApp(apiKey){
+  window.location.href=apiBase+"/callback?api_key="+encodeURIComponent(apiKey)+"&screen=ai_chat";
+}
 
 // ── Apply translations ──────────────────────────────────────────────────────
 function tx(id,key){var el=document.getElementById(id);if(el)el.textContent=t[key]||"";}
@@ -535,8 +542,7 @@ window.doLogin=function(e){
     .then(function(d){
       setLoading("btn-login",false);
       if(d.success){
-        currentDeepLink=d.deep_link||"";
-        window.location.href=currentDeepLink;
+        goToApp(d.api_key);
       } else {
         showAlert("auth-alert",d.error||"Error");
       }
@@ -563,7 +569,7 @@ window.doRegister=function(e){
     .then(function(d){
       setLoading("btn-register",false);
       if(d.success){
-        currentDeepLink=d.deep_link||"";
+        currentApiKey=d.api_key||"";
         currentCodes=d.recovery_codes||[];
         codesContext="register";
         showCodesScreen(t.success_registered);
@@ -632,7 +638,7 @@ window.downloadCodes=function(){
 };
 
 window.continueToApp=function(){
-  if(currentDeepLink){window.location.href=currentDeepLink;}
+  if(currentApiKey){goToApp(currentApiKey);}
   else{showScreen("auth");showTab("login");}
 };
 
