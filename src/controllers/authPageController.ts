@@ -454,11 +454,16 @@ var currentApiKey="";   // stored after login/register; used by continueToApp
 var currentCodes=[];
 var codesContext="register";
 
-// Use the https://app.finmatcher.com universal-link format — the app handles both
-// this and finmatcher_global://, but finmatcher_global:// has an underscore in the
-// scheme name which causes browsers to treat it as a relative path.
+// Trigger the deep link via an anchor click rather than window.location.href.
+// Browsers reject scheme names with underscores as valid URIs and resolve them
+// as relative paths; an anchor click goes through the OS URL dispatcher instead.
 function goToApp(apiKey){
-  window.location.href="https://app.finmatcher.com?api_key="+encodeURIComponent(apiKey)+"&screen=ai_chat";
+  var a=document.createElement("a");
+  a.href="finmatcher_global://?api_key="+encodeURIComponent(apiKey)+"&screen=ai_chat";
+  a.style.display="none";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 // ── Apply translations ──────────────────────────────────────────────────────
