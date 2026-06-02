@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
 import z from "zod";
 import { escapeFilterValue } from "../utils/common.js";
+import { lookupUserByApiKey } from "../controllers/authController.js";
 
 dotenv.config();
 
@@ -93,6 +94,58 @@ async function resolveRegisteredUser(
   clientId: string,
   req: InferenceRequest,
 ): Promise<boolean> {
+
+  // ── 1. New-country accounts: look up api_key in our own app_auth_users ────
+  try {
+    const ownUser = await lookupUserByApiKey(req.pbSuperAdmin!, uuid);
+    if (ownUser) {
+      try {
+        const client = await req.pbSuperAdmin!
+          .collection('clients')
+          .getFirstListItem<ClientRecord>(
+            `email="${escapeFilterValue(ownUser.email)}" || client_id="${escapeFilterValue(clientId)}"`,
+            { fields: 'id,client_id,email,name,city' },
+          );
+
+        req.userProfile = {
+          id: client.id,
+          client_id: client.client_id || '',
+          email: client.email || null,
+          name: client.name || '',
+          city: client.city || null,
+          is_trial: false,
+        };
+
+        if (clientId && client.client_id && client.client_id !== clientId) {
+          await migrateTrialChats(clientId, client.client_id, req);
+        }
+      } catch {
+        // Client row not yet created — create it
+        try {
+          await req.pbSuperAdmin!.collection('clients').create({
+            email: ownUser.email,
+            client_id: clientId || uuidv4(),
+            name: ownUser.name,
+            city: ownUser.city,
+            password: 'defaultpassword12345678!',
+            passwordConfirm: 'defaultpassword12345678!',
+          });
+        } catch { /* ignore duplicate */ }
+        req.userProfile = {
+          client_id: clientId || '',
+          email: ownUser.email,
+          name: ownUser.name,
+          city: ownUser.city,
+          is_trial: false,
+        };
+      }
+      return true;
+    }
+  } catch {
+    // pbSuperAdmin unavailable — fall through
+  }
+
+  // ── 2. Original countries: validate against finmatcher.com ───────────────
   try {
     const response = await fetch('https://finmatcher.com/api/auth/profile', {
       method: 'GET',
@@ -127,14 +180,12 @@ async function resolveRegisteredUser(
         is_trial: false,
       };
 
-      // Migrate trial chats when the URL client_id differs from the registered one
       if (clientId && client.client_id && client.client_id !== clientId) {
         await migrateTrialChats(clientId, client.client_id, req);
       }
 
       return true;
     } catch {
-      // Client record not yet created — create it and still allow access
       try {
         await req.pbSuperAdmin!.collection('clients').create({
           email: userProfile.email,
