@@ -31,7 +31,19 @@ export enum PbCollections {
     CHATS = 'chats',
     CLIENTS = 'clients',
     DELETION_REQUESTS = 'deletion_requests',
+    APP_AUTH_USERS = 'app_auth_users',
+    RECOVERY_CODES = 'recovery_codes',
 }
+
+// Countries that use external auth (finmatcher.com / finmart.mx / finmatcher.se)
+// All other countries use our own PocketBase-backed registration.
+export const EXTERNAL_AUTH_COUNTRIES = new Set(['mx', 'es', 'pl', 'sv', 'se']);
+
+// Canonical language for each country that uses our own auth
+export const COUNTRY_LANG_MAP: Record<string, string> = {
+    co: 'es', de: 'de', kz: 'ru', lk: 'en', my: 'ms',
+    pe: 'es', ph: 'en', ro: 'ro', ua: 'uk', vn: 'vi', za: 'en',
+};
 
 export enum LLMProvider {
     DEEPSEEK = 'deepseek',

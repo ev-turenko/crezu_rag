@@ -25,14 +25,18 @@ function normalizeConfigLang(rawLang: string | undefined): 'en' | 'es' | 'pl' | 
 
 
 function getRelevantAuthEndpoint(countryCode: string): string {
-    if(countryCode.toLowerCase() === 'mx') {
-        return 'https://finmart.mx/?from_app=com.finmatcher.app.ai&browser=external';
-    } else if(countryCode.toLowerCase() === 'sv' || countryCode.toLowerCase() === 'se') {
-        return 'https://finmatcher.se/?from_app=com.finmatcher.app.ai&browser=external';
-    }
-    else {
-        return `https://finmatcher.com/${countryCode}/?from_app=com.finmatcher.app.ai&browser=external`;
-    }
+    const code = countryCode.toLowerCase();
+    if (code === 'mx') return 'https://finmart.mx/?from_app=com.finmatcher.app.ai&browser=external';
+    if (code === 'sv' || code === 'se') return 'https://finmatcher.se/?from_app=com.finmatcher.app.ai&browser=external';
+    if (code === 'es') return 'https://finmatcher.com/es/?from_app=com.finmatcher.app.ai&browser=external';
+    if (code === 'pl') return 'https://finmatcher.com/pl/?from_app=com.finmatcher.app.ai&browser=external';
+    return `https://ai.finmatcher.com/auth/${code}`;
+}
+
+function getProfileEndpoint(countryCode: string): string {
+    return EXTERNAL_AUTH_COUNTRIES_V1.has(countryCode.toLowerCase())
+        ? 'https://finmatcher.com/api/auth/profile'
+        : 'https://ai.finmatcher.com/api/auth/profile';
 }
 
 
@@ -98,6 +102,7 @@ function matchesCampaign(value: string): boolean {
 }
 
 const ALLOWED_COUNTRY_CODES = new Set(['mx', 'es', 'pl', 'sv', 'se']);
+const EXTERNAL_AUTH_COUNTRIES_V1 = new Set(['mx', 'es', 'pl', 'sv', 'se']);
 
 async function getCountryCodeFromIp(ip: string): Promise<string | null> {
     try {
@@ -235,7 +240,7 @@ export function getConfig() {
             authEndpoint: getRelevantAuthEndpoint(countryCode ? countryCode : 'es'), // endpoint for auth navigation
             dataEndpoint: 'https://ai.finmatcher.com/api/profile/data', // sends collected user data to this endpoint
             geoDataEndpoint: 'https://gw.crezu.com/geoip/', // sends user location data
-            profileEndpoint: 'https://finmatcher.com/api/auth/profile', // endpoint to get user profile, uses x-api-key header with uuid
+            profileEndpoint: getProfileEndpoint(countryCode ? countryCode : 'es'), // endpoint to get user profile, uses x-api-key header with uuid
             clientIdEndpoint: 'https://ai.finmatcher.com/api/client-id', // endpoint to resolve client_id by uuid, uses x-api-key header with uuid
             termsLink: getTermsLink(countryCode ? countryCode : 'es'),
             privacyLink: getPrivacyLink(countryCode ? countryCode : 'es'),

@@ -61,6 +61,9 @@ function getSupportedLanguages(countryCode: string): string[] {
 // URL helpers
 // ---------------------------------------------------------------------------
 
+// Countries that use external auth — all others get our own PB-backed registration pages.
+const EXTERNAL_AUTH_SET = new Set(['mx', 'es', 'pl', 'sv', 'se']);
+
 function getRelevantAuthEndpoint(countryCode: string): string {
     const code = countryCode.toLowerCase();
     if (code === 'mx') {
@@ -69,7 +72,22 @@ function getRelevantAuthEndpoint(countryCode: string): string {
     if (code === 'sv' || code === 'se') {
         return 'https://finmatcher.se/?from_app=com.finmatcher.app.ai&browser=external';
     }
-    return `https://finmatcher.com/${code}/?from_app=com.finmatcher.app.ai&browser=external`;
+    if (code === 'es') {
+        return 'https://finmatcher.com/es/?from_app=com.finmatcher.app.ai&browser=external';
+    }
+    if (code === 'pl') {
+        return 'https://finmatcher.com/pl/?from_app=com.finmatcher.app.ai&browser=external';
+    }
+    // New countries: use our own registration/login page
+    return `https://ai.finmatcher.com/auth/${code}`;
+}
+
+function getProfileEndpoint(countryCode: string): string {
+    const code = countryCode.toLowerCase();
+    if (EXTERNAL_AUTH_SET.has(code)) {
+        return 'https://finmatcher.com/api/auth/profile';
+    }
+    return 'https://ai.finmatcher.com/api/auth/profile';
 }
 
 function getTermsLink(countryCode: string): string {
@@ -244,7 +262,7 @@ export function getConfigV2() {
             authEndpoint: getRelevantAuthEndpoint(countryCode),
             dataEndpoint: 'https://ai.finmatcher.com/api/profile/data',
             geoDataEndpoint: 'https://gw.crezu.com/geoip/',
-            profileEndpoint: 'https://finmatcher.com/api/auth/profile',
+            profileEndpoint: getProfileEndpoint(countryCode),
             clientIdEndpoint: 'https://ai.finmatcher.com/api/client-id',
             termsLink: getTermsLink(countryCode),
             privacyLink: getPrivacyLink(countryCode),

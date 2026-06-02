@@ -2,6 +2,8 @@ import type { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import z from 'zod';
 import { ClientRecord, InferenceRequest } from '../types/types.js';
+import { escapeFilterValue } from '../utils/common.js';
+import { lookupUserByApiKey } from './authController.js';
 
 const profileSchema = z.object({
   email: z.email(),
@@ -24,6 +26,37 @@ export function getClientIdByCookieUuid() {
       });
     }
 
+    // ── 1. Try our own PocketBase (new-country users) ────────────────────────
+    try {
+      const ownUser = await lookupUserByApiKey(req.pbSuperAdmin!, uuid);
+      if (ownUser) {
+        // Resolve or create a clients record for this email
+        try {
+          const client = await req.pbSuperAdmin!
+            .collection('clients')
+            .getFirstListItem<ClientRecord>(
+              `email="${escapeFilterValue(ownUser.email)}"${fallbackClientId ? ` || client_id="${escapeFilterValue(fallbackClientId)}"` : ''}`,
+              { fields: ['id', 'client_id', 'email'].join(',') },
+            );
+          return res.status(200).json({ success: true, client_id: client.client_id || '' });
+        } catch {
+          const newClientId = fallbackClientId || uuidv4();
+          await req.pbSuperAdmin!.collection('clients').create({
+            email: ownUser.email,
+            client_id: newClientId,
+            name: ownUser.name,
+            city: ownUser.city,
+            password: 'defaultpassword12345678!',
+            passwordConfirm: 'defaultpassword12345678!',
+          });
+          return res.status(200).json({ success: true, client_id: newClientId });
+        }
+      }
+    } catch {
+      // pbSuperAdmin not available or lookup failed — fall through
+    }
+
+    // ── 2. Fall back to finmatcher.com (original countries) ─────────────────
     try {
       const profileResponse = await fetch('https://finmatcher.com/api/auth/profile', {
         method: 'GET',
@@ -56,13 +89,11 @@ export function getClientIdByCookieUuid() {
         const client = await req.pbSuperAdmin!
           .collection('clients')
           .getFirstListItem<ClientRecord>(
-            `email="${userProfile.email}"${fallbackClientId ? ` || client_id="${fallbackClientId}"` : ''}`,
+            `email="${escapeFilterValue(userProfile.email)}"${fallbackClientId ? ` || client_id="${escapeFilterValue(fallbackClientId)}"` : ''}`,
             {
               fields: ['id', 'client_id', 'email', 'name', 'city'].join(','),
             }
           );
-
-        console.log("CLIENT", client)
 
         return res.status(200).json({
           success: true,
@@ -75,8 +106,6 @@ export function getClientIdByCookieUuid() {
           password: 'defaultpassword12345678!',
           passwordConfirm: 'defaultpassword12345678!',
         });
-
-        console.log("FALLING BACK TO CREATED CLIENT", createdClient)
 
         return res.status(200).json({
           success: true,
