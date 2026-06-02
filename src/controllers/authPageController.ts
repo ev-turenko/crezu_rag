@@ -454,11 +454,11 @@ var currentApiKey="";   // stored after login/register; used by continueToApp
 var currentCodes=[];
 var codesContext="register";
 
-// Navigate via server-side 302 redirect so the OS intercepts the custom scheme.
-// Direct client-side assignment (window.location.href = "finmatcher_global://...")
-// fails because browsers reject custom schemes with underscores as relative paths.
+// Use the https://app.finmatcher.com universal-link format — the app handles both
+// this and finmatcher_global://, but finmatcher_global:// has an underscore in the
+// scheme name which causes browsers to treat it as a relative path.
 function goToApp(apiKey){
-  window.location.href=apiBase+"/callback?api_key="+encodeURIComponent(apiKey)+"&screen=ai_chat";
+  window.location.href="https://app.finmatcher.com?api_key="+encodeURIComponent(apiKey)+"&screen=ai_chat";
 }
 
 // ── Apply translations ──────────────────────────────────────────────────────
