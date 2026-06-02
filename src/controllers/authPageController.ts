@@ -454,16 +454,10 @@ var currentApiKey="";   // stored after login/register; used by continueToApp
 var currentCodes=[];
 var codesContext="register";
 
-// Trigger the deep link via an anchor click rather than window.location.href.
-// Browsers reject scheme names with underscores as valid URIs and resolve them
-// as relative paths; an anchor click goes through the OS URL dispatcher instead.
+// Android Intent URL — bypasses the browser URL parser entirely and hands the
+// deep link straight to the OS intent system.
 function goToApp(apiKey){
-  var a=document.createElement("a");
-  a.href="finmatcher_global://?api_key="+encodeURIComponent(apiKey)+"&screen=ai_chat";
-  a.style.display="none";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  window.location.href="intent:?api_key="+encodeURIComponent(apiKey)+"&screen=ai_chat#Intent;scheme=finmatcher_global;package=com.finmatcher.app.ai;end";
 }
 
 // ── Apply translations ──────────────────────────────────────────────────────
