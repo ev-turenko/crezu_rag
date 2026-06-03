@@ -55,6 +55,7 @@ app.use(cookieParser());
 app.use(
   '/static',
   express.static(staticDir, {
+    extensions: ['html'],
     setHeaders: res => {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');

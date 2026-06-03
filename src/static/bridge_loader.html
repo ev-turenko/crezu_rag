@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Loading</title>
+  <style>
+    :root {
+      --primary:    #0190E1;
+      --primary-10: #DDE9F3;
+      --bg:         #FFFFFF;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* Mirrors Flutter CircularProgressIndicator — track + spinning arc */
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 3.5px solid var(--primary-10);
+      border-top-color: var(--primary);
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="spinner"></div>
+
+  <script>
+    /**
+     * Calls the Flutter JS bridge to navigate to a named screen.
+     * @param {string} screen  — one of: dashboard, ai_chat, ai_chat_stream,
+     *                           offers, offers_stream, loading, onboarding,
+     *                           auth_1, auth_2, settings
+     * @param {string} [apiKey] — optional session key saved to SharedPreferences
+     */
+    function navigateTo(screen, apiKey) {
+      if (!window.flutter_inappwebview) {
+        console.warn('Bridge not available — not running inside AppWebviewScreen');
+        return;
+      }
+      if (apiKey) {
+        window.flutter_inappwebview.callHandler('navigateTo', screen, apiKey);
+      } else {
+        window.flutter_inappwebview.callHandler('navigateTo', screen);
+      }
+    }
+
+    // Navigate to onboarding once the page is ready.
+    // Replace 'onboarding' (and optionally pass an api key) to suit your use-case.
+    document.addEventListener('DOMContentLoaded', function () {
+      navigateTo('onboarding');
+
+      // With an api key:
+      // navigateTo('dashboard', 'my-api-key-123');
+    });
+  </script>
+
+</body>
+</html>
