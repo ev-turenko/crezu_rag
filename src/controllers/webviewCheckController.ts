@@ -143,6 +143,6 @@ export const webviewCheck = async (req: InferenceRequest, res: Response) => {
   return res.json({
     show: true,
     url,
-    wvui: 'decorated',
+    wvui: 'base',
   });
 };
