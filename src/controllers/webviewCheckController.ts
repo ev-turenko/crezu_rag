@@ -5,6 +5,8 @@ import { escapeFilterValue } from '../utils/common.js';
 
 const POLL_INTERVAL_MS = 500;
 const POLL_TIMEOUT_MS = 8000;
+const WEBVIEW_BASE_URL = 'https://crezufin.xyz/X2zSfS6w';
+const GEOIP_ENDPOINT = 'https://gw.crezu.com/geoip/';
 
 const querySchema = z.object({
   app_name: z.string().optional(),
@@ -59,6 +61,51 @@ async function pollForAppsflyer(
   return { reason: 'timeout', record: (finalResult.items[0] as Record<string, unknown>) ?? null };
 }
 
+async function getCountryCode(ip: string): Promise<string | null> {
+  try {
+    const url = new URL(GEOIP_ENDPOINT);
+    url.searchParams.set('ip', ip);
+    const response = await fetch(url.toString());
+    if (!response.ok) return null;
+    const data = await response.json() as { success?: boolean; iso_code?: string };
+    if (!data.success || !data.iso_code) return null;
+    return data.iso_code.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function extractAttribStr(payload: Record<string, unknown>, key: string): string | null {
+  const v = payload[key];
+  return typeof v === 'string' && v.trim() ? v.trim() : null;
+}
+
+function getAttributionPayload(attribution: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  if (!attribution) return {};
+  const nested = attribution.payload;
+  if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+    return nested as Record<string, unknown>;
+  }
+  return attribution;
+}
+
+function buildWebviewUrl(
+  appsflyerId: string | null | undefined,
+  maestraId: string | null | undefined,
+  attribution: Record<string, unknown> | null | undefined,
+): string {
+  const payload = getAttributionPayload(attribution);
+  const campaign = extractAttribStr(payload, 'campaign');
+  const adGroup = extractAttribStr(payload, 'af_adset') ?? extractAttribStr(payload, 'adset');
+
+  const u = new URL(WEBVIEW_BASE_URL);
+  if (campaign) u.searchParams.set('sub4', campaign);
+  if (adGroup) u.searchParams.set('sub6', adGroup);
+  if (maestraId) u.searchParams.set('uuid', maestraId);
+  if (appsflyerId) u.searchParams.set('afid', appsflyerId);
+  return u.toString();
+}
+
 export const webviewCheck = async (req: InferenceRequest, res: Response) => {
   const parsedQuery = querySchema.safeParse(req.query);
   if (!parsedQuery.success) {
@@ -70,7 +117,17 @@ export const webviewCheck = async (req: InferenceRequest, res: Response) => {
     return res.status(400).json({ error: 'Invalid request body', details: parsedBody.error.issues });
   }
 
-  const { client_id } = parsedBody.data;
+  const { client_id, appsflyer_id, maestra_id, appsflyer_attribution } = parsedBody.data;
+
+  const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
+    ?? req.socket.remoteAddress
+    ?? '';
+
+  const countryCode = await getCountryCode(ip);
+  if (countryCode !== 'mx') {
+    console.log(`webviewCheck: non-Mexican IP (${countryCode ?? 'unknown'}) for client_id="${client_id}", returning show: false`);
+    return res.json({ show: false });
+  }
 
   const { reason, record } = await pollForAppsflyer(req, client_id);
 
@@ -80,9 +137,12 @@ export const webviewCheck = async (req: InferenceRequest, res: Response) => {
     console.log(`webviewCheck: proceeding — 8s timeout reached for client_id="${client_id}"`, record);
   }
 
+  const url = buildWebviewUrl(appsflyer_id, maestra_id, appsflyer_attribution);
+  console.log(`webviewCheck: Mexican IP, returning webview URL for client_id="${client_id}": ${url}`);
+
   return res.json({
-    show: false,
-    url: 'ai.finmatcher.com',
+    show: true,
+    url,
     wvui: 'decorated',
   });
 };
