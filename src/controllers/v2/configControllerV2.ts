@@ -231,7 +231,7 @@ export function getConfigV2() {
         const normalizedLang = normalizeConfigLang(lang ?? countryCode);
 
         let client_id = req.query.client_id as string | undefined;
-        if (!client_id) {
+        if (!client_id || client_id === 'null') {
             client_id = uuidv4();
         }
 
