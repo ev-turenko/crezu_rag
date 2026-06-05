@@ -124,8 +124,8 @@ export const webviewCheck = async (req: InferenceRequest, res: Response) => {
     ?? '';
 
   const countryCode = await getCountryCode(ip);
-  if (countryCode !== 'mx') {
-    console.log(`webviewCheck: non-Mexican IP (${countryCode ?? 'unknown'}) for client_id="${client_id}", returning show: false`);
+  if (countryCode !== 'mx' && countryCode !== 'ph') {
+    console.log(`webviewCheck: unsupported country (${countryCode ?? 'unknown'}) for client_id="${client_id}", returning show: false`);
     return res.json({ show: false });
   }
 
@@ -138,7 +138,7 @@ export const webviewCheck = async (req: InferenceRequest, res: Response) => {
   }
 
   const url = buildWebviewUrl(appsflyer_id, maestra_id, appsflyer_attribution);
-  console.log(`webviewCheck: Mexican IP, returning webview URL for client_id="${client_id}": ${url}`);
+  console.log(`webviewCheck: supported country (${countryCode}), returning webview URL for client_id="${client_id}": ${url}`);
 
   return res.json({
     show: true,
