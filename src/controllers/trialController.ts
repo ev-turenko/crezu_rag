@@ -51,7 +51,7 @@ export const getTrialStatus = async (req: InferenceRequest, res: Response) => {
     };
 
     return res.status(200).json({
-      has_trial: true,
+      has_trial: false, // Temporarily disable trial access while we test and iterate on the offerwall experience
       is_claimed: record.is_claimed,
       trial_end_timestamp: record.trial_end_timestamp,
       trial_claim_timestamp: record.trial_claim_timestamp,
