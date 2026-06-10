@@ -124,10 +124,11 @@ export const webviewCheck = async (req: InferenceRequest, res: Response) => {
     ?? '';
 
   const countryCode = await getCountryCode(ip);
-  if (countryCode !== 'mx' && countryCode !== 'ph') {
-    console.log(`webviewCheck: unsupported country (${countryCode ?? 'unknown'}) for client_id="${client_id}", returning show: false`);
-    return res.json({ show: false });
-  }
+  // Country check guardrail
+  // if (countryCode !== 'mx' && countryCode !== 'ph') {
+  //   console.log(`webviewCheck: unsupported country (${countryCode ?? 'unknown'}) for client_id="${client_id}", returning show: false`);
+  //   return res.json({ show: false });
+  // }
 
   const { reason, record } = await pollForAppsflyer(req, client_id);
 
