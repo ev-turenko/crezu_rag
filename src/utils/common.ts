@@ -259,6 +259,33 @@ export function withCountryPid(urlValue: string, countryCode: string): string {
   }
 }
 
+// Builds the same "custom" tracking link the app attaches to offers (MX base-URL swap,
+// per-country pid, sub2/sub8), but without per-visitor attribution (sub1/sub3-6/afid),
+// since callers of this (e.g. the country feed page) have no single visitor to attribute to.
+export function buildPublicOfferUrl(urlValue: string, countryCode: string): string {
+  if (!urlValue) return urlValue;
+  const cc = countryCode.toLowerCase();
+
+  let offerId: string | null = null;
+  try {
+    offerId = new URL(urlValue).searchParams.get('offer_id');
+  } catch {
+    // not a valid absolute URL - fall through, subsequent URL() calls will also fail and return urlValue as-is
+  }
+
+  const baseUrl = cc === 'mx' ? 'https://crezufin.xyz/X2zSfS6w' : urlValue;
+  const withPid = withCountryPid(baseUrl, cc);
+
+  try {
+    const u = new URL(withPid);
+    u.searchParams.set('sub2', 'FinmatcherAI');
+    if (offerId) u.searchParams.set('sub8', offerId);
+    return u.toString();
+  } catch {
+    return withPid;
+  }
+}
+
 export function normalizeOfferForLLM(originalData: OriginalOfferData): string {
   const normalized: NormalizedOffer = {
     id: originalData.id,

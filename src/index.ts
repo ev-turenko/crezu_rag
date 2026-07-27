@@ -12,6 +12,7 @@ import healthcheckRoutes from './routes/healthcheckRoutes.js';
 import employmentIndustriesRoutes from './routes/employmentIndustriesRoutes.js';
 import incomeTypesRoutes from './routes/incomeTypesRoutes.js';
 import offersRoutes from './routes/offersRoutes.js';
+import offerFeedRoutes from './routes/offerFeedRoutes.js';
 import configRoutes from './routes/configRoutes.js';
 import countriesRoutes from './routes/countriesRoutes.js';
 import viewChatRoutes from './routes/viewChatRoutes.js';
@@ -83,6 +84,7 @@ app.use('/api/health', healthcheckRoutes);
 app.use('/api/fields/industries', employmentIndustriesRoutes);
 app.use('/api/fields/income-types', incomeTypesRoutes);
 app.use('/api/offer', offersRoutes);
+app.use('/api/offer-feed', offerFeedRoutes);
 app.use('/api/config', configRoutes)
 app.use('/api/v2/config', configRoutesV2)
 app.use('/api/v2/countries', countriesRoutesV2)
