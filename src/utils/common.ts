@@ -279,7 +279,10 @@ export function buildPublicOfferUrl(urlValue: string, countryCode: string): stri
   try {
     const u = new URL(withPid);
     u.searchParams.set('sub2', 'FinmatcherAI');
-    if (offerId) u.searchParams.set('sub8', offerId);
+    if (offerId) {
+      u.searchParams.set('sub8', offerId);
+      u.searchParams.set('offer_id', offerId);
+    }
     return u.toString();
   } catch {
     return withPid;
