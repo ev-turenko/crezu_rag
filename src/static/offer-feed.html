@@ -197,6 +197,59 @@
       background: var(--offer-cta-dark);
     }
 
+    .continue-wrap {
+      max-width: 380px;
+      margin: 48px auto 0;
+    }
+
+    .continue-card {
+      background: var(--card-bg);
+      border: 1px solid var(--offer-border);
+      border-radius: 20px;
+      padding: 28px 20px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .continue-card .avatar,
+    .continue-card .avatar-fallback {
+      width: 64px;
+      height: 64px;
+      font-size: 22px;
+    }
+
+    .continue-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .continue-card .card-title {
+      font-size: 18px;
+    }
+
+    .continue-card .view-btn {
+      width: 100%;
+      margin-top: 6px;
+    }
+
+    .text-link {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 4px;
+    }
+
+    .text-link:hover {
+      color: var(--accent);
+    }
+
     .empty, .loading, .error {
       text-align: center;
       padding: 60px 20px;
@@ -277,6 +330,51 @@
       ph: 'Pinakasikat',
       ua: 'Найпопулярніший',
     };
+
+    // "Welcome back" / "Continue with" / "Choose another offer", translated per country.
+    const CONTINUE_STRINGS = {
+      se: { welcome: 'Välkommen tillbaka', continueWith: 'Fortsätt med', chooseAnother: 'Välj ett annat erbjudande' },
+      pl: { welcome: 'Witaj ponownie', continueWith: 'Kontynuuj z', chooseAnother: 'Wybierz inną ofertę' },
+      es: { welcome: 'Bienvenido de nuevo', continueWith: 'Continuar con', chooseAnother: 'Elegir otra oferta' },
+      mx: { welcome: 'Bienvenido de nuevo', continueWith: 'Continuar con', chooseAnother: 'Elegir otra oferta' },
+      co: { welcome: 'Bienvenido de nuevo', continueWith: 'Continuar con', chooseAnother: 'Elegir otra oferta' },
+      pe: { welcome: 'Bienvenido de nuevo', continueWith: 'Continuar con', chooseAnother: 'Elegir otra oferta' },
+      de: { welcome: 'Willkommen zurück', continueWith: 'Weiter mit', chooseAnother: 'Ein anderes Angebot wählen' },
+      kz: { welcome: 'С возвращением', continueWith: 'Продолжить с', chooseAnother: 'Выбрать другое предложение' },
+      lk: { welcome: 'නැවත සාදරයෙන් පිළිගනිමු', continueWith: 'දිගටම කරගෙන යන්න', chooseAnother: 'වෙනත් දීමනාවක් තෝරන්න' },
+      my: { welcome: 'Selamat kembali', continueWith: 'Teruskan dengan', chooseAnother: 'Pilih tawaran lain' },
+      vn: { welcome: 'Chào mừng trở lại', continueWith: 'Tiếp tục với', chooseAnother: 'Chọn ưu đãi khác' },
+      za: { welcome: 'Welkom terug', continueWith: 'Gaan voort met', chooseAnother: "Kies 'n ander aanbod" },
+      ph: { welcome: 'Maligayang pagbabalik', continueWith: 'Magpatuloy kasama ang', chooseAnother: 'Pumili ng ibang alok' },
+      ua: { welcome: 'З поверненням', continueWith: 'Продовжити з', chooseAnother: 'Обрати іншу пропозицію' },
+    };
+
+    const LAST_OFFER_KEY = 'crezu_offer_feed_last_offer';
+
+    function getSavedOffer() {
+      try {
+        const raw = localStorage.getItem(LAST_OFFER_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.url === 'string' && typeof parsed.name === 'string') return parsed;
+      } catch {
+        // localStorage unavailable/corrupted - fall through to the normal feed
+      }
+      return null;
+    }
+
+    function saveLastOffer(offer) {
+      try {
+        localStorage.setItem(LAST_OFFER_KEY, JSON.stringify({
+          name: offer.name,
+          avatar: offer.avatar || '',
+          url: offer.url,
+          country_code: offer.country_code || activeCountry,
+        }));
+      } catch {
+        // localStorage unavailable (private mode, quota) - ignore
+      }
+    }
 
     const contentEl = document.getElementById('content');
 
@@ -361,13 +459,51 @@
               `).join('')}
             </div>` : ''}
             <div class="link-row">
-              <a class="view-btn" href="${escapeHtml(outboundUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(offer.button_text)}</a>
+              <a class="view-btn" href="${escapeHtml(outboundUrl)}" target="_blank" rel="noopener noreferrer"
+                data-offer-name="${escapeHtml(offer.name)}"
+                data-offer-avatar="${escapeHtml(offer.avatar || '')}"
+                data-offer-country="${escapeHtml(result.country_code)}"
+              >${escapeHtml(offer.button_text)}</a>
             </div>
           </div>
         `;
         }).join('')}
       </div>`;
     }
+
+    function renderContinueScreen(saved) {
+      const strings = CONTINUE_STRINGS[saved.country_code] || CONTINUE_STRINGS.es;
+
+      contentEl.innerHTML = `<div class="continue-wrap">
+        <div class="continue-card">
+          <div class="continue-label">${escapeHtml(strings.welcome)}</div>
+          ${saved.avatar
+            ? `<img class="avatar" src="${escapeHtml(saved.avatar)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'avatar-fallback', textContent:'${escapeHtml((saved.name || '?')[0])}'}))" />`
+            : `<div class="avatar-fallback">${escapeHtml((saved.name || '?')[0])}</div>`
+          }
+          <div class="card-title">${escapeHtml(saved.name)}</div>
+          <a class="view-btn" href="${escapeHtml(saved.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(strings.continueWith)} ${escapeHtml(saved.name)}</a>
+          <button class="text-link" id="choose-another">${escapeHtml(strings.chooseAnother)}</button>
+        </div>
+      </div>`;
+
+      document.getElementById('choose-another').addEventListener('click', () => {
+        loadCountry(activeCountry);
+      });
+    }
+
+    // Delegated so it survives every re-render of #content; only fires for real
+    // offer links (they carry data-offer-name), not the continue-screen's own link.
+    contentEl.addEventListener('click', (e) => {
+      const link = e.target.closest('.view-btn[data-offer-name]');
+      if (!link) return;
+      saveLastOffer({
+        name: link.dataset.offerName,
+        avatar: link.dataset.offerAvatar,
+        url: link.href,
+        country_code: link.dataset.offerCountry,
+      });
+    });
 
     async function loadCountry(cc, force = false) {
       if (!force && cache.has(cc)) {
@@ -398,7 +534,13 @@
     });
 
     setCountryQuery(activeCountry, true);
-    loadCountry(activeCountry);
+
+    const savedOffer = getSavedOffer();
+    if (savedOffer) {
+      renderContinueScreen(savedOffer);
+    } else {
+      loadCountry(activeCountry);
+    }
   </script>
 </body>
 </html>
