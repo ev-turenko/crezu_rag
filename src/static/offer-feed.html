@@ -349,6 +349,24 @@
       ua: { welcome: 'З поверненням', continueWith: 'Продовжити з', chooseAnother: 'Обрати іншу пропозицію' },
     };
 
+    // "We're searching the best financial offers for you", translated per country.
+    const LOADING_TEXT = {
+      se: 'Vi söker efter de bästa finansiella erbjudandena för dig',
+      pl: 'Szukamy dla Ciebie najlepszych ofert finansowych',
+      es: 'Estamos buscando las mejores ofertas financieras para ti',
+      mx: 'Estamos buscando las mejores ofertas financieras para ti',
+      co: 'Estamos buscando las mejores ofertas financieras para ti',
+      pe: 'Estamos buscando las mejores ofertas financieras para ti',
+      de: 'Wir suchen die besten Finanzangebote für dich',
+      kz: 'Мы подбираем для вас лучшие финансовые предложения',
+      lk: 'අපි ඔබ වෙනුවෙන් හොඳම මූල්‍ය දීමනා සොයමින් සිටිමු',
+      my: 'Kami sedang mencari tawaran kewangan terbaik untuk anda',
+      vn: 'Chúng tôi đang tìm kiếm những ưu đãi tài chính tốt nhất cho bạn',
+      za: 'Ons soek die beste finansiële aanbiedinge vir jou',
+      ph: 'Hinahanap namin ang pinakamahusay na alok pampinansyal para sa iyo',
+      ua: 'Ми підбираємо для вас найкращі фінансові пропозиції',
+    };
+
     const LAST_OFFER_KEY = 'crezu_offer_feed_last_offer';
 
     function getSavedOffer() {
@@ -511,7 +529,7 @@
         return;
       }
 
-      contentEl.innerHTML = `<div class="loading"><div class="spinner"></div>Fetching ${COUNTRY_NAMES[cc]} feed…</div>`;
+      contentEl.innerHTML = `<div class="loading"><div class="spinner"></div>${escapeHtml(LOADING_TEXT[cc] || LOADING_TEXT.es)}</div>`;
 
       try {
         const res = await fetch(`/api/offer-feed?country_code=${encodeURIComponent(cc)}`);
