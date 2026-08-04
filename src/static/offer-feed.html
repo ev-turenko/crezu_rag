@@ -261,6 +261,11 @@
       color: #b91c1c;
     }
 
+    .loading strong,
+    .continue-label strong {
+      color: var(--text);
+    }
+
     .spinner {
       width: 22px;
       height: 22px;
@@ -365,6 +370,24 @@
       za: 'Ons soek die beste finansiële aanbiedinge vir jou',
       ph: 'Hinahanap namin ang pinakamahusay na alok pampinansyal para sa iyo',
       ua: 'Ми підбираємо для вас найкращі фінансові пропозиції',
+    };
+
+    // "You're now being redirected to {name}", translated per country.
+    const REDIRECT_TEXT = {
+      se: 'Du omdirigeras nu till',
+      pl: 'Zostajesz teraz przekierowany do',
+      es: 'Ahora estás siendo redirigido a',
+      mx: 'Ahora estás siendo redirigido a',
+      co: 'Ahora estás siendo redirigido a',
+      pe: 'Ahora estás siendo redirigido a',
+      de: 'Du wirst jetzt weitergeleitet zu',
+      kz: 'Сейчас вас перенаправляют на',
+      lk: 'ඔබ දැන් නැවත-යොමු කරනු ලබන්නේ',
+      my: 'Anda kini sedang dialihkan ke',
+      vn: 'Bạn đang được chuyển hướng đến',
+      za: 'Jy word nou verwys na',
+      ph: 'Ikaw ay inirereroute na ngayon sa',
+      ua: 'Зараз вас перенаправляють на',
     };
 
     const LAST_OFFER_KEY = 'crezu_offer_feed_last_offer';
@@ -477,7 +500,7 @@
               `).join('')}
             </div>` : ''}
             <div class="link-row">
-              <a class="view-btn" href="${escapeHtml(outboundUrl)}" target="_blank" rel="noopener noreferrer"
+              <a class="view-btn" href="${escapeHtml(outboundUrl)}"
                 data-offer-name="${escapeHtml(offer.name)}"
                 data-offer-avatar="${escapeHtml(offer.avatar || '')}"
                 data-offer-country="${escapeHtml(result.country_code)}"
@@ -500,7 +523,11 @@
             : `<div class="avatar-fallback">${escapeHtml((saved.name || '?')[0])}</div>`
           }
           <div class="card-title">${escapeHtml(saved.name)}</div>
-          <a class="view-btn" href="${escapeHtml(saved.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(strings.continueWith)} ${escapeHtml(saved.name)}</a>
+          <a class="view-btn" href="${escapeHtml(saved.url)}"
+            data-offer-name="${escapeHtml(saved.name)}"
+            data-offer-avatar="${escapeHtml(saved.avatar || '')}"
+            data-offer-country="${escapeHtml(saved.country_code || '')}"
+          >${escapeHtml(strings.continueWith)} ${escapeHtml(saved.name)}</a>
           <button class="text-link" id="choose-another">${escapeHtml(strings.chooseAnother)}</button>
         </div>
       </div>`;
@@ -510,17 +537,40 @@
       });
     }
 
-    // Delegated so it survives every re-render of #content; only fires for real
-    // offer links (they carry data-offer-name), not the continue-screen's own link.
+    function renderRedirecting(name, avatar, countryCode) {
+      const text = REDIRECT_TEXT[countryCode] || REDIRECT_TEXT.es;
+      contentEl.innerHTML = `<div class="continue-wrap">
+        <div class="continue-card">
+          ${avatar
+            ? `<img class="avatar" src="${escapeHtml(avatar)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'avatar-fallback', textContent:'${escapeHtml((name || '?')[0])}'}))" />`
+            : `<div class="avatar-fallback">${escapeHtml((name || '?')[0])}</div>`
+          }
+          <div class="spinner"></div>
+          <div class="continue-label">${escapeHtml(text)} <strong>${escapeHtml(name)}</strong>…</div>
+        </div>
+      </div>`;
+    }
+
+    // Delegated so it survives every re-render of #content; fires for every offer
+    // link (grid cards and the continue-screen's own link both carry data-offer-name).
+    // Modifier/middle clicks are left alone so the browser can still open a new tab.
     contentEl.addEventListener('click', (e) => {
-      const link = e.target.closest('.view-btn[data-offer-name]');
+      const link = e.target.closest('a.view-btn[data-offer-name]');
       if (!link) return;
-      saveLastOffer({
-        name: link.dataset.offerName,
-        avatar: link.dataset.offerAvatar,
-        url: link.href,
-        country_code: link.dataset.offerCountry,
-      });
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+
+      const name = link.dataset.offerName;
+      const avatar = link.dataset.offerAvatar;
+      const countryCode = link.dataset.offerCountry || activeCountry;
+      const url = link.href;
+
+      saveLastOffer({ name, avatar, url, country_code: countryCode });
+      renderRedirecting(name, avatar, countryCode);
+
+      setTimeout(() => {
+        window.location.href = url;
+      }, 900);
     });
 
     async function loadCountry(cc, force = false) {
