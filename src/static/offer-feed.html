@@ -4,6 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Offer Feed by Country</title>
+  <!-- Hotjar Tracking Code for Finmatcher AI -->
+  <script>
+    (function(h,o,t,j,a,r){
+        h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
+        h._hjSettings={hjid:6748754,hjsv:6};
+        a=o.getElementsByTagName('head')[0];
+        r=o.createElement('script');r.async=1;
+        r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
+        a.appendChild(r);
+    })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');
+  </script>
   <style>
     :root {
       --bg: #f4f6fb;
@@ -41,15 +52,6 @@
       max-width: 1100px;
       margin: 0 auto;
       padding: 24px;
-    }
-
-    .status-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-      font-size: 13px;
-      color: var(--muted);
     }
 
     .grid {
@@ -195,22 +197,6 @@
       background: var(--offer-cta-dark);
     }
 
-    .ghost-btn {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 600;
-      padding: 9px 10px;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    .ghost-btn:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
     .empty, .loading, .error {
       text-align: center;
       padding: 60px 20px;
@@ -261,10 +247,6 @@
 </head>
 <body>
   <div class="container">
-    <div class="status-bar">
-      <span id="status"></span>
-      <button class="ghost-btn" id="refresh">Refresh</button>
-    </div>
     <div id="content"></div>
   </div>
 
@@ -278,9 +260,25 @@
 
     const FEED_COUNTRIES = Object.keys(COUNTRY_NAMES);
 
+    // "Most popular" translated per country, for the top-ranked offer's ribbon.
+    const MOST_POPULAR_LABEL = {
+      se: 'Mest populär',
+      pl: 'Najpopularniejsza',
+      es: 'Más popular',
+      mx: 'Más popular',
+      co: 'Más popular',
+      pe: 'Más popular',
+      de: 'Am beliebtesten',
+      kz: 'Самый популярный',
+      lk: 'වඩාත් ජනප්‍රියම',
+      my: 'Paling popular',
+      vn: 'Phổ biến nhất',
+      za: 'Gewildste',
+      ph: 'Pinakasikat',
+      ua: 'Найпопулярніший',
+    };
+
     const contentEl = document.getElementById('content');
-    const statusEl = document.getElementById('status');
-    const refreshBtn = document.getElementById('refresh');
 
     function countryFromQuery() {
       const requested = new URLSearchParams(window.location.search)
@@ -304,6 +302,26 @@
       return div.innerHTML;
     }
 
+    // Forwards every query param this page was opened with (e.g. sub1-sub8, afid,
+    // pid, click ids from an ad network) onto each offer's outbound link, so
+    // attribution carried on the landing page URL survives into the click-out -
+    // except `country_code`, which only controls this page's own feed selection.
+    function applyPageQueryParams(offerUrl) {
+      const pageParams = new URLSearchParams(window.location.search);
+      pageParams.delete('country_code');
+      if (![...pageParams.keys()].length) return offerUrl;
+
+      try {
+        const u = new URL(offerUrl);
+        pageParams.forEach((value, key) => {
+          if (value !== '') u.searchParams.set(key, value);
+        });
+        return u.toString();
+      } catch {
+        return offerUrl;
+      }
+    }
+
     function renderOffers(result) {
       if (result.error) {
         contentEl.innerHTML = `<div class="error">Failed to load offers for ${result.country_code.toUpperCase()}.</div>`;
@@ -316,9 +334,11 @@
       }
 
       contentEl.innerHTML = `<div class="grid">
-        ${result.items.map((offer, index) => `
+        ${result.items.map((offer, index) => {
+          const outboundUrl = applyPageQueryParams(offer.url);
+          return `
           <div class="card">
-            ${index === 0 ? `<div class="ribbon">&#9733; Most popular</div>` : ''}
+            ${index === 0 ? `<div class="ribbon">&#9733; ${escapeHtml(MOST_POPULAR_LABEL[result.country_code] || 'Most popular')}</div>` : ''}
             <div class="card-head">
               ${offer.avatar
                 ? `<img class="avatar" src="${escapeHtml(offer.avatar)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'avatar-fallback', textContent:'${escapeHtml((offer.name || '?')[0])}'}))" />`
@@ -341,22 +361,20 @@
               `).join('')}
             </div>` : ''}
             <div class="link-row">
-              <a class="view-btn" href="${escapeHtml(offer.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(offer.button_text)}</a>
+              <a class="view-btn" href="${escapeHtml(outboundUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(offer.button_text)}</a>
             </div>
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>`;
     }
 
     async function loadCountry(cc, force = false) {
       if (!force && cache.has(cc)) {
-        const cached = cache.get(cc);
-        statusEl.textContent = `${cached.total} offer${cached.total === 1 ? '' : 's'} · ${cc.toUpperCase()} (cached)`;
-        renderOffers(cached);
+        renderOffers(cache.get(cc));
         return;
       }
 
-      statusEl.textContent = 'Loading…';
       contentEl.innerHTML = `<div class="loading"><div class="spinner"></div>Fetching ${COUNTRY_NAMES[cc]} feed…</div>`;
 
       try {
@@ -365,18 +383,14 @@
         const result = (data.countries && data.countries[0]) || { country_code: cc, total: 0, items: [] };
         cache.set(cc, result);
         if (activeCountry === cc) {
-          statusEl.textContent = `${result.total} offer${result.total === 1 ? '' : 's'} · ${cc.toUpperCase()}`;
           renderOffers(result);
         }
       } catch {
         if (activeCountry === cc) {
-          statusEl.textContent = 'Error';
           contentEl.innerHTML = `<div class="error">Could not reach the offer feed API.</div>`;
         }
       }
     }
-
-    refreshBtn.addEventListener('click', () => loadCountry(activeCountry, true));
 
     window.addEventListener('popstate', () => {
       activeCountry = countryFromQuery();

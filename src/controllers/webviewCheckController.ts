@@ -5,7 +5,7 @@ import { escapeFilterValue } from '../utils/common.js';
 
 const POLL_INTERVAL_MS = 500;
 const POLL_TIMEOUT_MS = 8000;
-const WEBVIEW_BASE_URL = 'https://crezufin.xyz/X2zSfS6w';
+const WEBVIEW_BASE_URL = 'https://ai.finmatcher.com/static/offer-feed.html';
 const GEOIP_ENDPOINT = 'https://gw.crezu.com/geoip/';
 
 const querySchema = z.object({
@@ -93,12 +93,14 @@ function buildWebviewUrl(
   appsflyerId: string | null | undefined,
   maestraId: string | null | undefined,
   attribution: Record<string, unknown> | null | undefined,
+  countryCode: string | null,
 ): string {
   const payload = getAttributionPayload(attribution);
   const campaign = extractAttribStr(payload, 'campaign');
   const adGroup = extractAttribStr(payload, 'af_adset') ?? extractAttribStr(payload, 'adset');
 
   const u = new URL(WEBVIEW_BASE_URL);
+  if (countryCode) u.searchParams.set('country_code', countryCode);
   if (campaign) u.searchParams.set('sub4', campaign);
   if (adGroup) u.searchParams.set('sub6', adGroup);
   if (maestraId) u.searchParams.set('uuid', maestraId);
@@ -138,7 +140,7 @@ export const webviewCheck = async (req: InferenceRequest, res: Response) => {
     console.log(`webviewCheck: proceeding — 8s timeout reached for client_id="${client_id}"`, record);
   }
 
-  const url = buildWebviewUrl(appsflyer_id, maestra_id, appsflyer_attribution);
+  const url = buildWebviewUrl(appsflyer_id, maestra_id, appsflyer_attribution, countryCode);
   console.log(`webviewCheck: supported country (${countryCode}), returning webview URL for client_id="${client_id}": ${url}`);
 
   return res.json({
