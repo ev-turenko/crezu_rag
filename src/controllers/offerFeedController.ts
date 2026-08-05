@@ -65,7 +65,13 @@ async function fetchCountryFeed(countryCode: string): Promise<FeedCountryResult>
             ? await fetchOffersFromCDNFeed(countryCode)
             : (await getSortedffersAndCategories(countryCode)).offers;
 
-        const items: FeedOfferItem[] = offers.map(o => {
+        // Drop placeholder/inactive "domainactive" listings. fetchOffersFromCDNFeed
+        // already filters these out at the source; this also catches any finmatcher
+        // offers with the same type, without touching getSortedffersAndCategories
+        // itself (shared with the AI chat's offer ranking).
+        const activeOffers = offers.filter(o => o.offer_type?.type?.toLowerCase() !== 'domainactive');
+
+        const items: FeedOfferItem[] = activeOffers.map(o => {
             const offerType = o.offer_type as { type?: string; name?: string } | undefined;
             const type = offerType?.type ?? null;
             const rawHeaders = (o.headers ?? []) as Array<{ title?: string; value?: string }>;

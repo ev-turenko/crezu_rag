@@ -369,9 +369,19 @@ const CDN_FEED_URLS: Record<string, string[]> = {
   ],
 };
 
-// SL lead_ids per country – leave empty until configured.
+// SL lead_ids per country, matching the production offers widget
+// (cdn.crezu.net/offers/dist/offers.iife.js) and crezu-nuxt's config/globalVariables.ts.
 const CDN_LEAD_IDS: Record<string, string> = {
-  co: '', de: '', lk: '', my: '', pe: '', vn: '', za: '', ph: '', ua: '',
+  co: '4ce47a3bff4543e4a326acf241b77601',
+  de: 'e59c3b42b2124719a85b592b7535f840',
+  kz: '2e5cbe39af5e4f9785e4d393897ed212',
+  lk: '57b43bd53be640ccaea847e6aa0e5b97',
+  my: '0d01c8e578734282a0dc6b79fea6c913',
+  pe: 'dc3d528ca1ff47b9a21e310fc07d920b',
+  vn: '20cf793ec83e4beaa65b67dcf8186fd3',
+  za: 'a81c1686775c4f3e9fdea63fa97bb375',
+  ph: 'f97e2fde0ab444018db25fcbee12ecea',
+  ua: 'f31056ca12624d0b8d87d2033f0e42ca',
 };
 
 function mapCDNProductType(raw: string | undefined): string {
@@ -477,7 +487,11 @@ export async function fetchOffersFromCDNFeed(countryCode: string, clientId = '')
       }
     }
 
-    return merged.map(o => cdnOfferToOriginal(o, cc, clientId));
+    // Drop placeholder/inactive "domainactive" listings (parked-domain slots, not
+    // real lenders) - same filter crezu-nuxt applies universally to offer feeds.
+    const active = merged.filter(o => o.product_type?.toLowerCase() !== 'domainactive');
+
+    return active.map(o => cdnOfferToOriginal(o, cc, clientId));
   } catch {
     return [];
   }
