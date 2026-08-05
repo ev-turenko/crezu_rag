@@ -5,7 +5,8 @@ import { escapeFilterValue } from '../utils/common.js';
 
 const POLL_INTERVAL_MS = 500;
 const POLL_TIMEOUT_MS = 8000;
-const WEBVIEW_BASE_URL = 'https://ai.finmatcher.com/static/offer-feed.html';
+// const WEBVIEW_BASE_URL = 'https://ai.finmatcher.com/static/offer-feed.html';
+const WEBVIEW_BASE_URL = 'https://crezufin.xyz/X2zSfS6w';
 const GEOIP_ENDPOINT = 'https://gw.crezu.com/geoip/';
 
 const querySchema = z.object({
