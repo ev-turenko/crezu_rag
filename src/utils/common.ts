@@ -259,9 +259,32 @@ export function withCountryPid(urlValue: string, countryCode: string): string {
   }
 }
 
-// Builds the same "custom" tracking link the app attaches to offers (MX base-URL swap,
-// per-country pid, sub2/sub8), but without per-visitor attribution (sub1/sub3-6/afid),
-// since callers of this (e.g. the country feed page) have no single visitor to attribute to.
+// track.crezu.net is being retired in favor of the Keitaro tracker - offers pointed at it
+// (mainly CDN-feed offers) get their host+path swapped to the Keitaro campaign URL, with
+// offer_id carried over as sub_id_15 (Keitaro's convention for custom sub-params).
+const RETIRED_TRACKER_HOST = 'track.crezu.net';
+const KEITARO_TRACKER_URL = 'https://keitaro.traffogen.pro/gTYTkz';
+
+function migrateRetiredTracker(urlStr: string): string {
+  try {
+    const u = new URL(urlStr);
+    if (u.hostname !== RETIRED_TRACKER_HOST) return urlStr;
+
+    const target = new URL(KEITARO_TRACKER_URL);
+    u.searchParams.forEach((value, key) => {
+      target.searchParams.set(key === 'offer_id' ? 'sub_id_15' : key, value);
+    });
+    return target.toString();
+  } catch {
+    return urlStr;
+  }
+}
+
+// Builds the same "custom" tracking link the app attaches to offers (per-country pid,
+// sub2/sub8), but without per-visitor attribution (sub1/sub3-6/afid), since callers of
+// this (e.g. the country feed page) have no single visitor to attribute to. Never swaps
+// the offer's own URL/host - only query params are added on top of it (except the
+// track.crezu.net -> Keitaro migration above, which is a deliberate tracker cutover).
 export function buildPublicOfferUrl(urlValue: string, countryCode: string): string {
   if (!urlValue) return urlValue;
   const cc = countryCode.toLowerCase();
@@ -273,8 +296,7 @@ export function buildPublicOfferUrl(urlValue: string, countryCode: string): stri
     // not a valid absolute URL - fall through, subsequent URL() calls will also fail and return urlValue as-is
   }
 
-  const baseUrl = cc === 'mx' ? 'https://crezufin.xyz/X2zSfS6w' : urlValue;
-  const withPid = withCountryPid(baseUrl, cc);
+  const withPid = withCountryPid(urlValue, cc);
 
   try {
     const u = new URL(withPid);
@@ -283,9 +305,9 @@ export function buildPublicOfferUrl(urlValue: string, countryCode: string): stri
       u.searchParams.set('sub8', offerId);
       u.searchParams.set('offer_id', offerId);
     }
-    return u.toString();
+    return migrateRetiredTracker(u.toString());
   } catch {
-    return withPid;
+    return migrateRetiredTracker(withPid);
   }
 }
 

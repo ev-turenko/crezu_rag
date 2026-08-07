@@ -162,12 +162,6 @@ export class OffersController {
                 const data: OffersResponse = await response.json();
                 if (subParams) {
                     data.items = data.items.map((item, index) => {
-                        let baseUrl;
-                        if (`${country_code}`.toLowerCase() === 'mx') {
-                            baseUrl = "https://crezufin.xyz/X2zSfS6w";
-                        } else {
-                            baseUrl = item.url;
-                        }
                         let offerId: string | number = item.id;
                         try {
                             const itemUrl = new URL(item.url);
@@ -176,7 +170,7 @@ export class OffersController {
                         } catch {}
                         return {
                             ...item,
-                            url: appendSubParams(baseUrl, subParams, offerId),
+                            url: appendSubParams(item.url, subParams, offerId),
                             ...(index === 0 && { is_highlighted: true }),
                         }
                     });
